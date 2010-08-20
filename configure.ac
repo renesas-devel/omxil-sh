@@ -168,6 +168,15 @@ HAVE_SHCODECS="no"
 VPU_SUPPORT="no"
 
 ac_enable_vpu=yes
+AC_ARG_WITH([vpumw-path],
+	[AC_HELP_STRING(
+		[--with-vpumw-path=PATH],
+		[set path prefix for the VPU middleware [default=/usr/local]])
+	],
+	[VPUMW_PATH=$withval],
+	[VPUMW_PATH=/usr/local]
+)
+AC_SUBST(VPUMW_PATH)
 AC_ARG_ENABLE(vpu,
      [  --disable-vpu           disable building of VPU support ],
      [ ac_enable_vpu=no ], [ ac_enable_vpu=yes] )
@@ -180,13 +189,58 @@ if test "x${ac_enable_vpu}" = xyes ; then
     AC_SUBST(SHCODECS_LIBS)
     VPU_SUPPORT="yes (SHCODECS)"
   else
+    # VPU5HG
+    # We cannot use AC_CHECK_LIB because libvpu5* requires the application to
+    # implement some functions; AC_CHECK_LIB will fail to link
+    AC_MSG_CHECKING([for SHVPU5HG AVC libraries])
+
+    ac_save_LIBS="$LIBS"
+    ac_save_CFLAGS="$CFLAGS"
+    LIBS="$LIBS $VPUMW_PATH/lib"
+    CFLAGS="$CFLAGS -I$VPUMW_PATH/include"
+
+    AC_TRY_COMPILE([
+    #include <avcdec.h>
+    #include <mcvdec.h>
+    #include <mciph_hg.h>
+    #include <mciph.h>
+    void mciph_uf_ce_start(void *context, long mode, void *start_info) { return; }
+    void mciph_uf_ce_sleep(void *context, long mode) { return; }
+    void mciph_uf_ce_restart(void *context, long mode) { return; }
+    void mciph_uf_vlc_start(void *context, long mode) { return; }
+    void mciph_uf_vlc_sleep(void *context, long mode) { return; }
+    void mciph_uf_vlc_restart(void *context, long mode) { return; }
+    long mciph_uf_reg_table_read(unsigned long src_addr, unsigned long reg_table, long size) { return 0L; }
+    long mciph_uf_reg_table_write(unsigned long dst_addr, unsigned long reg_table, long size) { return 0L; }
+    long mciph_uf_mem_read(unsigned long src_addr, unsigned long dst_addr, long size) { return 0L; }
+    long mciph_uf_mem_write(unsigned long src_addr, unsigned long dst_addr, long size) { return 0L; }
+    void mciph_uf_set_imask(long mask_enable, long now_interrupt) { return; }
+    ],
+    [avcdec_get_version(); mcvdec_get_version();
+     mciph_get_version(); mciph_hg_get_version();],
+    [HAVE_VP5DECAVC="yes"
+     AC_MSG_RESULT(yes)],
+    [AC_MSG_RESULT(no)])
+
+    CFLAGS="$ac_save_CFLAGS"
+    LIBS="$ac_save_LIBS"
+
+    if test "x$HAVE_VP5DECAVC" = "xyes" ; then
+      AC_DEFINE(HAVE_SHVPU5DECAVC, [1], [Define to 1 if you have VP5AVC])
+      VPU_SUPPORT="yes (VP5AVC)"
+    else
+      AC_DEFINE(HAVE_SHVPU5DECAVC, [0], [Define to 1 if you have VP5AVC])
+      VPU_SUPPORT="disabled"
+    fi
+    AM_CONDITIONAL(HAVE_SHVPU5DEC, [test "x$HAVE_VP5DECAVC" = "xyes"])
+
+    # Check for libuiomux
+    PKG_CHECK_MODULES([UIOMUX], [uiomux])
+
     AC_DEFINE(HAVE_SHCODECS, [0], [Define to 1 if you have SHCODECS])
   fi
-else
-  AC_DEFINE(HAVE_SHCODECS, [0], [Define to 1 if you have SHCODECS])
-  VPU_SUPPORT="disabled"
+  AM_CONDITIONAL(HAVE_SHCODECS, [test "x$HAVE_SHCODECS" = "xyes"])
 fi
-AM_CONDITIONAL(HAVE_SHCODECS, [test "x$HAVE_SHCODECS" = "xyes"])
 
 AC_CONFIG_FILES([
 Makefile
