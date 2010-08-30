@@ -27,5 +27,6 @@ libomxshvpudec_la_LIBADD = \
         $(UIOMUX_LIBS)
 libomxshvpudec_la_CFLAGS = \
 	$(OMXIL_CFLAGS) \
-	-I@VPUMW_PATH@/include $(UIOMUX_CFLAGS)
+	-I@VPUMW_PATH@/include $(UIOMUX_CFLAGS) \
+	-DVPU5HG_FIRMWARE_PATH=\"@VPUMW_PATH@/lib/firmware\"
 libomxshvpudec_la_LDFLAGS = $(OMXIL_LDFLAGS) $(VPU5HG_LDFLAGS)

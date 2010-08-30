@@ -182,9 +182,9 @@ encode_init(int width, int height, int bitrate, int framerate,
 	cprop.fmem_x_size[MCVENC_FMX_CAPT] = width;
 	wbuf_enc.work_area_addr = malloc_aligned(wbuf_enc.work_area_size, 4);
 	logd("work_area_addr = %p\n", wbuf_enc.work_area_addr);
-	fw.ce_firmware_addr = load_fw("/usr/local/pkg/libvpu5/lib/firmware/p264e_h.bin");
+	fw.ce_firmware_addr = load_fw(VPU5HG_FIRMWARE_PATH "/p264e_h.bin");
 	logd("ce_firmware_addr = %lx\n", fw.ce_firmware_addr);
-	fw.vlc_firmware_addr = load_fw("/usr/local/pkg/libvpu5/lib/firmware/s264e.bin");
+	fw.vlc_firmware_addr = load_fw(VPU5HG_FIRMWARE_PATH "/s264e.bin");
 	logd("vlc_firmware_addr = %lx\n", fw.vlc_firmware_addr);
 	logd("----- invoke mcvenc_init_encoder() -----\n");
 	ret = mcvenc_init_encoder((MCVENC_API_T *)&avcenc_api_tbl,

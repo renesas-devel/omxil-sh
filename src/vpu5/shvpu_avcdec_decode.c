@@ -37,9 +37,6 @@
 #include "shvpu_avcdec.h"
 #include "shvpu_avcdec_omx.h"
 
-#define BINPATH ""
-#define APPEND_BIN_PATH(x) BINPATH x 
-
 #define MAX_REF_FRAME_CNT 16
 int ibuf_ready;
 
@@ -292,11 +289,13 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		malloc_aligned(pCodec->wbuf_dec.work_area_size, 4);
 	logd("work_area_addr = %p\n",
 	     pCodec->wbuf_dec.work_area_addr);
-	pCodec->fw.ce_firmware_addr = load_fw(APPEND_BIN_PATH ("p264d_h.bin"),
-		&(pCodec->fw_size.ce_firmware_size));
+	pCodec->fw.ce_firmware_addr =
+		load_fw(VPU5HG_FIRMWARE_PATH "/p264d_h.bin",
+			&(pCodec->fw_size.ce_firmware_size));
 	logd("ce_firmware_addr = %lx\n", pCodec->fw.ce_firmware_addr);
-	pCodec->fw.vlc_firmware_addr = load_fw(APPEND_BIN_PATH ("s264d.bin"),
-		&(pCodec->fw_size.vlc_firmware_size));
+	pCodec->fw.vlc_firmware_addr =
+		load_fw(VPU5HG_FIRMWARE_PATH "/s264d.bin",
+			&(pCodec->fw_size.vlc_firmware_size));
 	logd("vlc_firmware_addr = %lx\n",
 	     pCodec->fw.vlc_firmware_addr);
 	pCodec->cprop = _cprop_def;
