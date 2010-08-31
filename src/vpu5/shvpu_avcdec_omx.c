@@ -1116,6 +1116,8 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		void *vaddr;
 		size_t pic_size;
 		int i;
+		buffer_metainfo_t *pBMI;
+		queue_t *pBMIQueue = pCodec->pBMIQueue;
 
 		logd("pic_infos[0]->frame_cnt = %d\n",
 		     pic_infos[0]->frame_cnt);
@@ -1147,6 +1149,18 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		memcpy(pOut, vaddr, pic_size / 2);
 		pOutBuffer->nFilledLen += pic_size + pic_size / 2;
 
+		/* receive an appropriate metadata */
+		if (pBMIQueue->nelem > 0) {
+			pBMI = shvpu_dequeue(pBMIQueue);
+			if (pBMI->id == pic_infos[0]->strm_id) {
+				pOutBuffer->nTimeStamp = pBMI->nTimeStamp;
+				pOutBuffer->nFlags = pBMI->nFlags;
+			} else {
+				loge("FATAL: got incorrect BMI (%d != %d)\n",
+				     pBMI->id, pic_infos[0]->strm_id);
+			}
+			free(pBMI);
+		}
 		pCodec->bufferingCount--;
 	}
 #else
