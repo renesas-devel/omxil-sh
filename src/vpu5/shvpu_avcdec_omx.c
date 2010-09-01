@@ -611,7 +611,7 @@ waitBuffers(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 static inline OMX_BOOL
 getInBuffer(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 	    OMX_BUFFERHEADERTYPE **ppInBuffer,
-	    int *pInBufExchanged)
+	    int *pInBufExchanged, queue_t *pProcessInBufQueue)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
@@ -648,6 +648,7 @@ getInBuffer(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 	}
 
 	(*pInBufExchanged)++;
+	queue(pProcessInBufQueue, *ppInBuffer);
 
 	return OMX_FALSE;
 }
@@ -752,44 +753,28 @@ checkFillDone(OMX_COMPONENTTYPE * pComponent,
 
 static inline void
 checkEmptyDone(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
-		 OMX_BUFFERHEADERTYPE *pInBuffer[],
-		 int *pInBufExchanged)
+	       queue_t *pInBufQueue, int *pInBufExchanged)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
 		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+	OMX_BUFFERHEADERTYPE *pInBuffer;
+	int n;
 
-	/*Input Buffer has been completely consumed. So,
-	  return input buffer */
-	if ( /* isInBufferNeeded == OMX_FALSE */ pInBuffer[0]) {
-		logd("pInBuffer[0](%p)->nFilledLen = %d\n",
-		     pInBuffer[0], pInBuffer[0]->nFilledLen);
-		if (pInBuffer[0]->nFilledLen == 0) {
-			loge("send EmptyBufferDone(%p,%08x)\n",
-			     pInBuffer[0],
-			     pInBuffer[0]->nFlags);
-			pInPort->ReturnBufferFunction(pInPort,
-						      pInBuffer
-						      [0]);
-			(*pInBufExchanged)--;
-			pInBuffer[0] = NULL;
+	/* Input Buffer has been completely consumed.
+	  So,return input buffer */
+	for (n = *pInBufExchanged; n > 0; n--) {
+		pInBuffer = dequeue(pInBufQueue);
+		if (pInBuffer->nFilledLen > 0) {
+			queue(pInBufQueue, pInBuffer);
+			continue;
 		}
-	}
 
-	if (pInBuffer[1] && (pInBuffer[0] != pInBuffer[1])) {
-		logd("pInBuffer[1](%p)->nFilledLen = %d\n",
-		     pInBuffer[1], pInBuffer[1]->nFilledLen);
-		if (pInBuffer[1]->nFilledLen == 0) {
-			loge("send EmptyBufferDone(%p)\n",
-			     pInBuffer[1]);
-			pInPort->ReturnBufferFunction(pInPort,
-						      pInBuffer
-						      [1]);
-			(*pInBufExchanged)--;
-			pInBuffer[1] = NULL;
-		}
+		loge("send EmptyBufferDone(%p,%08x)\n",
+		     pInBuffer, pInBuffer->nFlags);
+		pInPort->ReturnBufferFunction(pInPort, pInBuffer);
+		(*pInBufExchanged)--;
 	}
-
 }	
 
 /** This is the central function for component processing. It
@@ -820,6 +805,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 	int inBufExchanged = 0, outBufExchanged = 0;
 	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
 	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
+	queue_t processInBufQueue;
 	pic_t *pPic;
 	nal_t *pNal = NULL;
 	size_t remain = 0;
@@ -832,6 +818,8 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "In %s the thread ID is %i\n", __func__,
 	      (int)shvpu_avcdec_Private->bellagioThreads->
 	      nThreadBufferMngtID);
+
+	queue_init(&processInBufQueue);
 
 	DEBUG(DEB_LEV_FUNCTION_NAME, "In %s\n", __func__);
 	while (shvpu_avcdec_Private->state == OMX_StateIdle
@@ -859,7 +847,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 			pInBuffer[1] = pInBuffer[0];
 			getInBuffer(shvpu_avcdec_Private,
 				    &pInBuffer[0],
-				    &inBufExchanged);
+				    &inBufExchanged, &processInBufQueue);
 			/* TODO: error check for pInBuffer[0] */
 			if (pNal) {
 				pNal->pBuffer[1] = pInBuffer[0];
@@ -934,8 +922,10 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 			tsem_wait(shvpu_avcdec_Private->bStateSem);
 		}
 
-		checkEmptyDone(shvpu_avcdec_Private,
-				 pInBuffer, &inBufExchanged);
+		if (inBufExchanged > 0)
+			checkEmptyDone(shvpu_avcdec_Private,
+				       &processInBufQueue,
+				       &inBufExchanged);
 	}
 
 	DEBUG(DEB_LEV_FUNCTION_NAME, "Out of %s of component %x\n", __func__,
