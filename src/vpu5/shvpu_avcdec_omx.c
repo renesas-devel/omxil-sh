@@ -508,7 +508,7 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		    && PORT_IS_BEING_FLUSHED(pOutPort)) {
 			pOutPort->ReturnBufferFunction(pOutPort,
 						       *ppOutBuffer);
-			*pOutBufExchanged--;
+			(*pOutBufExchanged)--;
 			*ppOutBuffer = NULL;
 			*pIsOutBufferNeeded = OMX_TRUE;
 			DEBUG(DEB_LEV_FULL_SEQ,
@@ -524,7 +524,7 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 				pInPort->ReturnBufferFunction(pInPort,
 							      pInBuffer[i]);
 				pInBuffer[i] = NULL;
-				*pInBufExchanged--;
+				(*pInBufExchanged)--;
 			}
 			*pIsInBufferNeeded = OMX_TRUE;
 			DEBUG(DEB_LEV_FULL_SEQ,
@@ -647,7 +647,7 @@ getInBuffer(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		     (*ppInBuffer)->nFlags);
 	}
 
-	*pInBufExchanged++;
+	(*pInBufExchanged)++;
 
 	return OMX_FALSE;
 }
@@ -679,7 +679,7 @@ takeOutBuffer(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		      pOutputSem->semval, pOutputQueue->nelem);
 		return OMX_TRUE;
 	}
-	*pOutBufExchanged++;
+	(*pOutBufExchanged)++;
 
 	return OMX_FALSE;
 }
@@ -745,7 +745,7 @@ checkFillDone(OMX_COMPONENTTYPE * pComponent,
 	}
 	logd("send FillBufferDone(%d)\n", (*ppOutBuffer)->nFilledLen);
 	pOutPort->ReturnBufferFunction(pOutPort, *ppOutBuffer);
-	*pOutBufExchanged--;
+	(*pOutBufExchanged)--;
 	*ppOutBuffer = NULL;
 	*pIsOutBufferNeeded = OMX_TRUE;
 }
@@ -771,7 +771,7 @@ checkEmptyDone(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 			pInPort->ReturnBufferFunction(pInPort,
 						      pInBuffer
 						      [0]);
-			*pInBufExchanged--;
+			(*pInBufExchanged)--;
 			pInBuffer[0] = NULL;
 		}
 	}
@@ -785,7 +785,7 @@ checkEmptyDone(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 			pInPort->ReturnBufferFunction(pInPort,
 						      pInBuffer
 						      [1]);
-			*pInBufExchanged--;
+			(*pInBufExchanged)--;
 			pInBuffer[1] = NULL;
 		}
 	}
