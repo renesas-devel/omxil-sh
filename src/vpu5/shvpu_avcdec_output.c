@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include "mcvdec.h"
 #include "shvpu_avcdec.h"
+#include "shvpu_avcdec_omx.h"
 
 long
 mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
@@ -41,12 +42,14 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			   long fmem_size[],
 			   MCVDEC_FMEM_INFO_T *fmem[])
 {
-	static MCVDEC_FMEM_INFO_T *_fmem;
+	MCVDEC_FMEM_INFO_T *_fmem;
 	size_t fmemsize;
 	long fmem_x;
 	int i;
 	void *ypic_vaddr, *cpic_vaddr;
 	unsigned int ypic_paddr, cpic_paddr;
+        shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+                (shvpu_avcdec_PrivateType *)context->user_info;
 
 	loge("%s(%d, %d, %d, %d) invoked.\n",
 	       __FUNCTION__, xpic_size, ypic_size,
@@ -54,11 +57,12 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	fmem_x = (xpic_size + 15) / 16 * 16;
 	fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
 
-	if (_fmem != NULL)
-		free(_fmem);
-	_fmem = *fmem = (MCVDEC_FMEM_INFO_T *)
+/*	if (_fmem != NULL)
+		free(_fmem);*/
+	_fmem = shvpu_avcdec_Private->avCodec->fmem = *fmem =
+		(MCVDEC_FMEM_INFO_T *)
 		malloc(sizeof(MCVDEC_FMEM_INFO_T) * requrired_fmem_cnt);
-	if (_fmem == NULL)
+	if (*fmem == NULL)
 		return MCVDEC_FMEM_SKIP_BY_USER;
 
 	for (i=0; i<requrired_fmem_cnt; i++) {

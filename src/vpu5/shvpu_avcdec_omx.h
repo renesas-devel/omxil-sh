@@ -94,6 +94,8 @@ typedef struct {
 	queue_t*		pBMIQueue;
 	OMX_BOOL		enoughHeaders;
 	OMX_BOOL		enoughPreprocess;
+	int 			has_eos;
+	MCVDEC_FMEM_INFO_T  	**fmem;
 } shvpu_codec_t;
 
 /** Video Decoder component private structure.

@@ -90,14 +90,15 @@ trim_trailing_zero(caddr_t addr, size_t size)
 }
 
 static int
-setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame)
+setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
 {
 	const unsigned char nal_data_eos[16] = {
 		0x00, 0x00, 0x01, 0x0B,
 	};
-	static MCVDEC_STRM_INFO_T si_eos;
+	MCVDEC_STRM_INFO_T *si_eos;
 	size_t uioBufSize;
 	OMX_U8 *uioBuf, *pBuf; 
+	si_element_t *si;
 
 	printf("%s invoked.\n", __FUNCTION__);
 	uioBufSize = (4 + 0x200 + 0x600 + 255) / 256;
@@ -113,12 +114,25 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame)
 	pBuf += 0x200;
 
 	memcpy(pBuf, nal_data_eos, 4);
-	si_eos.strm_buff_addr = pBuf;
-	si_eos.strm_buff_size = 4;
+	si_eos = malloc (sizeof (MCVDEC_STRM_INFO_T));
+	si_eos->strm_buff_addr = pBuf;
+	si_eos->strm_buff_size = 4;
 	input_strm->second_id = 0;
-	input_strm->strm_info = &si_eos;
+	input_strm->strm_info = si_eos;
         input_strm->strm_cnt = 1;
 	input_strm->strm_id = frame;
+
+	si = calloc(1, sizeof(si_element_t));
+	if (si) {
+		si->id = input_strm->strm_id;
+		si->n = input_strm->strm_cnt;
+		si->pStrmInfo = input_strm->strm_info;
+		si->uioBuf = uioBuf;
+		si->uioBufSize = uioBufSize;
+		shvpu_queue(pSIQueue, si);
+	} else {
+		loge("memory alloc for si_element_t failed\n");
+	}
 
 	return MCVDEC_NML_END;
 }
@@ -158,7 +172,6 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 {
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 		(shvpu_avcdec_PrivateType *)context->user_info;
-	static int has_eos;
 	int i, j;
 	MCVDEC_STRM_INFO_T *pStrmInfo;
 	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
@@ -180,9 +193,10 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 	if (pPicSem->semval == 0) {
 		if (shvpu_avcdec_Private->bIsEOSReached) {
 			printf("%s: EOS!\n", __FUNCTION__);
-			if (has_eos == 0) {
-				has_eos = 1;
-				return setup_eos(input_strm, *pFrameCount);
+			if (pCodec->has_eos == 0) {
+				pCodec->has_eos = 1;
+				return setup_eos(input_strm, *pFrameCount
+					, pSIQueue);
 			} else {
 				return MCVDEC_INPUT_END;
 			}

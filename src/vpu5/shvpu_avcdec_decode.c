@@ -371,9 +371,12 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 }
 void
 decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
-	if (shvpu_avcdec_Private && shvpu_avcdec_Private->intrinsic)
-		free(shvpu_avcdec_Private->intrinsic[0]);
-
+	if (shvpu_avcdec_Private ) {
+		if (shvpu_avcdec_Private->intrinsic)
+			free(shvpu_avcdec_Private->intrinsic[0]);
+		if (shvpu_avcdec_Private->avCodec)
+			free(shvpu_avcdec_Private->avCodec->fmem);
+	}
 }
 int
 decode_prepare(void *context)
