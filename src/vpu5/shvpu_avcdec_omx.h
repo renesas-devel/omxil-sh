@@ -50,6 +50,8 @@
 #define VIDEO_DEC_MPEG4_ROLE "video_decoder.mpeg4"
 #define VIDEO_DEC_H264_ROLE "video_decoder.avc"
 
+#define AVC_PROFILE_COUNT 3
+
 typedef	struct {
 	OMX_BUFFERHEADERTYPE*	pBuffer[2];
 	OMX_U32			offset;
@@ -139,7 +141,13 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	/** @param extradata pointer to extradata*/			\
 	OMX_U8* extradata;						\
 	/** @param extradata_size extradata size*/			\
-	OMX_U32 extradata_size;						
+	OMX_U32 extradata_size;						\
+	/** @param hdr_data array to hold pointers to AVC header data*/ \
+	void *intrinsic[AVCDEC_INTRINSIC_ID_CNT]; \
+	/** @param pVideoProfile reference to supported profiles*/  \
+	OMX_VIDEO_PARAM_PROFILELEVELTYPE pVideoProfile[AVC_PROFILE_COUNT]; \
+	/** @param pVideoProfile reference to current profile*/  \
+	OMX_VIDEO_PARAM_PROFILELEVELTYPE pVideoCurrentProfile;
 ENDCLASS(shvpu_avcdec_PrivateType)
 
 /* Component private entry points declaration */

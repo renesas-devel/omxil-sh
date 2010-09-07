@@ -89,6 +89,99 @@ fail_open:
 	return -1;
 }
 
+typedef enum {
+	AVC_BASELINE = 66,
+	AVC_MAIN = 77,
+	AVC_HIGH = 100
+} AVCProfile;
+
+typedef enum {
+    AVC_LEVEL1_B = 9,
+    AVC_LEVEL1 = 10,
+    AVC_LEVEL1_1 = 11,
+    AVC_LEVEL1_2 = 12,
+    AVC_LEVEL1_3 = 13,
+    AVC_LEVEL2 = 20,
+    AVC_LEVEL2_1 = 21,
+    AVC_LEVEL2_2 = 22,
+    AVC_LEVEL3 = 30,
+    AVC_LEVEL3_1 = 31,
+    AVC_LEVEL3_2 = 32,
+    AVC_LEVEL4 = 40,
+    AVC_LEVEL4_1 = 41
+} AVCLevel;
+
+long header_processed_callback( MCVDEC_CONTEXT_T *context,
+				long 	data_type,
+				void 	*api_data,
+				long	data_id,
+				long 	status) {
+	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
+	OMX_VIDEO_PARAM_PROFILELEVELTYPE *pProfile;
+	shvpu_avcdec_Private = (shvpu_avcdec_PrivateType *)context->user_info;
+	pProfile = &shvpu_avcdec_Private->pVideoCurrentProfile;
+	if (status)
+		return -1;
+	switch (data_type) {
+	case AVCDEC_SPS_SYNTAX:
+		switch(((AVCDEC_SPS_SYNTAX_T *)api_data)->sps_profile_idc) {
+		case AVC_BASELINE:
+			pProfile->eProfile = OMX_VIDEO_AVCProfileBaseline;
+			break;
+		case AVC_MAIN:
+			pProfile->eProfile = OMX_VIDEO_AVCProfileMain;
+			break;
+		case AVC_HIGH:
+			pProfile->eProfile = OMX_VIDEO_AVCProfileHigh;
+			break;
+		default:
+			break;
+		}
+		switch(((AVCDEC_SPS_SYNTAX_T *)api_data)->sps_level_idc) {
+		case AVC_LEVEL1_B:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel1b;
+			break;
+		case AVC_LEVEL1:
+		default:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel1;
+			break;
+		case AVC_LEVEL1_1:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel11;
+			break;
+		case AVC_LEVEL1_2:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel12;
+			break;
+		case AVC_LEVEL1_3:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel13;
+			break;
+		case AVC_LEVEL2:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel2;
+			break;
+		case AVC_LEVEL2_1:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel21;
+			break;
+		case AVC_LEVEL2_2:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel22;
+			break;
+		case AVC_LEVEL3:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel3;
+			break;
+		case AVC_LEVEL3_1:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel31;
+			break;
+		case AVC_LEVEL3_2:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel32;
+			break;
+		case AVC_LEVEL4:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel4;
+			break;
+		case AVC_LEVEL4_1:
+			pProfile->eLevel = OMX_VIDEO_AVCLevel41;
+			break;
+		}
+	}
+	loge("Got a header callback\n");
+}
 	/* malloc() on 32bit environment must allocate
 	   an 8-bytes aligned region. */
 
@@ -162,7 +255,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		.fmem_notice_mode	= MCVDEC_FMEM_INDEX_ENABLE,
 		.first_hdr_enable	= MCVDEC_OFF,
 		.ec_mode		= MCVDEC_ECMODE_TYPE1,
-		.func_get_intrinsic_header	= NULL,
+		.func_get_intrinsic_header	= header_processed_callback,
 		.func_userdata_callback		= notify_userdata,
 		.func_imd_buffering_ready	= notify_buffering,
 		.virt_to_phys_func		= uio_virt_to_phys,
@@ -190,11 +283,17 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	     pCodec->fw.vlc_firmware_addr);
 	pCodec->cprop = _cprop_def;
 	pCodec->cprop.codec_params = &pCodec->avcdec_params;
+	/* Initilize intrinsic header callbacks*/
+	memset(shvpu_avcdec_Private->intrinsic, 0, sizeof (void *) *
+		AVCDEC_INTRINSIC_ID_CNT);
+	shvpu_avcdec_Private->intrinsic[0] =
+			malloc(sizeof (AVCDEC_SPS_SYNTAX_T));
+
 	logd("----- invoke mcvdec_init_decoder() -----\n");
 	ret = mcvdec_init_decoder((MCVDEC_API_T *)&avcdec_api_tbl,
 				  &pCodec->cprop,
 				  &pCodec->wbuf_dec,
-				  &pCodec->fw, NULL,
+				  &pCodec->fw, shvpu_avcdec_Private->intrinsic,
 				  pCodec->drvInfo, &pContext);
 	logd("----- resume from mcvdec_init_decoder() -----\n");
 	if (ret != MCIPH_NML_END)
@@ -270,7 +369,12 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 
 	return ret;
 }
+void
+decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
+	if (shvpu_avcdec_Private && shvpu_avcdec_Private->intrinsic)
+		free(shvpu_avcdec_Private->intrinsic[0]);
 
+}
 int
 decode_prepare(void *context)
 {

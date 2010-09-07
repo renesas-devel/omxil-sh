@@ -45,6 +45,8 @@ static OMX_U32 noVideoDecInstance = 0;
 #define DEFAULT_VIDEO_OUTPUT_BUF_SIZE					\
 	(DEFAULT_WIDTH * DEFAULT_HEIGHT * 3 / 2)	// YUV subQCIF
 
+#define INPUT_BUFFER_COUNT 2
+#define INPUT_BUFFER_SIZE 256000
 /** The Constructor of the video decoder component
  * @param pComponent the component handle to be constructed
  * @param cComponentName is the name of the constructed component
@@ -125,8 +127,12 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	inPort =
 		(omx_base_video_PortType *)
 		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
-	inPort->sPortParam.nBufferSize = DEFAULT_OUT_BUFFER_SIZE;
-	inPort->sPortParam.format.video.xFramerate = 25;
+	inPort->sPortParam.nBufferSize = INPUT_BUFFER_SIZE; //max NAL /2 *DHG*/
+	inPort->sPortParam.nBufferCountMin = INPUT_BUFFER_COUNT;
+	inPort->sPortParam.nBufferCountActual = INPUT_BUFFER_COUNT;
+	inPort->sPortParam.format.video.xFramerate = 0;
+	inPort->sPortParam.format.video.eCompressionFormat =
+		OMX_VIDEO_CodingAVC;
 
 	//common parameters related to output port
 	outPort =
@@ -135,11 +141,11 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	outPort->sPortParam.format.video.eColorFormat =
 		OUTPUT_DECODED_COLOR_FMT;
 	outPort->sPortParam.nBufferSize = DEFAULT_VIDEO_OUTPUT_BUF_SIZE;
-	outPort->sPortParam.format.video.xFramerate = 25;
+	outPort->sPortParam.format.video.xFramerate = 0;
 
 	/** settings of output port parameter definition */
 	outPort->sVideoParam.eColorFormat = OUTPUT_DECODED_COLOR_FMT;
-	outPort->sVideoParam.xFramerate = 25;
+	outPort->sVideoParam.xFramerate = 0;
 
 	/** now it's time to know the video coding type of the component */
 	if (!strcmp(cComponentName, VIDEO_DEC_MPEG4_NAME)) {
@@ -293,7 +299,7 @@ void
 shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_PrivateType *
 			  shvpu_avcdec_Private)
 {
-
+	decode_deinit(shvpu_avcdec_Private);
 }
 
 /** internal function to set codec related parameters in the private
@@ -388,6 +394,35 @@ SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 		shvpu_avcdec_Private->pVideoAvc.nCabacInitIdc = 0;
 		shvpu_avcdec_Private->pVideoAvc.eLoopFilterMode =
 			OMX_VIDEO_AVCLoopFilterDisable;
+
+	/*OMX_VIDEO_PARAM_PROFILELEVELTYPE*/
+		setHeader(&shvpu_avcdec_Private->pVideoProfile[0],
+			  sizeof(OMX_VIDEO_PARAM_PROFILELEVELTYPE));
+		shvpu_avcdec_Private->pVideoProfile[0].eProfile =
+			OMX_VIDEO_AVCProfileBaseline;
+		shvpu_avcdec_Private->pVideoProfile[0].eLevel =
+			OMX_VIDEO_AVCLevel3;
+		shvpu_avcdec_Private->pVideoProfile[0].nProfileIndex = 0;
+
+		setHeader(&shvpu_avcdec_Private->pVideoProfile[1],
+			  sizeof(OMX_VIDEO_PARAM_PROFILELEVELTYPE));
+		shvpu_avcdec_Private->pVideoProfile[1].eProfile =
+			OMX_VIDEO_AVCProfileMain;
+		shvpu_avcdec_Private->pVideoProfile[1].eLevel =
+			OMX_VIDEO_AVCLevel41;
+		shvpu_avcdec_Private->pVideoProfile[1].nProfileIndex = 1;
+
+		setHeader(&shvpu_avcdec_Private->pVideoProfile[2],
+			  sizeof(OMX_VIDEO_PARAM_PROFILELEVELTYPE));
+		shvpu_avcdec_Private->pVideoProfile[2].eProfile =
+			OMX_VIDEO_AVCProfileHigh;
+		shvpu_avcdec_Private->pVideoProfile[2].eLevel =
+			OMX_VIDEO_AVCLevel31;
+		shvpu_avcdec_Private->pVideoProfile[2].nProfileIndex = 2;
+
+		memcpy(&shvpu_avcdec_Private->pVideoCurrentProfile,
+			&shvpu_avcdec_Private->pVideoProfile[0],
+			sizeof (OMX_VIDEO_PARAM_PROFILELEVELTYPE));
 
 		inPort =
 			(omx_base_video_PortType *)
@@ -1413,6 +1448,8 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 			break;
 		}
 		if (pVideoPortFormat->nPortIndex <= 1) {
+			if (pVideoPortFormat->nIndex > 0)
+				return OMX_ErrorNoMore;
 			port = (omx_base_video_PortType *)
 				shvpu_avcdec_Private->ports
 				[pVideoPortFormat->nPortIndex];
@@ -1422,24 +1459,6 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		} else {
 			return OMX_ErrorBadPortIndex;
 		}
-		break;
-	}
-	case OMX_IndexParamVideoMpeg4:
-	{
-		OMX_VIDEO_PARAM_MPEG4TYPE *pVideoMpeg4;
-		pVideoMpeg4 = ComponentParameterStructure;
-		if (pVideoMpeg4->nPortIndex != 0) {
-			return OMX_ErrorBadPortIndex;
-		}
-		if ((eError =
-		     checkHeader(ComponentParameterStructure,
-				 sizeof(OMX_VIDEO_PARAM_MPEG4TYPE)))
-		    != OMX_ErrorNone) {
-			break;
-		}
-		memcpy(pVideoMpeg4,
-		       &shvpu_avcdec_Private->pVideoMpeg4,
-		       sizeof(OMX_VIDEO_PARAM_MPEG4TYPE));
 		break;
 	}
 	case OMX_IndexParamVideoAvc:
@@ -1457,6 +1476,44 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		}
 		memcpy(pVideoAvc, &shvpu_avcdec_Private->pVideoAvc,
 		       sizeof(OMX_VIDEO_PARAM_AVCTYPE));
+		break;
+	}
+	case OMX_IndexParamVideoProfileLevelQuerySupported:
+	{
+		OMX_VIDEO_PARAM_PROFILELEVELTYPE *pAVCProfile;
+		pAVCProfile = ComponentParameterStructure;
+		if ((eError = checkHeader(pAVCProfile,
+			sizeof(OMX_VIDEO_PARAM_PROFILELEVELTYPE))) !=
+				OMX_ErrorNone) {
+			break;
+		}
+		if (pAVCProfile->nPortIndex != 0) {
+			return OMX_ErrorBadPortIndex;
+		}
+		if (pAVCProfile->nProfileIndex < AVC_PROFILE_COUNT) {
+			memcpy(pAVCProfile,
+				&shvpu_avcdec_Private->pVideoProfile[pAVCProfile->nProfileIndex],
+				sizeof (OMX_VIDEO_PARAM_PROFILELEVELTYPE));
+		} else {
+			return OMX_ErrorNoMore;
+		}
+		break;
+	}
+	case OMX_IndexParamVideoProfileLevelCurrent:
+	{
+		OMX_VIDEO_PARAM_PROFILELEVELTYPE *pAVCProfile;
+		pAVCProfile = ComponentParameterStructure;
+		if ((eError = checkHeader(pAVCProfile,
+			sizeof(OMX_VIDEO_PARAM_PROFILELEVELTYPE))) !=
+				OMX_ErrorNone) {
+			break;
+		}
+		if (pAVCProfile->nPortIndex != 0) {
+			return OMX_ErrorBadPortIndex;
+		}
+		memcpy(pAVCProfile,
+			&shvpu_avcdec_Private->pVideoCurrentProfile,
+				sizeof (OMX_VIDEO_PARAM_PROFILELEVELTYPE));
 		break;
 	}
 	case OMX_IndexParamStandardComponentRole:
