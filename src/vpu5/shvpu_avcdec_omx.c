@@ -288,7 +288,7 @@ shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
 	uio_create_int_handle(&shvpu_avcdec_Private->uioIntrThread,
 			      handle_vpu5intr,
 			      shvpu_avcdec_Private->avCodecContext);
-	
+
 	return OMX_ErrorNone;
 }
 
@@ -810,7 +810,7 @@ checkEmptyDone(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		pInPort->ReturnBufferFunction(pInPort, pInBuffer);
 		(*pInBufExchanged)--;
 	}
-}	
+}
 
 /** This is the central function for component processing. It
  * is executed in a separate thread, is synchronized with
@@ -1001,7 +1001,7 @@ show_error(void *context)
     provide one output buffer
 */
 void
-shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent, 
+shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			   OMX_BUFFERHEADERTYPE * pOutBuffer)
 {
 	MCVDEC_CMN_PICINFO_T *pic_infos[2];
@@ -1050,7 +1050,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	logd("----- resume from mcvdec_decode_picture() = %d -----\n", ret);
 	logd("hdr_ready = %s\n", (hdr_ready == MCVDEC_ON) ?
 	     "MCVDEC_ON" : "MCVDEC_OFF");
-	
+
 	if (pCodec->codecMode == MCVDEC_MODE_BUFFERING) {
 		if (hdr_ready == MCVDEC_ON) {
 			pCodec->enoughHeaders = OMX_TRUE;
@@ -1127,7 +1127,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 				 NULL);
 		}
 	}
-	
+
 	logd("----- invoke mcvdec_get_output_picture() -----\n");
 	loge("pCodec->bufferingCount = %d\n", pCodec->bufferingCount);
 	ret = mcvdec_get_output_picture(pCodecContext,

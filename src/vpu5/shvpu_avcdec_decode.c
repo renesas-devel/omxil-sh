@@ -335,7 +335,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	  0x400000 >=
 	  (* (* (/ (+ (* 64 (/ 1280 16)
 	  	         (/ (+ (/ 720 16) 3) 4)) 255) 256) 256) 4 17))
-	*/	  
+	*/
 	pCodec->mv_info.mv_info_size = 0x400000;
 	vaddr = pmem_alloc(pCodec->mv_info.mv_info_size,
 				32, &pCodec->mv_info.mv_info_addr);
@@ -395,7 +395,6 @@ decode_prepare(void *context)
 
 	} while ((ret == MCVDEC_NML_END) &&
 		 ((hdr_ready != MCVDEC_ON) || (ibuf_ready != 1)));
-		 
 
 	/* error check */
 	switch (ret) {
