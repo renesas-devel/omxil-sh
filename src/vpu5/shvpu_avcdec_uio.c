@@ -67,13 +67,18 @@ pmem_free(void *vaddr, size_t size)
 	return uiomux_free(uiomux, UIOMUX_SH_VPU, vaddr, size);
 }
 
+void
+phys_pmem_free(unsigned long paddr, size_t size)
+{
+	return uiomux_free(uiomux, UIOMUX_SH_VPU,
+		uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, paddr), size);
+}
 static void *
 uio_int_handler(void *arg)
 {
 	int ret;
 	void *(*ufunc)(void *);
 	void *uarg;
-
 	if (arg) {
 		void **args = arg;
 		ufunc = args[0];
@@ -83,6 +88,7 @@ uio_int_handler(void *arg)
 	}
 
 	logd("%s start\n", __FUNCTION__);
+
 	while (uiomux) {
 		logd("wait for an interrupt...\n");
 		ret = uiomux_sleep(uiomux, UIOMUX_SH_VPU);
@@ -97,7 +103,10 @@ uio_int_handler(void *arg)
 
 	return NULL;
 }
-
+int
+uio_wakeup() {
+	uiomux_wakeup(uiomux);
+}
 
 int
 uio_create_int_handle(pthread_t *thid,
@@ -135,6 +144,11 @@ uio_init(char *name, unsigned long *paddr_reg,
 		       (unsigned long *)size_pmem, NULL);
 
 	return (void *)uiomux;
+}
+
+void
+uio_deinit() {
+	uiomux_close(uiomux);
 }
 
 /**

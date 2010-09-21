@@ -37,6 +37,9 @@
 #include "shvpu_avcdec.h"
 #include "shvpu_avcdec_omx.h"
 
+#define BINPATH ""
+#define APPEND_BIN_PATH(x) BINPATH x 
+
 int ibuf_ready;
 
 static inline void *
@@ -46,7 +49,7 @@ malloc_aligned(size_t size, int align)
 }
 
 static unsigned long
-load_fw(char *filename)
+load_fw(char *filename, int *size)
 {
 	void *vaddr;
 	unsigned char *p;
@@ -63,6 +66,7 @@ load_fw(char *filename)
 	len = lseek(fd, 0, SEEK_END);
 	logd("size of %s = %x\n", filename, len);
 
+	*size = len;
 	vaddr = p = pmem_alloc(len, 32, &paddr);
 	if (vaddr == NULL) {
 		fprintf(stderr, "pmem alloc failed.\n");
@@ -79,7 +83,6 @@ load_fw(char *filename)
 		len -= ret;
 		p += ret;
 	} while (len > 0);
-
 	return paddr;
 fail_read:
 	pmem_free(vaddr, lseek(fd, 0, SEEK_END));
@@ -276,9 +279,11 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		malloc_aligned(pCodec->wbuf_dec.work_area_size, 4);
 	logd("work_area_addr = %p\n",
 	     pCodec->wbuf_dec.work_area_addr);
-	pCodec->fw.ce_firmware_addr = load_fw("p264d_h.bin");
+	pCodec->fw.ce_firmware_addr = load_fw(APPEND_BIN_PATH ("p264d_h.bin"),
+		&(pCodec->fw_size.ce_firmware_size));
 	logd("ce_firmware_addr = %lx\n", pCodec->fw.ce_firmware_addr);
-	pCodec->fw.vlc_firmware_addr = load_fw("s264d.bin");
+	pCodec->fw.vlc_firmware_addr = load_fw(APPEND_BIN_PATH ("s264d.bin"),
+		&(pCodec->fw_size.vlc_firmware_size));
 	logd("vlc_firmware_addr = %lx\n",
 	     pCodec->fw.vlc_firmware_addr);
 	pCodec->cprop = _cprop_def;
@@ -369,13 +374,37 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 
 	return ret;
 }
+
 void
 decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 	if (shvpu_avcdec_Private ) {
+		shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+		decode_finalize(shvpu_avcdec_Private->avCodecContext);
 		if (shvpu_avcdec_Private->intrinsic)
 			free(shvpu_avcdec_Private->intrinsic[0]);
-		if (shvpu_avcdec_Private->avCodec)
+		if (shvpu_avcdec_Private->avCodec && 
+			shvpu_avcdec_Private->avCodec->fmem) {
+			int i, bufs = shvpu_avcdec_Private->avCodec->fmem_size;
+
+			MCVDEC_FMEM_INFO_T *outbuf = shvpu_avcdec_Private->avCodec->fmem;
+			for (i = 0 ; i < bufs; i++) {
+				phys_pmem_free(outbuf->Ypic_addr, (outbuf->Ypic_bot_addr - outbuf->Ypic_addr) *2 );
+				phys_pmem_free(outbuf->Cpic_addr, (outbuf->Cpic_bot_addr - outbuf->Cpic_addr) * 2);
+				outbuf++;
+			}
 			free(shvpu_avcdec_Private->avCodec->fmem);
+		}
+
+		phys_pmem_free(pCodec->mv_info.mv_info_addr,
+			pCodec->mv_info.mv_info_size);
+		pmem_free(pCodec->ir_info.ir_info_addr,
+			pCodec->ir_info.ir_info_size);
+		phys_pmem_free(pCodec->imd_info.imd_buff_addr,
+			pCodec->imd_info.imd_buff_size);
+		phys_pmem_free(pCodec->fw.ce_firmware_addr,
+			pCodec->fw_size.ce_firmware_size);
+		phys_pmem_free(pCodec->fw.vlc_firmware_addr,
+			pCodec->fw_size.vlc_firmware_size);
 	}
 }
 int

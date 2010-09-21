@@ -259,7 +259,6 @@ handle_vpu5intr(void *arg)
 	logd("----- invoke mciph_vpu5_int_handler() -----\n");
 	mciph_vpu5_int_handler(shvpu_avcdec_Private->avCodec->drvInfo);
 	logd("----- resume from mciph_vpu5_int_handler() -----\n");
-
 	return;
 }
 
@@ -281,8 +280,10 @@ shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
 
 	/* initialize the decoder middleware */
 	ret = decode_init(shvpu_avcdec_Private);
-	if (ret != MCVDEC_NML_END)
+	if (ret != MCVDEC_NML_END) {
 		loge("decode_init() failed (%ld)\n", ret);
+		return OMX_ErrorInsufficientResources;
+	}
 
 	/* register an interrupt handler */
 	uio_create_int_handle(&shvpu_avcdec_Private->uioIntrThread,
@@ -299,7 +300,11 @@ void
 shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_PrivateType *
 			  shvpu_avcdec_Private)
 {
+	int err;
 	decode_deinit(shvpu_avcdec_Private);
+	uio_wakeup();
+	pthread_join(shvpu_avcdec_Private->uioIntrThread, NULL);
+	uio_deinit();
 }
 
 /** internal function to set codec related parameters in the private
@@ -1025,7 +1030,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	if (shvpu_avcdec_Private->bIsEOSReached &&
 	    (pCodec->bufferingCount == 0)) {
 		printf("finalize\n");
-		decode_finalize(pCodecContext);
 		shvpu_avcdec_Private->bIsEOSReached = OMX_FALSE;
 		pOutBuffer->nFlags |= OMX_BUFFERFLAG_EOS;
 		return;

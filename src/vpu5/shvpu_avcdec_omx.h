@@ -74,6 +74,11 @@ typedef	struct {
 } pic_t;
 
 typedef struct {
+	unsigned int	ce_firmware_size;	/* (1) size  of CE firmware */
+	unsigned int	vlc_firmware_size;	/* (2) size of VLC firmware */
+} shvpu_firmware_size_t;
+
+typedef struct {
 	MCIPH_DRV_INFO_T*	drvInfo;
 	/** @param mode for VPU5HG video decoder */
 	long 			codecMode;
@@ -95,7 +100,9 @@ typedef struct {
 	OMX_BOOL		enoughHeaders;
 	OMX_BOOL		enoughPreprocess;
 	int 			has_eos;
-	MCVDEC_FMEM_INFO_T  	**fmem;
+	MCVDEC_FMEM_INFO_T  	*fmem;
+	shvpu_firmware_size_t	fw_size;
+	int 			fmem_size;
 } shvpu_codec_t;
 
 /** Video Decoder component private structure.

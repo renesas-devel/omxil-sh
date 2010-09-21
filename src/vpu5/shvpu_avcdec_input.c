@@ -195,8 +195,8 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 			printf("%s: EOS!\n", __FUNCTION__);
 			if (pCodec->has_eos == 0) {
 				pCodec->has_eos = 1;
-				return setup_eos(input_strm, *pFrameCount
-					, pSIQueue);
+				return setup_eos(input_strm, *pFrameCount,
+					pSIQueue);
 			} else {
 				return MCVDEC_INPUT_END;
 			}

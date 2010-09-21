@@ -62,6 +62,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	_fmem = shvpu_avcdec_Private->avCodec->fmem = *fmem =
 		(MCVDEC_FMEM_INFO_T *)
 		malloc(sizeof(MCVDEC_FMEM_INFO_T) * requrired_fmem_cnt);
+	shvpu_avcdec_Private->avCodec->fmem_size = requrired_fmem_cnt;
 	if (*fmem == NULL)
 		return MCVDEC_FMEM_SKIP_BY_USER;
 
