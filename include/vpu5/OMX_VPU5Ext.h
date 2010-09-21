@@ -1,0 +1,57 @@
+/**
+   include/vpu5/OMX_VPU5Ext.h
+
+   This component implements H.264 / MPEG-4 AVC video decoder.
+   The H.264 / MPEG-4 AVC Video decoder is implemented on the
+   Renesas's VPU5HG middleware library.
+
+   Copyright (C) 2010 IGEL Co., Ltd
+   Copyright (C) 2010 Renesas Solutions Corp.
+
+   This library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public License
+   as published by the Free Software Foundation; either version 2.1 of
+   the License, or (at your option) any later version.
+
+   This library is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with this library; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+   02110-1301 USA
+
+*/
+#include <OMX_Index.h>
+#include <OMX_Types.h>
+
+#define OMX_VPU5_CommandName "OMX.RE.VPU5MaxOutputSetting"
+typedef enum OMX_REVPU5INDEXTYPE {
+	OMX_IndexParamVPUMaxOutputSetting = OMX_IndexVendorStartUnused + 0x200
+} OMX_REVPU5INDEXTYPE;
+
+typedef enum OMX_REVPU5LEVEL {
+	OMX_VPU5AVCLevel1,
+	OMX_VPU5AVCLevel1b,
+	OMX_VPU5AVCLevel11,
+	OMX_VPU5AVCLevel12,
+	OMX_VPU5AVCLevel13,
+	OMX_VPU5AVCLevel2,
+	OMX_VPU5AVCLevel21,
+	OMX_VPU5AVCLevel22,
+	OMX_VPU5AVCLevel3,
+	OMX_VPU5AVCLevel31,
+	OMX_VPU5AVCLevel32,
+	OMX_VPU5AVCLevel4,
+	OMX_VPU5AVCLevel41
+} OMX_REVPU5LEVEL;
+
+typedef struct OMX_PARAM_REVPU5MAXPARAM {
+	OMX_U32 nSize;
+	OMX_VERSIONTYPE nVersion;
+	OMX_U32 nWidth;
+	OMX_U32 nHeight;
+	OMX_U32 eVPU5AVCLevel;
+} OMX_PARAM_REVPU5MAXPARAM;

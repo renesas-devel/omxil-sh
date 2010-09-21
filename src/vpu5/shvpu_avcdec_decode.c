@@ -40,6 +40,7 @@
 #define BINPATH ""
 #define APPEND_BIN_PATH(x) BINPATH x 
 
+#define MAX_REF_FRAME_CNT 16
 int ibuf_ready;
 
 static inline void *
@@ -308,16 +309,11 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	void *vaddr;
 	unsigned long paddr;
 
-	/*
-	  0xd88000 >=
-	   (+ (+ (* (/ (* 14000 1000) 8) 4)
-	         (* (/ (* 1280 720 1.5) 4) 4 2))
-	      (* (* (/ (+ (/ (* (/ 1280 16)
-			        (+ (/ 720 16) 3) 8) 4)
-				255) 256) 256) 4 144))
-	   (*) 720p, level 3.1
-	*/
-	pCodec->imd_info.imd_buff_size = 0xd88000;
+       pCodec->imd_info.imd_buff_size = inb_buf_size_calc(
+                       shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel,
+                       shvpu_avcdec_Private->maxVideoParameters.nWidth,
+                       shvpu_avcdec_Private->maxVideoParameters.nHeight);
+
 	vaddr = pmem_alloc(pCodec->imd_info.imd_buff_size,
 				32, &pCodec->imd_info.imd_buff_addr);
 	logd("imd_info.imd_buff_addr = %lx\n",
@@ -325,23 +321,21 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	if (!vaddr)
 		return -1;
 	pCodec->imd_info.imd_buff_mode = MCVDEC_MODE_NOMAL;
-	/*
-	   0x252000 ==
-	   (+ (* 512 144 2)
-	      (* (* (/ (+ (/ (* 992 16) 2) 255) 256) 256) 2 144)))
-	*/
-	pCodec->ir_info.ir_info_size = 0x252000;
+
+        pCodec->ir_info.ir_info_size = ir_info_size_calc(
+                       shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel);
+
 	pCodec->ir_info.ir_info_addr =
 		pmem_alloc(pCodec->ir_info.ir_info_size, 32, &paddr);
 	logd("ir_info.ir_info_addr = %lx\n", pCodec->ir_info.ir_info_addr);
 	if (!pCodec->ir_info.ir_info_addr)
 		return -1;
-	/*
-	  0x400000 >=
-	  (* (* (/ (+ (* 64 (/ 1280 16)
-	  	         (/ (+ (/ 720 16) 3) 4)) 255) 256) 256) 4 17))
-	*/
-	pCodec->mv_info.mv_info_size = 0x400000;
+
+        pCodec->mv_info.mv_info_size = mv_info_size_calc(
+                       shvpu_avcdec_Private->maxVideoParameters.nWidth,
+                       shvpu_avcdec_Private->maxVideoParameters.nHeight,
+                       MAX_REF_FRAME_CNT);
+
 	vaddr = pmem_alloc(pCodec->mv_info.mv_info_size,
 				32, &pCodec->mv_info.mv_info_addr);
 	logd("mv_info.mv_info_addr = %lx\n", pCodec->mv_info.mv_info_addr);

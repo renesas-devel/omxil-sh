@@ -194,6 +194,7 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	pComponent->SetParameter = shvpu_avcdec_SetParameter;
 	pComponent->GetParameter = shvpu_avcdec_GetParameter;
 	pComponent->ComponentRoleEnum = shvpu_avcdec_ComponentRoleEnum;
+	pComponent->GetExtensionIndex = shvpu_avcdec_GetExtensionIndex;
 
 	shvpu_avcdec_Private->pPicQueue = calloc(1, sizeof(queue_t));
 	queue_init(shvpu_avcdec_Private->pPicQueue);
@@ -427,6 +428,12 @@ SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 		memcpy(&shvpu_avcdec_Private->pVideoCurrentProfile,
 			&shvpu_avcdec_Private->pVideoProfile[0],
 			sizeof (OMX_VIDEO_PARAM_PROFILELEVELTYPE));
+	/*OMX_PARAM_REVPU5MAXPARAM*/
+		setHeader(&shvpu_avcdec_Private->maxVideoParameters,
+			  sizeof(OMX_PARAM_REVPU5MAXPARAM));
+		shvpu_avcdec_Private->maxVideoParameters.nWidth = 1280;
+		shvpu_avcdec_Private->maxVideoParameters.nHeight = 720;
+		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel31;
 
 		inPort =
 			(omx_base_video_PortType *)
@@ -1112,6 +1119,18 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			frame_crop[MCVDEC_CROP_BOTTOM];
 		if((inPort->sPortParam.format.video.nFrameWidth != xpic) ||
 		   (inPort->sPortParam.format.video.nFrameHeight != ypic)) {
+			if ((xpic > shvpu_avcdec_Private->
+					maxVideoParameters.nWidth) || (ypic >
+					shvpu_avcdec_Private->
+					maxVideoParameters.nHeight) ) {
+
+			    (*(shvpu_avcdec_Private->callbacks->EventHandler))
+			    (pComponent, shvpu_avcdec_Private->callbackData,
+			    OMX_EventError, // An error occured
+			    OMX_ErrorStreamCorrupt, // Error code
+			    0, NULL);
+			}
+
 			DEBUG(DEB_LEV_SIMPLE_SEQ, "Sending Port Settings Change Event in video decoder\n");
 
 			switch(shvpu_avcdec_Private->video_coding_type) {
@@ -1430,6 +1449,21 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		}
 		break;
 	}
+	case OMX_IndexParamVPUMaxOutputSetting:
+	{
+		OMX_PARAM_REVPU5MAXPARAM *pMaxVals;
+		if (shvpu_avcdec_Private->state != OMX_StateLoaded)
+			return OMX_ErrorIncorrectStateOperation;
+		pMaxVals = ComponentParameterStructure;
+		if ((eError =
+			checkHeader(pMaxVals,
+			sizeof(OMX_PARAM_REVPU5MAXPARAM)) != OMX_ErrorNone)) {
+			break;
+		}
+		memcpy (&shvpu_avcdec_Private->maxVideoParameters, pMaxVals,
+			sizeof(OMX_PARAM_REVPU5MAXPARAM));
+		break;
+	}
 	default:		/*Call the base component function */
 		return omx_base_component_SetParameter(hComponent,
 						       nParamIndex,
@@ -1570,12 +1604,38 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		}
 		break;
 	}
+	case OMX_IndexParamVPUMaxOutputSetting:
+	{
+		OMX_PARAM_REVPU5MAXPARAM *pMaxVals;
+		pMaxVals = ComponentParameterStructure;
+		if ((eError =
+			checkHeader(pMaxVals,
+			sizeof(OMX_PARAM_REVPU5MAXPARAM)) != OMX_ErrorNone))
+			break;
+
+		memcpy (pMaxVals,&shvpu_avcdec_Private->maxVideoParameters,
+			sizeof(OMX_PARAM_REVPU5MAXPARAM));
+		break;
+	}
 	default:		/*Call the base component function */
 		return omx_base_component_GetParameter(hComponent,
 						       nParamIndex,
 						       ComponentParameterStructure);
 	}
 	return OMX_ErrorNone;
+}
+
+OMX_ERRORTYPE
+shvpu_avcdec_GetExtensionIndex(OMX_HANDLETYPE hComponent,
+				OMX_STRING cParameterName,
+				OMX_INDEXTYPE *pIndexType) {
+	if (!cParameterName || !pIndexType)
+		return OMX_ErrorBadParameter;
+	if (!strcmp(cParameterName, OMX_VPU5_CommandName)) {
+		*pIndexType = OMX_IndexParamVPUMaxOutputSetting;
+		return OMX_ErrorNone;
+	}
+	return OMX_ErrorUnsupportedIndex;
 }
 
 OMX_ERRORTYPE

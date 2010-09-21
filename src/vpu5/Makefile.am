@@ -1,4 +1,4 @@
-AM_CFLAGS = -I$(srcdir)
+AM_CPPFLAGS = -I$(srcdir) -I$(top_srcdir)/include
 
 omxshvpudecdir = $(BELLAGIO_PLUGINSDIR)
 
@@ -15,7 +15,7 @@ libomxshvpudec_la_SOURCES = \
 	shvpu_avcdec_input.c shvpu_avcdec_output.c \
 	shvpu_avcdec_uio.c shvpu_avcdec_sync.c \
 	shvpu_avcdec_notify.c shvpu_avcdec_log.c \
-	shvpu_avcdec_queue.c
+	shvpu_avcdec_queue.c shvpu_avcdec_bufcalc.c
 libomxshvpudec_la_LIBADD = \
 	$(OMXIL_LIBS) \
 	-L@VPUMW_PATH@/lib -lvpu5decavc \
