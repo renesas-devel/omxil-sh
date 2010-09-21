@@ -228,8 +228,7 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 	/* frees port/s */
 	if (shvpu_avcdec_Private->ports) {
 		for (i = 0;
-		     i <
-			     shvpu_avcdec_Private->
+		     i < shvpu_avcdec_Private->
 			     sPortTypesParam[OMX_PortDomainVideo].nPorts; i++) {
 			if (shvpu_avcdec_Private->ports[i])
 				shvpu_avcdec_Private->
@@ -1014,7 +1013,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
 	shvpu_codec_t *pCodec;
 	MCVDEC_CONTEXT_T *pCodecContext;
-	OMX_ERRORTYPE err;
+	OMX_ERRORTYPE err = OMX_ErrorNone;
 	size_t size, len;
 	nal_t *nal;
 	int i, j, off;
@@ -1061,16 +1060,36 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		show_error(pCodecContext);
 		break;
 	case MCVDEC_UNSUPPORT:
+		err = OMX_ErrorFormatNotDetected;
 	case MCVDEC_ERR_STRM:
+		err = OMX_ErrorStreamCorrupt;
 		show_error(pCodecContext);
+		break;
 	default:
 		loge("terminating because of an error(%d)\n", ret);
 		return;
 	case MCVDEC_NO_STRM:
 	case MCVDEC_INPUT_END:
+		err = OMX_ErrorUnderflow;
 		loge("nothing to decode (%d)\n", ret);
+		break;
+	case MCVDEC_RESOURCE_LACK:
+	case MCVDEC_ERR_FMEM:
+	case MCVDEC_NO_FMEM_TO_WRITE:
+		err = OMX_ErrorInsufficientResources;
+		break;
 	case MCVDEC_NML_END:
 		break;
+	}
+
+	if (err != OMX_ErrorNone) {
+		(*(shvpu_avcdec_Private->callbacks->EventHandler))
+			(pComponent, shvpu_avcdec_Private->callbackData,
+			OMX_EventError, // An error occured
+			err, 		// Error code
+			0, NULL);
+		if (err == OMX_ErrorInvalidState)
+			shvpu_avcdec_Private->state = OMX_StateInvalid;
 	}
 
 	/* port status */
@@ -1104,7 +1123,9 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 					ypic;
 				break;
 			default :
+				shvpu_avcdec_Private->state = OMX_StateInvalid;
 				DEBUG(DEB_LEV_ERR, "Video formats other than MPEG-4 AVC not supported\nCodec not found\n");
+				err = OMX_ErrorFormatNotDetected;
 				break;
 			}
 
@@ -1128,6 +1149,23 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 					MCVDEC_OUTMODE_PUSH);
 	logd("----- resume from mcvdec_get_output_picture() = %d "
 	     "-----\n", ret);
+	switch (ret) {
+		case MCVDEC_NML_END:
+		case MCVDEC_NO_PICTURE:
+			break;
+		default:
+			err = OMX_ErrorHardware;
+	}
+
+	if (err != OMX_ErrorNone) {
+		(*(shvpu_avcdec_Private->callbacks->EventHandler))
+			(pComponent, shvpu_avcdec_Private->callbackData,
+			OMX_EventError, // An error occured
+			err, 		// Error code
+			0, NULL);
+		if (err == OMX_ErrorInvalidState)
+			shvpu_avcdec_Private->state = OMX_StateInvalid;
+	}
 
 	if ((ret == MCVDEC_NML_END) && pic_infos[0] && frame) {
 		OMX_U8 *pOut = pOutBuffer->pBuffer;
@@ -1593,6 +1631,17 @@ shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE * pComponent,
 				return err;
 			}
 			break;
+		}
+	} else if (message->messageType == OMX_FreeHandle) {
+		if (shvpu_avcdec_Private->state != OMX_StateLoaded) {
+			err = shvpu_avcdec_Deinit(pComponent);
+			if (err != OMX_ErrorNone) {
+				DEBUG(DEB_LEV_ERR,
+					"In %s Video Decoder Deinit"
+					"Failed Error=%x\n",
+					__func__, err);
+				return err;
+			}
 		}
 	}
 	// Execute the base message handling
