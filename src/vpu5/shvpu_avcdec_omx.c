@@ -1017,17 +1017,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	long ret, hdr_ready;
 
 	shvpu_avcdec_Private = pComponent->pComponentPrivate;
-	if (!shvpu_avcdec_Private->avcodecReady) {
-		err = shvpu_avcdec_vpuLibInit(shvpu_avcdec_Private);
-		if (err != OMX_ErrorNone) {
-			DEBUG(DEB_LEV_ERR,
-			      "In %s shvpu_avcdec_vpuLibInit Failed\n",
-			      __func__);
-			return;
-		}
-		shvpu_avcdec_Private->avcodecReady = OMX_TRUE;
-	}
-
 #if 1
 	hdr_ready = MCVDEC_ON;
 	pCodec = shvpu_avcdec_Private->avCodec;
@@ -1559,44 +1548,52 @@ shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE * pComponent,
 	DEBUG(DEB_LEV_FUNCTION_NAME, "In %s\n", __func__);
 
 	if (message->messageType == OMX_CommandStateSet) {
-		if ((message->messageParam == OMX_StateExecuting)
-		    && (shvpu_avcdec_Private->state == OMX_StateIdle)) {
-			shvpu_avcdec_Private->isFirstBuffer = OMX_TRUE;
-		} else if ((message->messageParam == OMX_StateIdle)
-			   && (shvpu_avcdec_Private->state ==
-			       OMX_StateLoaded)) {
-			err = shvpu_avcdec_Init(pComponent);
-			if (err != OMX_ErrorNone) {
-				DEBUG(DEB_LEV_ERR,
-				      "In %s Video Decoder Init Failed Error=%x\n",
-				      __func__, err);
+		switch(shvpu_avcdec_Private->state) {
+		case OMX_StateIdle:
+			if (message->messageParam == OMX_StateExecuting) {
+				shvpu_avcdec_Private->isFirstBuffer = OMX_TRUE;
+			} else if (message->messageParam == OMX_StateLoaded) {
+				err = shvpu_avcdec_Deinit(pComponent);
+				if (err != OMX_ErrorNone) {
+					DEBUG(DEB_LEV_ERR,
+						"In %s Video Decoder Deinit"
+						"Failed Error=%x\n",
+						__func__, err);
+					return err;
+				}
+			}
+			break;
+		case OMX_StateLoaded:
+			if (message->messageParam == OMX_StateIdle) {
+				err = omx_base_component_MessageHandler
+					(pComponent, message);
+				if (err != OMX_ErrorNone)
+					return err;
+				err = shvpu_avcdec_vpuLibInit
+					(shvpu_avcdec_Private);
+				if (err != OMX_ErrorNone) {
+					DEBUG(DEB_LEV_ERR,
+					"In %s shvpu_avcdec_vpuLibInit Failed\n",
+					__func__);
+					return err;
+				}
+				err = shvpu_avcdec_Init(pComponent);
+				if (err != OMX_ErrorNone) {
+					DEBUG(DEB_LEV_ERR,
+						"In %s Video Decoder Init"
+						"Failed Error=%x\n",
+						__func__, err);
+					return err;
+				}
+				shvpu_avcdec_Private->avcodecReady = OMX_TRUE;
 				return err;
 			}
-		} else if ((message->messageParam == OMX_StateLoaded)
-			   && (shvpu_avcdec_Private->state == OMX_StateIdle)) {
-			err = shvpu_avcdec_Deinit(pComponent);
-			if (err != OMX_ErrorNone) {
-				DEBUG(DEB_LEV_ERR,
-				      "In %s Video Decoder Deinit Failed Error=%x\n",
-				      __func__, err);
-				return err;
-			}
+			break;
 		}
 	}
 	// Execute the base message handling
 	err = omx_base_component_MessageHandler(pComponent, message);
 
-	if (message->messageType == OMX_CommandStateSet) {
-		if ((message->messageParam == OMX_StateIdle)
-		    && (eCurrentState == OMX_StateExecuting)) {
-			if (shvpu_avcdec_Private->avcodecReady) {
-				shvpu_avcdec_vpuLibDeInit
-					(shvpu_avcdec_Private);
-				shvpu_avcdec_Private->avcodecReady =
-					OMX_FALSE;
-			}
-		}
-	}
 	return err;
 }
 
