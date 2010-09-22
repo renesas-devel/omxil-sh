@@ -293,7 +293,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	memset(shvpu_avcdec_Private->intrinsic, 0, sizeof (void *) *
 		AVCDEC_INTRINSIC_ID_CNT);
 	shvpu_avcdec_Private->intrinsic[0] =
-			malloc(sizeof (AVCDEC_SPS_SYNTAX_T));
+		malloc_aligned(sizeof(AVCDEC_SPS_SYNTAX_T), 1);
 
 	logd("----- invoke mcvdec_init_decoder() -----\n");
 	ret = mcvdec_init_decoder((MCVDEC_API_T *)&avcdec_api_tbl,

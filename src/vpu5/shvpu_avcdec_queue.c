@@ -83,7 +83,7 @@ int shvpu_queue(queue_t* queue, void* data) {
 
 	if (data == NULL)
 		return -1;
-	newelem = malloc(sizeof(qelem_t));
+	newelem = calloc(1, sizeof(qelem_t));
 	if (newelem == NULL)
 		return -1;
 	memset(newelem, 0, sizeof(qelem_t));

@@ -114,7 +114,7 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
 	pBuf += 0x200;
 
 	memcpy(pBuf, nal_data_eos, 4);
-	si_eos = malloc (sizeof (MCVDEC_STRM_INFO_T));
+	si_eos = calloc (1, sizeof(MCVDEC_STRM_INFO_T));
 	si_eos->strm_buff_addr = pBuf;
 	si_eos->strm_buff_size = 4;
 	input_strm->second_id = 0;
