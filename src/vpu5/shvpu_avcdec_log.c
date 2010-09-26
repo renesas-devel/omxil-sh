@@ -31,7 +31,7 @@
 int
 logd(const char *format, ...)
 {
-#if 0
+#if 1
 	int ret;
 	va_list ap;
 
@@ -48,7 +48,7 @@ logd(const char *format, ...)
 int
 loge(const char* format, ...)
 {
-#if 0
+#if 1
 	int ret;
 	va_list ap;
 
