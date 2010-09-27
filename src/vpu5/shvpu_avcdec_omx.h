@@ -159,7 +159,16 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	/** @param pVideoProfile reference to current profile*/  \
 	OMX_VIDEO_PARAM_PROFILELEVELTYPE pVideoCurrentProfile;   \
 	/** @param maxVideoParameters maximu video size/level to be decoded*/  \
-	OMX_PARAM_REVPU5MAXPARAM maxVideoParameters;
+	OMX_PARAM_REVPU5MAXPARAM maxVideoParameters; \
+	/** @param uio_sem semaphore to synchronize uio interrupt handler*/  \
+	tsem_t			uio_sem;            \
+	/** @param return_sem semaphore to synchronize uio interrupt handler*/ \
+	tsem_t			return_sem; 	    \
+	/** @param exit_handler  used as an argument to uio_exit_handler to end
+             uio interrupt handler thread*/  \
+	int			exit_handler; \
+	/** @param enable_sync enable SYNC mode for vpu decode*/ \
+	OMX_BOOL		enable_sync;
 ENDCLASS(shvpu_avcdec_PrivateType)
 
 /* Component private entry points declaration */

@@ -67,7 +67,7 @@ _uf_vp5_sleep(void *context, long mode, int module)
 		pthread_mutex_unlock(&mutex_vp5[module]);
 		return;
 	}
-
+#if 0
 	if (context) {
 		int ret;
 		shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
@@ -87,7 +87,7 @@ _uf_vp5_sleep(void *context, long mode, int module)
 			return;
 		}
 	}
-
+#endif
 	//pthread_mutex_lock(&mutex_vp5[module]);
 	prev = counter_vp5[module];
 	do {

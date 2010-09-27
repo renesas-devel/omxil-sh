@@ -32,9 +32,13 @@
 #include "shvpu_avcdec_uio.h"
 #include "mciph.h"
 #include "shvpu_avcdec.h"
+#include "tsemaphore.h"
+#include <sys/file.h>
 
-static UIOMux *uiomux;
+static UIOMux *uiomux = NULL;
 
+static pthread_mutex_t uiomux_mutex = PTHREAD_MUTEX_INITIALIZER;
+static ref_cnt = 0;
 int
 uio_interrupt_clear()
 {
@@ -79,45 +83,67 @@ uio_int_handler(void *arg)
 	int ret;
 	void *(*ufunc)(void *);
 	void *uarg;
+	tsem_t *uio_sem, *return_sem;
+	int *exit_flag;
 	if (arg) {
 		void **args = arg;
 		ufunc = args[0];
 		uarg = args[1];
+		uio_sem = args[2];
+		return_sem = args[3];
+		exit_flag = args[4];
 	} else {
 		ufunc = uarg = NULL;
+		return NULL;
 	}
 
 	logd("%s start\n", __FUNCTION__);
 
 	while (uiomux) {
-		logd("wait for an interrupt...\n");
-		ret = uiomux_sleep(uiomux, UIOMUX_SH_VPU);
-		if (ret < 0) {
-			printf("cannot sleep\n");
+		tsem_down(uio_sem);
+		if (*exit_flag)
 			break;
+		while (uiomux && !*exit_flag) {
+			logd("wait for an interrupt...\n");
+			ret = uiomux_sleep(uiomux, UIOMUX_SH_VPU);
+			if (ret < 0) {
+				break;
+			}
+			logd("got an interrupt! (%d)\n", ret);
+			if (ufunc)
+				ufunc(uarg);
 		}
-		logd("got an interrupt! (%d)\n", ret);
-		if (ufunc)
-			ufunc(uarg);
+		tsem_up(return_sem);
 	}
-
+	free (arg);
 	return NULL;
 }
-int
+void
 uio_wakeup() {
 	uiomux_wakeup(uiomux);
 }
 
+void
+uio_exit_handler(tsem_t *uio_sem, tsem_t *return_sem, int *exit_flag) {
+	*exit_flag = 1;
+	tsem_up(uio_sem);
+}
+
 int
 uio_create_int_handle(pthread_t *thid,
-		      void *(*routine)(void *), void *arg)
+		      void *(*routine)(void *), void *arg, tsem_t *uio_sem,
+		      tsem_t *return_sem, int *exit_flag)
 {
 	int ret;
 	void **args;
 
-	args = calloc(2, sizeof(void *));
+	args = calloc(5, sizeof(void *));
 	args[0] = routine;
 	args[1] = arg;
+	args[2] = uio_sem;
+	args[3] = return_sem;
+	args[4] = exit_flag;
+	*exit_flag = 0;
 
 	ret = pthread_create(thid, NULL, uio_int_handler,
 			     (void *)args);
@@ -134,11 +160,15 @@ uio_init(char *name, unsigned long *paddr_reg,
 {
 	uiomux_resource_t uiores;
 
-	uiores = uiomux_query();
-	if (!(uiores & UIOMUX_SH_VPU))
-		return NULL;
-
-	uiomux = uiomux_open();
+	pthread_mutex_lock(&uiomux_mutex);
+	if (!uiomux) {
+		uiores = uiomux_query();
+		if (!(uiores & UIOMUX_SH_VPU))
+			return NULL;
+		uiomux = uiomux_open();
+	}
+	ref_cnt++;
+	pthread_mutex_unlock(&uiomux_mutex);
 	uiomux_get_mmio(uiomux, UIOMUX_SH_VPU, paddr_reg, NULL, NULL);
 	uiomux_get_mem(uiomux, UIOMUX_SH_VPU, paddr_pmem,
 		       (unsigned long *)size_pmem, NULL);
@@ -148,7 +178,13 @@ uio_init(char *name, unsigned long *paddr_reg,
 
 void
 uio_deinit() {
-	uiomux_close(uiomux);
+	pthread_mutex_lock(&uiomux_mutex);
+	ref_cnt--;
+	if (!ref_cnt) {
+		uiomux_close(uiomux);
+		uiomux = NULL;
+	}
+	pthread_mutex_unlock(&uiomux_mutex);
 }
 
 /**
@@ -159,7 +195,6 @@ mciph_uf_mem_read(unsigned long src_addr,
 		  unsigned long dst_addr, long count)
 {
 	void *src_vaddr;
-
 	logd("%s(%lx, %lx, %ld) invoked.\n", __FUNCTION__,
 	       src_addr, dst_addr, count);
 	src_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, src_addr);
@@ -328,4 +363,17 @@ uio_phys_to_virt(unsigned long paddr)
 	vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, paddr);
 
 	return vaddr;
+}
+
+void
+uiomux_lock_vpu() {
+	loge("Locking VPU in thread %lx\n", pthread_self());
+	uiomux_lock(uiomux, UIOMUX_SH_VPU);
+	loge("Locked: %lx\n", pthread_self());
+}
+
+void
+uiomux_unlock_vpu() {
+	loge("Unlocking VPU in thread %lx\n", pthread_self());
+	uiomux_unlock(uiomux, UIOMUX_SH_VPU);
 }

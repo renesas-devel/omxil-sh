@@ -40,7 +40,10 @@ notify_buffering(MCVDEC_CONTEXT_T *context, long status)
 	loge("%s(%ld) invoked.\n", __FUNCTION__, status);
 	pCodec->enoughPreprocess = OMX_TRUE;
 	if (pCodec->enoughHeaders)
-		pCodec->codecMode = MCVDEC_MODE_MAIN;
+		if (shvpu_avcdec_Private->enable_sync)
+			pCodec->codecMode = MCVDEC_MODE_SYNC;
+		else
+			pCodec->codecMode = MCVDEC_MODE_MAIN;
 
 	return MCVDEC_NML_END;
 }

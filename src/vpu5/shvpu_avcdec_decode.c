@@ -43,6 +43,7 @@
 #define MAX_REF_FRAME_CNT 16
 int ibuf_ready;
 
+OMX_U32 noVPUInstance = 0;
 static inline void *
 malloc_aligned(size_t size, int align)
 {
@@ -206,6 +207,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		.vpu_reset_mode			= MCIPH_RESET_SOFT,
 	};
 	shvpu_codec_t *pCodec;
+	static shvpu_codec_t pCodec_bak;
 	MCVDEC_CONTEXT_T *pContext;
 	long ret;
 
@@ -215,23 +217,33 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		return -1L;
 	memset((void *)pCodec, 0, sizeof(shvpu_codec_t));
 
-	/*** initialize vpu ***/
-	pCodec->wbuf_vpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
-	pCodec->wbuf_vpu5.work_area_addr =
-		malloc_aligned(pCodec->wbuf_vpu5.work_size, 4);
-	logd("work_area_addr = %p\n", pCodec->wbuf_vpu5.work_area_addr);
-	if ((pCodec->wbuf_vpu5.work_area_addr == NULL) ||
-	    ((unsigned int)pCodec->wbuf_vpu5.work_area_addr & 0x03U))
-		return -1L;
+	if (noVPUInstance == 0) {
+		/*** initialize vpu ***/
+		pCodec->wbuf_vpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
+		pCodec->wbuf_vpu5.work_area_addr =
+			malloc_aligned(pCodec->wbuf_vpu5.work_size, 4);
+		logd("work_area_addr = %p\n", pCodec->wbuf_vpu5.work_area_addr);
+		if ((pCodec->wbuf_vpu5.work_area_addr == NULL) ||
+		    ((unsigned int)pCodec->wbuf_vpu5.work_area_addr & 0x03U))
+			return -1L;
+		pCodec->vpu5_init = _vpu5_init_def;
 
-	logd("----- invoke mciph_vpu5_init() -----\n");
-	pCodec->vpu5_init = _vpu5_init_def;
-	ret = mciph_vpu5_init(&pCodec->wbuf_vpu5,
+		logd("----- invoke mciph_vpu5_init() -----\n");
+		ret = mciph_vpu5_init(&pCodec->wbuf_vpu5,
 			      (MCIPH_API_T *)&mciph_hg_api_tbl,
-			      &pCodec->vpu5_init, &pCodec->drvInfo);
-	logd("----- resume from mciph_vpu5_init() -----\n");
-	if (ret != MCIPH_NML_END)
-		return ret;
+				      &pCodec->vpu5_init, &pCodec->drvInfo);
+		logd("----- resume from mciph_vpu5_init() -----\n");
+
+		pCodec_bak = *pCodec;
+
+		if (ret != MCIPH_NML_END)
+			return ret;
+	} else {
+		pCodec->wbuf_vpu5 = pCodec_bak.wbuf_vpu5;
+		pCodec->vpu5_init = pCodec_bak.vpu5_init;
+		pCodec->drvInfo = pCodec_bak.drvInfo;
+	}
+	noVPUInstance++;
 
 	/*** initialize decoder ***/
 	static const AVCDEC_PARAMS_T _avcdec_params_def = {
@@ -356,7 +368,10 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	logd("----- resume from mcvdec_set_play_mode() -----\n");
 
 	pCodec->frameCount = pCodec->bufferingCount = 0;
-	pCodec->codecMode = MCVDEC_MODE_BUFFERING;
+	if (shvpu_avcdec_Private->enable_sync)
+		pCodec->codecMode = MCVDEC_MODE_SYNC;
+	else
+		pCodec->codecMode = MCVDEC_MODE_BUFFERING;
 	pCodec->pSIQueue = calloc(1, sizeof(queue_t));
 	shvpu_queue_init(pCodec->pSIQueue);
 	pCodec->pBMIQueue = calloc(1, sizeof(queue_t));
@@ -371,6 +386,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 
 void
 decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
+	noVPUInstance--;
 	if (shvpu_avcdec_Private ) {
 		shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 		decode_finalize(shvpu_avcdec_Private->avCodecContext);

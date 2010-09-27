@@ -27,9 +27,11 @@
 #include <OMX_Index.h>
 #include <OMX_Types.h>
 
-#define OMX_VPU5_CommandName "OMX.RE.VPU5MaxOutputSetting"
+#define OMX_VPU5_CommandMaxOut "OMX.RE.VPU5MaxOutputSetting"
+#define OMX_VPU5_CommandMaxInst "OMX.RE.VPU5MaxInstance"
 typedef enum OMX_REVPU5INDEXTYPE {
-	OMX_IndexParamVPUMaxOutputSetting = OMX_IndexVendorStartUnused + 0x200
+	OMX_IndexParamVPUMaxOutputSetting = OMX_IndexVendorStartUnused + 0x200,
+	OMX_IndexParamVPUMaxInstance
 } OMX_REVPU5INDEXTYPE;
 
 typedef enum OMX_REVPU5LEVEL {
@@ -55,3 +57,9 @@ typedef struct OMX_PARAM_REVPU5MAXPARAM {
 	OMX_U32 nHeight;
 	OMX_U32 eVPU5AVCLevel;
 } OMX_PARAM_REVPU5MAXPARAM;
+
+typedef struct OMX_PARAM_REVPU5MAXINSTANCE {
+	OMX_U32 nSize;
+	OMX_VERSIONTYPE nVersion;
+	OMX_U32 nInstances;
+} OMX_PARAM_REVPU5MAXINSTANCE;

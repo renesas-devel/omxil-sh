@@ -31,8 +31,7 @@
 #include <OMX_Video.h>
 
 /** Maximum Number of Video Component Instance*/
-#define MAX_COMPONENT_VIDEODEC 1
-
+#define MAX_COMPONENT_VIDEODEC 2
 /** Counter of Video Component Instance*/
 static OMX_U32 noVideoDecInstance = 0;
 
@@ -51,6 +50,11 @@ static OMX_U32 noVideoDecInstance = 0;
  * @param pComponent the component handle to be constructed
  * @param cComponentName is the name of the constructed component
  */
+
+static OMX_PARAM_REVPU5MAXINSTANCE maxVPUInstances = {
+	.nInstances = 1
+};
+
 OMX_ERRORTYPE
 shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 			 OMX_STRING cComponentName)
@@ -207,9 +211,12 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 	noVideoDecInstance++;
 
-	if (noVideoDecInstance > MAX_COMPONENT_VIDEODEC) {
+	if (noVideoDecInstance > maxVPUInstances.nInstances)   {
+		noVideoDecInstance--;
 		return OMX_ErrorInsufficientResources;
 	}
+	tsem_init(&shvpu_avcdec_Private->uio_sem, 0);
+	tsem_init(&shvpu_avcdec_Private->return_sem, 0);
 	return eError;
 }
 
@@ -278,17 +285,22 @@ shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
 	loge("reg = %x, mem = %x, memsz = %d\n",
 	     reg, mem, memsz);
 
+	uiomux_lock_vpu();
 	/* initialize the decoder middleware */
 	ret = decode_init(shvpu_avcdec_Private);
 	if (ret != MCVDEC_NML_END) {
 		loge("decode_init() failed (%ld)\n", ret);
 		return OMX_ErrorInsufficientResources;
 	}
+	uiomux_unlock_vpu();
 
 	/* register an interrupt handler */
 	uio_create_int_handle(&shvpu_avcdec_Private->uioIntrThread,
 			      handle_vpu5intr,
-			      shvpu_avcdec_Private->avCodecContext);
+			      shvpu_avcdec_Private->avCodecContext,
+				&shvpu_avcdec_Private->uio_sem,
+				&shvpu_avcdec_Private->return_sem,
+				&shvpu_avcdec_Private->exit_handler);
 
 	return OMX_ErrorNone;
 }
@@ -301,10 +313,18 @@ shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_PrivateType *
 			  shvpu_avcdec_Private)
 {
 	int err;
-	decode_deinit(shvpu_avcdec_Private);
-	uio_wakeup();
-	pthread_join(shvpu_avcdec_Private->uioIntrThread, NULL);
-	uio_deinit();
+	if (shvpu_avcdec_Private) {
+		uiomux_lock_vpu();
+		decode_deinit(shvpu_avcdec_Private);
+
+		uio_exit_handler( &shvpu_avcdec_Private->uio_sem,
+			&shvpu_avcdec_Private->return_sem,
+			&shvpu_avcdec_Private->exit_handler);
+		uiomux_unlock_vpu();
+
+		pthread_join(shvpu_avcdec_Private->uioIntrThread, NULL);
+		uio_deinit();
+	}
 }
 
 /** internal function to set codec related parameters in the private
@@ -334,6 +354,7 @@ SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 		shvpu_avcdec_Private->pVideoMpeg4.bSVH = OMX_FALSE;
 		shvpu_avcdec_Private->pVideoMpeg4.bGov = OMX_FALSE;
 		shvpu_avcdec_Private->pVideoMpeg4.nPFrames = 0;
+
 		shvpu_avcdec_Private->pVideoMpeg4.nBFrames = 0;
 		shvpu_avcdec_Private->pVideoMpeg4.nIDCVLCThreshold = 0;
 		shvpu_avcdec_Private->pVideoMpeg4.bACPred = OMX_FALSE;
@@ -434,6 +455,9 @@ SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 		shvpu_avcdec_Private->maxVideoParameters.nWidth = 1280;
 		shvpu_avcdec_Private->maxVideoParameters.nHeight = 720;
 		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel31;
+		/*OMX_PARAM_REVPU5MAXINSTANCE*/
+		setHeader(&maxVPUInstances,
+			sizeof (OMX_PARAM_REVPU5MAXINSTANCE));
 
 		inPort =
 			(omx_base_video_PortType *)
@@ -934,9 +958,12 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 		    (isOutBufferNeeded == OMX_FALSE)) {
 
 			if (shvpu_avcdec_Private->state ==
-			    OMX_StateExecuting)
+			    OMX_StateExecuting) {
+				uiomux_lock_vpu();
 				shvpu_avcdec_DecodePicture(pComponent,
 							   pOutBuffer);
+				uiomux_unlock_vpu();
+			}
 			else if (!(PORT_IS_BEING_FLUSHED(pInPort) ||
 				   PORT_IS_BEING_FLUSHED(pOutPort))) {
 				DEBUG(DEB_LEV_ERR,
@@ -1041,6 +1068,8 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		return;
 	}
 
+	tsem_up(&shvpu_avcdec_Private->uio_sem);
+
 	logd("----- invoke mcvdec_decode_picture() -----\n");
 	ret = mcvdec_decode_picture(pCodecContext,
 				    &shvpu_avcdec_Private->avPicInfo,
@@ -1054,8 +1083,13 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		if (hdr_ready == MCVDEC_ON) {
 			pCodec->enoughHeaders = OMX_TRUE;
 			if (pCodec->enoughPreprocess)
-				pCodec->codecMode = MCVDEC_MODE_MAIN;
+				if (shvpu_avcdec_Private->enable_sync)
+					pCodec->codecMode = MCVDEC_MODE_SYNC;
+				else
+					pCodec->codecMode = MCVDEC_MODE_MAIN;
 		}
+		uio_wakeup();
+		tsem_down(&shvpu_avcdec_Private->return_sem);
 		return;
 	}
 
@@ -1238,6 +1272,8 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		}
 		pCodec->bufferingCount--;
 	}
+	uio_wakeup();
+	tsem_down(&shvpu_avcdec_Private->return_sem);
 #else
 	/* Simply transfer input to output */
 	for (i = 0; i < pPic->n_nals; i++) {
@@ -1464,6 +1500,26 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			sizeof(OMX_PARAM_REVPU5MAXPARAM));
 		break;
 	}
+	case OMX_IndexParamVPUMaxInstance:
+	{
+		OMX_PARAM_REVPU5MAXINSTANCE *pMaxInst;
+		if (shvpu_avcdec_Private->state != OMX_StateLoaded)
+			return OMX_ErrorIncorrectStateOperation;
+		pMaxInst = ComponentParameterStructure;
+		if ((eError =
+			checkHeader(pMaxInst,
+			sizeof(OMX_PARAM_REVPU5MAXINSTANCE)) != OMX_ErrorNone))
+				break;
+		if (pMaxInst->nInstances <= MAX_COMPONENT_VIDEODEC) {
+			if (pMaxInst->nInstances > 1)
+				shvpu_avcdec_Private->enable_sync = OMX_TRUE;
+			memcpy (&maxVPUInstances,
+				pMaxInst, sizeof(OMX_PARAM_REVPU5MAXINSTANCE));
+			break;
+		} else {
+			return OMX_ErrorBadParameter;
+		}
+	}
 	default:		/*Call the base component function */
 		return omx_base_component_SetParameter(hComponent,
 						       nParamIndex,
@@ -1631,8 +1687,12 @@ shvpu_avcdec_GetExtensionIndex(OMX_HANDLETYPE hComponent,
 				OMX_INDEXTYPE *pIndexType) {
 	if (!cParameterName || !pIndexType)
 		return OMX_ErrorBadParameter;
-	if (!strcmp(cParameterName, OMX_VPU5_CommandName)) {
+	if (!strcmp(cParameterName, OMX_VPU5_CommandMaxOut)) {
 		*pIndexType = OMX_IndexParamVPUMaxOutputSetting;
+		return OMX_ErrorNone;
+	}
+	if (!strcmp(cParameterName, OMX_VPU5_CommandMaxInst)) {
+		*pIndexType = OMX_IndexParamVPUMaxInstance;
 		return OMX_ErrorNone;
 	}
 	return OMX_ErrorUnsupportedIndex;
