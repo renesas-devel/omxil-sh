@@ -67,14 +67,10 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		return MCVDEC_FMEM_SKIP_BY_USER;
 
 	for (i=0; i<requrired_fmem_cnt; i++) {
-		ypic_vaddr = pmem_alloc(fmemsize, 32, &ypic_paddr);
+		ypic_vaddr = pmem_alloc(fmemsize * 3 /2, 32, &ypic_paddr);
 		if (ypic_vaddr == NULL)
 			break;
-		cpic_vaddr = pmem_alloc(fmemsize / 2, 32, &cpic_paddr);
-		if (cpic_vaddr == NULL) {
-			pmem_free(ypic_vaddr, fmemsize);
-			break;
-		}
+		cpic_paddr = ypic_paddr + fmemsize;
 		_fmem[i].Ypic_addr = ypic_paddr;
 		loge("fmem[%d].Ypic_addr = %lx\n", i, _fmem[i].Ypic_addr);
 		_fmem[i].Ypic_bot_addr = ypic_paddr + fmemsize / 2;

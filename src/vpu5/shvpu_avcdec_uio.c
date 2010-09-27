@@ -187,6 +187,13 @@ uio_deinit() {
 	pthread_mutex_unlock(&uiomux_mutex);
 }
 
+int
+uio_get_virt_memory(void **address, unsigned long *size) {
+	uiomux_get_mem(uiomux, UIOMUX_SH_VPU, NULL,
+		       size, address);
+	return 0;
+}
+
 /**
  *
  */

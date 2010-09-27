@@ -168,7 +168,12 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
              uio interrupt handler thread*/  \
 	int			exit_handler; \
 	/** @param enable_sync enable SYNC mode for vpu decode*/ \
-	OMX_BOOL		enable_sync;
+	OMX_BOOL		enable_sync; \
+	/** @param uio_start start address of the uio memory range*/ \
+	void * 			uio_start; \
+	/** @param uio_size size of the uio memory range*/ \
+	unsigned long 		uio_size; \
+	unsigned long		uio_start_phys;
 ENDCLASS(shvpu_avcdec_PrivateType)
 
 /* Component private entry points declaration */
@@ -212,4 +217,25 @@ OMX_ERRORTYPE shvpu_avcdec_SetConfig(
 	OMX_INDEXTYPE nIndex,
 	OMX_PTR pComponentConfigStructure);
 
+
+OMX_ERRORTYPE
+shvpu_avcdec_port_AllocateOutBuffer(
+  omx_base_PortType *pPort,
+  OMX_BUFFERHEADERTYPE** pBuffer,
+  OMX_U32 nPortIndex,
+  OMX_PTR pAppPrivate,
+  OMX_U32 nSizeBytes);
+
+OMX_ERRORTYPE
+shvpu_avcdec_port_FreeOutBuffer(
+  omx_base_PortType *pPort,
+  OMX_U32 nPortIndex,
+  OMX_BUFFERHEADERTYPE* pBuffer);
+
+OMX_ERRORTYPE
+shvpu_avcdec_SendCommand(
+  OMX_HANDLETYPE hComponent,
+  OMX_COMMANDTYPE Cmd,
+  OMX_U32 nParam,
+  OMX_PTR pCmdData);
 #endif
