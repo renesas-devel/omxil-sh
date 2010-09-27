@@ -1688,6 +1688,19 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 			sizeof(OMX_PARAM_REVPU5MAXPARAM));
 		break;
 	}
+	case OMX_IndexParamVPUMaxInstance:
+	{
+		OMX_PARAM_REVPU5MAXINSTANCE *pMaxInst;
+		pMaxInst = ComponentParameterStructure;
+		if ((eError =
+			checkHeader(pMaxInst,
+			sizeof(OMX_PARAM_REVPU5MAXINSTANCE)) != OMX_ErrorNone))
+			break;
+
+		memcpy (pMaxInst, &maxVPUInstances,
+			sizeof(OMX_PARAM_REVPU5MAXINSTANCE));
+		break;
+	}
 	default:		/*Call the base component function */
 		return omx_base_component_GetParameter(hComponent,
 						       nParamIndex,
