@@ -120,7 +120,7 @@ uio_int_handler(void *arg)
 }
 void
 uio_wakeup() {
-	uiomux_wakeup(uiomux);
+	uiomux_wakeup(uiomux, UIOMUX_SH_VPU);
 }
 
 void
