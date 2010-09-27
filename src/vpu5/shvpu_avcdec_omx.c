@@ -228,6 +228,8 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 		pComponent->pComponentPrivate;
 	OMX_U32 i;
 
+	shvpu_avcdec_Deinit(pComponent);
+
 	if (shvpu_avcdec_Private->extradata) {
 		free(shvpu_avcdec_Private->extradata);
 		shvpu_avcdec_Private->extradata = NULL;
@@ -1751,17 +1753,6 @@ shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE * pComponent,
 				return err;
 			}
 			break;
-		}
-	} else if (message->messageType == OMX_FreeHandle) {
-		if (shvpu_avcdec_Private->state != OMX_StateLoaded) {
-			err = shvpu_avcdec_Deinit(pComponent);
-			if (err != OMX_ErrorNone) {
-				DEBUG(DEB_LEV_ERR,
-					"In %s Video Decoder Deinit"
-					"Failed Error=%x\n",
-					__func__, err);
-				return err;
-			}
 		}
 	}
 	// Execute the base message handling
