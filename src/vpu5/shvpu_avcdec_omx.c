@@ -1706,7 +1706,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 						       nParamIndex,
 						       ComponentParameterStructure);
 	}
-	return OMX_ErrorNone;
+	return eError;
 }
 
 OMX_ERRORTYPE
