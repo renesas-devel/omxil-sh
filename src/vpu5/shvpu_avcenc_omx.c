@@ -28,6 +28,7 @@
 #include <bellagio/omxcore.h>
 #include <bellagio/omx_base_video_port.h>
 #include "shvpu_avcenc_omx.h"
+#include "shvpu_avcenc.h"
 #include <OMX_Video.h>
 
 /** Maximum Number of Video Component Instance*/
@@ -46,8 +47,8 @@ static OMX_U32 noVideoEncInstance = 0;
 #define INPUT_BUFFER_COUNT 2
 #define INPUT_PICTURE_COLOR_FMT		OMX_COLOR_FormatYUV420Planar
 
-#undef DEBUG_LEVEL
-#define DEBUG_LEVEL DEB_ALL_MESS
+//#undef DEBUG_LEVEL
+//#define DEBUG_LEVEL DEB_ALL_MESS
 static void *
 shvpu_avcenc_BufferMgmtFunction(void *param);
 
@@ -135,6 +136,7 @@ shvpu_avcenc_Constructor(OMX_COMPONENTTYPE * pComponent,
 	inPort->sPortParam.nBufferCountMin = INPUT_BUFFER_COUNT;
 	inPort->sPortParam.nBufferCountActual = INPUT_BUFFER_COUNT;
 	inPort->sPortParam.format.video.xFramerate = 0;
+	inPort->sPortParam.format.video.nBitrate = 0;
 	inPort->sPortParam.format.video.eColorFormat =
 		INPUT_PICTURE_COLOR_FMT;
 	inPort->sPortParam.format.video.eCompressionFormat =
@@ -166,11 +168,22 @@ shvpu_avcenc_Constructor(OMX_COMPONENTTYPE * pComponent,
 	pComponent->ComponentRoleEnum = shvpu_avcenc_ComponentRoleEnum;
 	//pComponent->GetExtensionIndex = shvpu_avcenc_GetExtensionIndex;
 
+	/* set a private buffer allocator for input buffer */
+	inPort->Port_AllocateBuffer = shvpu_avcenc_AllocateBuffer;
+	inPort->Port_FreeBuffer = shvpu_avcenc_FreeBuffer;
+
 	noVideoEncInstance++;
 
 	if (noVideoEncInstance > MAX_COMPONENT_VIDEOENC) {
 		return OMX_ErrorInsufficientResources;
 	}
+
+	/* initialize a vpu uio */
+	unsigned int reg, mem;
+	size_t memsz;
+	uio_init("VPU", &reg, &mem, &memsz);
+	loge("reg = %x, mem = %x, memsz = %d\n",
+	     reg, mem, memsz);
 
 	return eError;
 }
@@ -190,13 +203,64 @@ shvpu_avcenc_Destructor(OMX_COMPONENTTYPE * pComponent)
 	return OMX_ErrorNone;
 }
 
+static void
+handle_vpu5intr(void *arg)
+{
+	
+
+	logd("----- invoke mciph_vpu5_int_handler() -----\n");
+	mciph_vpu5_int_handler((MCIPH_DRV_INFO_T *)arg);
+	logd("----- resume from mciph_vpu5_int_handler() -----\n");
+	return;
+}
+
 /** It initializates the VPU framework, and opens an VPU videodecoder
     of type specified by IL client
 */
 OMX_ERRORTYPE
 shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 {
-	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec initialized\n");
+	omx_base_video_PortType *inPort;
+	long width, height, bitrate, framerate;
+	MCVENC_CONTEXT_T *pContext;
+	shvpu_codec_t *pCodec;
+	int ret, i;
+	void *vaddr;
+
+	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec initializing..\n");
+	inPort = (omx_base_video_PortType *)
+		shvpu_avcenc_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+	width = inPort->sPortParam.format.video.nFrameWidth;
+	height = inPort->sPortParam.format.video.nFrameHeight;
+	framerate = inPort->sPortParam.format.video.xFramerate;
+	bitrate = inPort->sPortParam.format.video.nBitrate;
+
+        /* initialize the encoder middleware */
+	ret = encode_init(width, height, bitrate, framerate, &pCodec);
+	if (ret != MCVENC_NML_END) {
+		loge("encode_init() failed (%ld)\n", ret);
+		return OMX_ErrorInsufficientResources;
+	}
+	shvpu_avcenc_Private->avCodec = pCodec;
+
+	/* prepare output buffers for VPU M/W */
+	for (i=0; i<2; i++) {
+		vaddr = pmem_alloc(SHVPU_AVCENC_OUTBUF_SIZE, 256, NULL);
+		if (vaddr == NULL) {
+			printf("%s: pmem_alloc failed\n", __FUNCTION__);
+			return OMX_ErrorInsufficientResources;
+		}
+		pCodec->streamBuffer[i].bufferInfo.buff_addr = vaddr;
+       		pCodec->streamBuffer[i].bufferInfo.buff_size =
+			SHVPU_AVCENC_OUTBUF_SIZE;
+		pCodec->streamBuffer[i].bufferInfo.strm_size = 0;
+		pCodec->streamBuffer[i].status = SHVPU_BUFFER_STATUS_READY;
+	}
+
+	/* register an interrupt handler */
+	uio_create_int_handle(&pCodec->intrHandler,
+			      handle_vpu5intr, pCodec->pDrvInfo);
+
 	return OMX_ErrorNone;
 }
 
@@ -331,16 +395,6 @@ shvpu_avcenc_MessageHandler(OMX_COMPONENTTYPE * pComponent,
 			if (err != OMX_ErrorNone)
 				return err;
 		}
-	} else if ((message->messageType == OMX_FreeHandle) &&
-		   (shvpu_avcenc_Private->state != OMX_StateLoaded)) {
-		err = shvpu_avcenc_Deinit(pComponent);
-		if (err != OMX_ErrorNone) {
-			DEBUG(DEB_LEV_ERR,
-			      "In %s Video Encoder Deinit"
-			      "Failed Error=%x\n",
-			      __func__, err);
-			return err;
-		}
 	}
 
 	// Execute the base message handling
@@ -411,6 +465,8 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 			portIndex = pPortDef->nPortIndex;
 			port = (omx_base_video_PortType *)
 				shvpu_avcenc_Private->ports[portIndex];
+			port->sPortParam.format.video.nBitrate =
+				pPortDef->format.video.nBitrate;
 			port->sVideoParam.eColorFormat =
 				port->sPortParam.format.video.
 				eColorFormat;
@@ -489,6 +545,192 @@ shvpu_avcenc_GetParameter(OMX_HANDLETYPE hComponent,
 			 ComponentParameterStructure);
 	}
 	return eError;
+}
+
+OMX_ERRORTYPE
+shvpu_avcenc_AllocateBuffer(omx_base_PortType *pPort,
+			    OMX_BUFFERHEADERTYPE** pBuffer,
+			    OMX_U32 nPortIndex, OMX_PTR pAppPrivate,
+			    OMX_U32 nSizeBytes)
+{
+	unsigned int i;
+	OMX_COMPONENTTYPE* pComponent = pPort->standCompContainer;
+	shvpu_avcenc_PrivateType* shvpu_avcenc_Private =
+		(shvpu_avcenc_PrivateType*)pComponent->pComponentPrivate;
+
+	DEBUG(DEB_LEV_FUNCTION_NAME,
+	      "In %s for port %x\n", __func__, (int)pPort);
+
+	if (nPortIndex != pPort->sPortParam.nPortIndex) {
+		return OMX_ErrorBadPortIndex;
+	}
+	if (PORT_IS_TUNNELED_N_BUFFER_SUPPLIER(pPort)) {
+		return OMX_ErrorBadPortIndex;
+	}
+
+	if (shvpu_avcenc_Private->transientState !=
+	    OMX_TransStateLoadedToIdle) {
+		if (!pPort->bIsTransientToEnabled) {
+			DEBUG(DEB_LEV_ERR,
+			      "In %s: The port is not allowed to "
+			      "receive buffers\n", __func__);
+			return OMX_ErrorIncorrectStateTransition;
+		}
+	}
+
+	if(nSizeBytes < pPort->sPortParam.nBufferSize) {
+		DEBUG(DEB_LEV_ERR, "In %s: Requested Buffer Size "
+		      "%lu is less than Minimum Buffer Size %lu\n",
+		      __func__, nSizeBytes, pPort->sPortParam.nBufferSize);
+		return OMX_ErrorIncorrectStateTransition;
+	}
+
+	for(i=0; i < pPort->sPortParam.nBufferCountActual; i++){
+		if (pPort->bBufferStateAllocated[i] == BUFFER_FREE) {
+			pPort->pInternalBufferStorage[i] =
+				calloc(1,sizeof(OMX_BUFFERHEADERTYPE));
+			if (!pPort->pInternalBufferStorage[i]) {
+				return OMX_ErrorInsufficientResources;
+			}
+			setHeader(pPort->pInternalBufferStorage[i],
+				  sizeof(OMX_BUFFERHEADERTYPE));
+			/* allocate the buffer */
+			unsigned long phys;
+			pPort->pInternalBufferStorage[i]->pBuffer =
+				pmem_alloc(nSizeBytes, 32, &phys);
+			printf("pmem_alloc(%d, 32)\n", nSizeBytes);
+			if(pPort->pInternalBufferStorage[i]->pBuffer==NULL) {
+				return OMX_ErrorInsufficientResources;
+			}
+			pPort->pInternalBufferStorage[i]->nAllocLen =
+				nSizeBytes;
+			pPort->pInternalBufferStorage[i]->pPlatformPrivate =
+				phys;
+			pPort->pInternalBufferStorage[i]->pAppPrivate =
+				pAppPrivate;
+			*pBuffer = pPort->pInternalBufferStorage[i];
+			pPort->bBufferStateAllocated[i] = BUFFER_ALLOCATED;
+			pPort->bBufferStateAllocated[i] |= HEADER_ALLOCATED;
+			if (pPort->sPortParam.eDir == OMX_DirInput) {
+				pPort->pInternalBufferStorage[i]->
+					nInputPortIndex =
+					pPort->sPortParam.nPortIndex;
+			} else {
+				pPort->pInternalBufferStorage[i]->
+					nOutputPortIndex =
+					pPort->sPortParam.nPortIndex;
+			}
+			pPort->nNumAssignedBuffers++;
+			DEBUG(DEB_LEV_PARAMS,
+			      "pPort->nNumAssignedBuffers %i\n",
+			      (int)pPort->nNumAssignedBuffers);
+
+			if (pPort->sPortParam.nBufferCountActual ==
+			    pPort->nNumAssignedBuffers) {
+				pPort->sPortParam.bPopulated = OMX_TRUE;
+				pPort->bIsFullOfBuffers = OMX_TRUE;
+				DEBUG(DEB_LEV_SIMPLE_SEQ,
+				      "In %s nPortIndex=%d\n",
+				      __func__,(int)nPortIndex);
+				tsem_up(pPort->pAllocSem);
+			}
+			DEBUG(DEB_LEV_FUNCTION_NAME,
+			      "Out of %s for port %x\n",
+			      __func__, (int)pPort);
+			return OMX_ErrorNone;
+		}
+	}
+	DEBUG(DEB_LEV_ERR, "Out of %s for port %x. Error: "
+	      "no available buffers\n",__func__, (int)pPort);
+	return OMX_ErrorInsufficientResources;
+}
+
+OMX_ERRORTYPE
+shvpu_avcenc_FreeBuffer(omx_base_PortType *pPort,
+			OMX_U32 nPortIndex, OMX_BUFFERHEADERTYPE* pBuffer)
+{
+	unsigned int i;
+	OMX_COMPONENTTYPE* pComponent = pPort->standCompContainer;
+	shvpu_avcenc_PrivateType* shvpu_avcenc_Private =
+		(shvpu_avcenc_PrivateType*)pComponent->pComponentPrivate;
+
+	DEBUG(DEB_LEV_FUNCTION_NAME,
+	      "In %s for port %x\n", __func__, (int)pPort);
+
+	if (nPortIndex != pPort->sPortParam.nPortIndex) {
+		return OMX_ErrorBadPortIndex;
+	}
+	if (PORT_IS_TUNNELED_N_BUFFER_SUPPLIER(pPort)) {
+		return OMX_ErrorBadPortIndex;
+	}
+
+	if (shvpu_avcenc_Private->transientState !=
+	    OMX_TransStateIdleToLoaded) {
+		if (!pPort->bIsTransientToDisabled) {
+			DEBUG(DEB_LEV_FULL_SEQ,
+			      "In %s: The port is not allowed "
+			      "to free the buffers\n", __func__);
+			(*(shvpu_avcenc_Private->callbacks->EventHandler))
+				(pComponent,
+				 shvpu_avcenc_Private->callbackData,
+				 OMX_EventError,
+				 /* The command was completed */
+				 OMX_ErrorPortUnpopulated,
+				 /* The commands was a OMX_CommandStateSet */
+				 nPortIndex,
+				/* The state has been changed
+				   in message->messageParam2 */
+				 NULL);
+		}
+	}
+
+	for(i=0; i < pPort->sPortParam.nBufferCountActual; i++){
+		if (pPort->bBufferStateAllocated[i] & BUFFER_ALLOCATED) {
+			pPort->bIsFullOfBuffers = OMX_FALSE;
+			if(pPort->pInternalBufferStorage[i]->pBuffer){
+				DEBUG(DEB_LEV_PARAMS,
+				      "In %s freeing %i pBuffer=%x\n",
+				      __func__, (int)i,
+				      (int)pPort->
+				      pInternalBufferStorage[i]->
+				      pBuffer);
+				pmem_free(pPort->
+				     pInternalBufferStorage[i]->
+					  pBuffer,
+					  pPort->
+					  pInternalBufferStorage[i]->
+					  nAllocLen);
+				pPort->pInternalBufferStorage[i]->
+					pBuffer=NULL;
+			}
+			if(pPort->bBufferStateAllocated[i] &
+			   HEADER_ALLOCATED) {
+				free(pPort->pInternalBufferStorage[i]);
+				pPort->pInternalBufferStorage[i]=NULL;
+			}
+
+			pPort->bBufferStateAllocated[i] = BUFFER_FREE;
+
+			pPort->nNumAssignedBuffers--;
+			DEBUG(DEB_LEV_PARAMS,
+			      "pPort->nNumAssignedBuffers %i\n",
+			      (int)pPort->nNumAssignedBuffers);
+
+			if (pPort->nNumAssignedBuffers == 0) {
+				pPort->sPortParam.bPopulated = OMX_FALSE;
+				pPort->bIsEmptyOfBuffers = OMX_TRUE;
+				tsem_up(pPort->pAllocSem);
+			}
+			DEBUG(DEB_LEV_FUNCTION_NAME,
+			      "Out of %s for port %x\n",
+			      __func__, (int)pPort);
+			return OMX_ErrorNone;
+		}
+	}
+	DEBUG(DEB_LEV_ERR, "Out of %s for port %x "
+	      "with OMX_ErrorInsufficientResources\n",
+	      __func__, (int)pPort);
+	return OMX_ErrorInsufficientResources;
 }
 
 OMX_ERRORTYPE
@@ -750,9 +992,53 @@ checkFillDone(OMX_COMPONENTTYPE * pComponent,
 	omx_base_PortType *pOutPort =
 		(omx_base_PortType *)
 		shvpu_avcenc_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+	shvpu_avcenc_outbuf_t *pStreamBuffer;
+	int i;
+	size_t nAvailLen, nFilledLen;
+	OMX_U8 *pBuffer;
 
-	/*If EOS and Input buffer Filled Len Zero
-	  then Return output buffer immediately */
+	nAvailLen = (*ppOutBuffer)->nAllocLen - (*ppOutBuffer)->nFilledLen;
+	pBuffer = (*ppOutBuffer)->pBuffer;
+
+	if (shvpu_avcenc_Private->isFirstBuffer == OMX_TRUE) {
+		nFilledLen = encode_header(shvpu_avcenc_Private->
+					   avCodec->pContext,
+					   (*ppOutBuffer)->pBuffer,
+					   nAvailLen);
+		if (nFilledLen < 0) {
+			loge("header failed\n");
+			return;
+		}
+		nAvailLen -= nFilledLen;
+		pBuffer += nFilledLen;
+		(*ppOutBuffer)->nFilledLen += nFilledLen;
+		shvpu_avcenc_Private->isFirstBuffer = OMX_FALSE;
+		logd("%d bytes header output\n", nFilledLen);
+	}
+
+	for (i=0; i<2; i++) {
+		pStreamBuffer =	&shvpu_avcenc_Private->
+			avCodec->streamBuffer[i];
+		if (pStreamBuffer->status == SHVPU_BUFFER_STATUS_FILL) {
+			nFilledLen = pStreamBuffer->bufferInfo.strm_size;
+			logd("%d bytes data output\n", nFilledLen);
+			if (nAvailLen >= nFilledLen) {
+				memcpy(pBuffer, pStreamBuffer->
+				       bufferInfo.buff_addr, nFilledLen);
+				nAvailLen -= nFilledLen;
+				pBuffer += nFilledLen;
+				(*ppOutBuffer)->nFilledLen += nFilledLen;
+				pStreamBuffer->status =
+					SHVPU_BUFFER_STATUS_READY;
+			} else {
+				printf("too small buffer(%d) available\n",
+				       nAvailLen);
+			}
+		}
+	}
+
+	/* If EOS and Input buffer Filled Len Zero
+	   then Return output buffer immediately */
 	if (((*ppOutBuffer)->nFilledLen == 0) &&
 	    !((*ppOutBuffer)->nFlags & OMX_BUFFERFLAG_EOS))
 		return;
@@ -803,15 +1089,31 @@ checkEmptyDone(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 */
 void
 shvpu_avcenc_EncodePicture(OMX_COMPONENTTYPE * pComponent,
-			   OMX_BUFFERHEADERTYPE * pInBuffer,
-			   OMX_BUFFERHEADERTYPE * pOutBuffer)
+			   OMX_BUFFERHEADERTYPE * pInBuffer)
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private;
+	omx_base_video_PortType *inPort;
+	shvpu_codec_t *pCodec;
+	long width, height;
+	static int frameId = 0;
+	int ret;
 
 	shvpu_avcenc_Private = pComponent->pComponentPrivate;
-	pOutBuffer->nFilledLen =
-		(256 < pOutBuffer->nAllocLen) ? 256 : pOutBuffer->nAllocLen;
-	pInBuffer->nFilledLen = 0;
+	inPort = (omx_base_video_PortType *)
+		shvpu_avcenc_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+	width = inPort->sPortParam.format.video.nFrameWidth;
+	height = inPort->sPortParam.format.video.nFrameHeight;
+	pCodec = shvpu_avcenc_Private->avCodec;
+
+	if (pInBuffer->nFilledLen < (width * height * 3 / 2)) {
+		loge("data too small (%d < %d)\n",
+		     pInBuffer->nFilledLen, (width * height * 3 / 2));
+		return;
+	}
+	ret = encode_main(pCodec->pContext, frameId++,
+			  pInBuffer->pBuffer, width, height);
+	if (ret == 0)
+		pInBuffer->nFilledLen = 0;
 
 	return;
 }
@@ -902,8 +1204,7 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 		if (shvpu_avcenc_Private->state == OMX_StateExecuting) {
 			if (pInBuffer && (pInBuffer->nFilledLen > 0))
 				shvpu_avcenc_EncodePicture(pComponent,
-							   pInBuffer,
-							   pOutBuffer);
+							   pInBuffer);
 		} else if (!(PORT_IS_BEING_FLUSHED(pInPort) ||
 			     PORT_IS_BEING_FLUSHED(pOutPort))) {
 			DEBUG(DEB_LEV_ERR,
@@ -913,10 +1214,8 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 			      (int)shvpu_avcenc_Private->state);
 		}
 
-		checkFillDone(pComponent,
-				&pOutBuffer,
-				&outBufExchanged,
-				&isOutBufferNeeded);
+		checkFillDone(pComponent, &pOutBuffer,
+			      &outBufExchanged, &isOutBufferNeeded);
 
 		if (shvpu_avcenc_Private->state == OMX_StatePause
 		    && !(PORT_IS_BEING_FLUSHED(pInPort)

@@ -37,6 +37,7 @@
 #include <OMX_Core.h>
 #include <string.h>
 #include <bellagio/omx_base_filter.h>
+#include "shvpu_avcenc.h"
 
 #define VIDEO_ENC_BASE_NAME "OMX.re.video_encoder"
 #define VIDEO_ENC_H264_NAME "OMX.re.video_encoder.avc"
@@ -49,13 +50,15 @@
 DERIVEDCLASS(shvpu_avcenc_PrivateType, omx_base_filter_PrivateType)
 #define shvpu_avcenc_PrivateType_FIELDS				\
 	omx_base_filter_PrivateType_FIELDS			\
+	/** @param avCodec pointer to the VPU5HG video decoder */	\
+	shvpu_codec_t *avCodec;						\
 	/** @param avcodecReady boolean flag that 		\
 	    is true when the video coded has been initialized */\
 	OMX_BOOL avcodecReady;					\
 	/** @param isFirstBuffer Field that 			\
 	    the buffer is the first buffer */			\
 	OMX_S32 isFirstBuffer;					\
-	/** @param isNewBuffer Field that 			\
+	/** @param isNewBuffer Field that			\
 	    indicate a new buffer has arrived */		\
 	OMX_S32 isNewBuffer;
 ENDCLASS(shvpu_avcenc_PrivateType)
@@ -81,6 +84,14 @@ OMX_ERRORTYPE
 shvpu_avcenc_GetParameter(OMX_HANDLETYPE hComponent,
 			  OMX_INDEXTYPE nParamIndex,
 			  OMX_PTR ComponentParameterStructure);
+OMX_ERRORTYPE
+shvpu_avcenc_AllocateBuffer(omx_base_PortType *pPort,
+			    OMX_BUFFERHEADERTYPE** pBuffer,
+			    OMX_U32 nPortIndex, OMX_PTR pAppPrivate,
+			    OMX_U32 nSizeBytes);
+OMX_ERRORTYPE
+shvpu_avcenc_FreeBuffer(omx_base_PortType *pPort,
+			OMX_U32 nPortIndex, OMX_BUFFERHEADERTYPE* pBuffer);
 OMX_ERRORTYPE
 shvpu_avcenc_ComponentRoleEnum(OMX_HANDLETYPE hComponent,
 			       OMX_U8 * cRole, OMX_U32 nIndex);

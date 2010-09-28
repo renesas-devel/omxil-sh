@@ -16,11 +16,12 @@ libomxshvpudec_la_SOURCES = \
 	shvpu_avcdec_uio.c shvpu_avcdec_sync.c \
 	shvpu_avcdec_notify.c shvpu_avcdec_log.c \
 	shvpu_avcdec_queue.c shvpu_avcdec_bufcalc.c \
-	shvpu_avcenc_omx.c
+	shvpu_avcenc_omx.c shvpu_avcenc_encode.c \
+	shvpu_avcenc_output.c
 libomxshvpudec_la_LIBADD = \
 	$(OMXIL_LIBS) \
-	-L@VPUMW_PATH@/lib -lvpu5decavc \
-        -lvpu5deccmn \
+	-L@VPUMW_PATH@/lib -lvpu5decavc -lvpu5deccmn \
+	-lvpu5encavc -lvpu5enccmn \
         -lvpu5drvcmn \
         -lvpu5drvhg \
         $(UIOMUX_LIBS)
