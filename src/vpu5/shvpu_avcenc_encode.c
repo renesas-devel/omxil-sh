@@ -301,6 +301,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 		return ret1;
 	pBuffer += ret1;
 	nBufferLen -= ret1;
+	loge("(SPS)");
 
 	/* PPS */
 	head.buff_size = 64;
@@ -311,6 +312,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 	logd("avcenc_put_PPS = %d\n", ret2);
 	if (ret2 < 0)
 		return ret2;
+	loge("(PPS)");
 
 	return ret1 + ret2;
 }
@@ -355,6 +357,39 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	}
 	
 	return ret;
+}
+
+int
+encode_endcode(void *context, unsigned char *pBuffer, size_t nBufferLen)
+{
+	int ret1, ret2;
+	AVCENC_HEADER_BUFF_INFO_T end;
+
+	/* EOSeq */
+	end.buff_size = 5;
+	if (nBufferLen < end.buff_size)
+		return -1;
+	end.buff_addr = pBuffer;
+	ret1 = avcenc_put_end_code(context, AVCENC_OUT_END_OF_SEQ, &end);
+	logd("avcenc_put_end_code(EOSeq) = %d\n", ret1);
+	if (ret1 < 0)
+		return ret1;
+	pBuffer += ret1;
+	nBufferLen -= ret1;
+	loge("(EOSq)");
+
+	/* EOStr */
+	end.buff_size = 5;
+	if (nBufferLen < end.buff_size)
+		return -1;
+	end.buff_addr = pBuffer;
+	ret2 = avcenc_put_end_code(context, AVCENC_OUT_END_OF_STRM, &end);
+	logd("avcenc_put_end_code(EOStr) = %d\n", ret2);
+	if (ret2 < 0)
+		return ret2;
+	loge("(EOSr)");
+
+	return ret1 + ret2;
 }
 
 int

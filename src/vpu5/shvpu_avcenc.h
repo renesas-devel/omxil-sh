@@ -33,6 +33,7 @@ typedef struct {
 	void*			pContext;
 	pthread_t		intrHandler;
 	int			frameId;
+	unsigned char		isEndInput;
 
 	/* only for encode */
 	shvpu_avcenc_outbuf_t streamBuffer[2];
@@ -59,5 +60,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen);
 int
 encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	    unsigned char *pBuffer, int nWidth, int nHeight);
+int
+encode_endcode(void *context, unsigned char *pBuffer, size_t nBufferLen);
 
 #endif /* __SIMPLE_AVCENC_H_ */

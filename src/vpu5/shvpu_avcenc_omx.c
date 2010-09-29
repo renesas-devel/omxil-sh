@@ -981,6 +981,91 @@ handleEventMark(OMX_COMPONENTTYPE *pComponent,
 	return;
 }
 
+static inline OMX_BOOL
+fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
+	      OMX_BUFFERHEADERTYPE *pOutBuffer)
+{
+	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
+		pComponent->pComponentPrivate;
+	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_outbuf_t *pStreamBuffer;
+	size_t nAvailLen, nFilledLen;
+	OMX_U8 *pBuffer;
+	OMX_BOOL isEOS = OMX_FALSE;
+	int i;
+
+	if (shvpu_avcenc_Private->bIsEOSReached) {
+		pOutBuffer->nFilledLen = 0;
+		pOutBuffer->nFlags = OMX_BUFFERFLAG_EOS;
+		return;
+	}
+
+	nAvailLen = pOutBuffer->nAllocLen - pOutBuffer->nFilledLen;
+	pBuffer = pOutBuffer->pBuffer;
+
+	/* put the stream header if this is the first output */
+	if (shvpu_avcenc_Private->isFirstBuffer == OMX_TRUE) {
+		nFilledLen = encode_header(shvpu_avcenc_Private->
+					   avCodec->pContext,
+					   pOutBuffer->pBuffer,
+					   nAvailLen);
+		if (nFilledLen < 0) {
+			loge("header failed\n");
+			return;
+		}
+		nAvailLen -= nFilledLen;
+		pBuffer += nFilledLen;
+		pOutBuffer->nFilledLen += nFilledLen;
+		shvpu_avcenc_Private->isFirstBuffer = OMX_FALSE;
+		logd("%d bytes header output\n", nFilledLen);
+	}
+
+	/* check the VPU's output buffers and
+	   copy the output stream data if available */
+	for (i=0; i<2; i++) {
+		/* check */
+		pStreamBuffer =	&shvpu_avcenc_Private->
+			avCodec->streamBuffer[i];
+		if (pStreamBuffer->status != SHVPU_BUFFER_STATUS_FILL)
+			continue;
+
+		/* copy */
+		nFilledLen = pStreamBuffer->bufferInfo.strm_size;
+		logd("%d bytes data output\n", nFilledLen);
+		if (nAvailLen < nFilledLen) {
+			loge("too small buffer(%d) available\n", nAvailLen);
+			break;
+		}
+		memcpy(pBuffer, pStreamBuffer->
+		       bufferInfo.buff_addr, nFilledLen);
+		nAvailLen -= nFilledLen;
+		pBuffer += nFilledLen;
+		pOutBuffer->nFilledLen += nFilledLen;
+		pStreamBuffer->status =	SHVPU_BUFFER_STATUS_READY;
+		/* check the end of stream */
+		if (pCodec->isEndInput &&
+		    (pCodec->frameId <= pStreamBuffer->frameId)) {
+			/* put the end code (EOSeq and EOStr) */
+			nFilledLen = encode_endcode(pCodec->pContext,
+						    pBuffer, nAvailLen);
+			if (nFilledLen > 0) {
+				nAvailLen -= nFilledLen;
+				pBuffer += nFilledLen;
+				pOutBuffer->nFilledLen += nFilledLen;
+			} else {
+				printf("cannot put end code!\n");
+			}
+
+			/* finalize the encoder */
+			encode_finalize(pCodec->pContext);
+
+			shvpu_avcenc_Private->bIsEOSReached = OMX_TRUE;
+		}
+	}
+
+	return;
+}
+
 static inline void
 checkFillDone(OMX_COMPONENTTYPE * pComponent,
 		OMX_BUFFERHEADERTYPE **ppOutBuffer,
@@ -992,51 +1077,6 @@ checkFillDone(OMX_COMPONENTTYPE * pComponent,
 	omx_base_PortType *pOutPort =
 		(omx_base_PortType *)
 		shvpu_avcenc_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
-	shvpu_avcenc_outbuf_t *pStreamBuffer;
-	int i;
-	size_t nAvailLen, nFilledLen;
-	OMX_U8 *pBuffer;
-
-	nAvailLen = (*ppOutBuffer)->nAllocLen - (*ppOutBuffer)->nFilledLen;
-	pBuffer = (*ppOutBuffer)->pBuffer;
-
-	if (shvpu_avcenc_Private->isFirstBuffer == OMX_TRUE) {
-		nFilledLen = encode_header(shvpu_avcenc_Private->
-					   avCodec->pContext,
-					   (*ppOutBuffer)->pBuffer,
-					   nAvailLen);
-		if (nFilledLen < 0) {
-			loge("header failed\n");
-			return;
-		}
-		nAvailLen -= nFilledLen;
-		pBuffer += nFilledLen;
-		(*ppOutBuffer)->nFilledLen += nFilledLen;
-		shvpu_avcenc_Private->isFirstBuffer = OMX_FALSE;
-		logd("%d bytes header output\n", nFilledLen);
-	}
-
-	for (i=0; i<2; i++) {
-		pStreamBuffer =	&shvpu_avcenc_Private->
-			avCodec->streamBuffer[i];
-		if (pStreamBuffer->status == SHVPU_BUFFER_STATUS_FILL) {
-			nFilledLen = pStreamBuffer->bufferInfo.strm_size;
-			logd("%d bytes data output\n", nFilledLen);
-			if (nAvailLen >= nFilledLen) {
-				memcpy(pBuffer, pStreamBuffer->
-				       bufferInfo.buff_addr, nFilledLen);
-				nAvailLen -= nFilledLen;
-				pBuffer += nFilledLen;
-				(*ppOutBuffer)->nFilledLen += nFilledLen;
-				pStreamBuffer->status =
-					SHVPU_BUFFER_STATUS_READY;
-			} else {
-				printf("too small buffer(%d) available\n",
-				       nAvailLen);
-			}
-		}
-	}
-
 	/* If EOS and Input buffer Filled Len Zero
 	   then Return output buffer immediately */
 	if (((*ppOutBuffer)->nFilledLen == 0) &&
@@ -1062,34 +1102,42 @@ checkFillDone(OMX_COMPONENTTYPE * pComponent,
 
 static inline void
 checkEmptyDone(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
-	       queue_t *pInBufQueue, int *pInBufExchanged)
+	       OMX_BUFFERHEADERTYPE **ppInBuffer,
+	       queue_t *pInBufQueue, int *pInBufExchanged,
+	       OMX_BOOL *pIsInBufferNeeded)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
 		shvpu_avcenc_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
-	OMX_BUFFERHEADERTYPE *pInBuffer;
+	OMX_BUFFERHEADERTYPE *pBuffer;
 	int n;
 
 	/* Input Buffer has been completely consumed.
 	  So,return input buffer */
 	for (n = *pInBufExchanged; n > 0; n--) {
-		pInBuffer = dequeue(pInBufQueue);
-		if (pInBuffer->nFilledLen > 0) {
-			queue(pInBufQueue, pInBuffer);
+		pBuffer = dequeue(pInBufQueue);
+		if (pBuffer->nFilledLen > 0) {
+			queue(pInBufQueue, pBuffer);
 			continue;
 		}
 
-		pInPort->ReturnBufferFunction(pInPort, pInBuffer);
+		pInPort->ReturnBufferFunction(pInPort, pBuffer);
 		(*pInBufExchanged)--;
+
+		if (pBuffer == *ppInBuffer)
+			*ppInBuffer = NULL;
 	}
+
+	if (shvpu_avcenc_Private->avCodec->isEndInput)
+		*pIsInBufferNeeded = OMX_FALSE;
 }
 
 /** This function is used to process the input buffer and
     provide one output buffer
 */
-void
-shvpu_avcenc_EncodePicture(OMX_COMPONENTTYPE * pComponent,
-			   OMX_BUFFERHEADERTYPE * pInBuffer)
+static void
+encodePicture(OMX_COMPONENTTYPE * pComponent,
+	      OMX_BUFFERHEADERTYPE * pInBuffer)
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private;
 	omx_base_video_PortType *inPort;
@@ -1104,11 +1152,20 @@ shvpu_avcenc_EncodePicture(OMX_COMPONENTTYPE * pComponent,
 	height = inPort->sPortParam.format.video.nFrameHeight;
 	pCodec = shvpu_avcenc_Private->avCodec;
 
+	if ((pInBuffer->nFilledLen == 0) &&
+	    (pInBuffer->nFlags & OMX_BUFFERFLAG_EOS)) {
+		pCodec->isEndInput = 1;
+		pCodec->frameId -= 1;
+		pInBuffer->nFlags &= ~OMX_BUFFERFLAG_EOS;
+		return;
+	}
+
 	if (pInBuffer->nFilledLen < (width * height * 3 / 2)) {
 		loge("data too small (%d < %d)\n",
 		     pInBuffer->nFilledLen, (width * height * 3 / 2));
 		return;
 	}
+
 	ret = encode_main(pCodec->pContext, pCodec->frameId,
 			  pInBuffer->pBuffer, width, height);
 	if (ret == 0) {
@@ -1203,9 +1260,14 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 		/* do encoding if a pair of
 		   input and output buffers are ensured */
 		if (shvpu_avcenc_Private->state == OMX_StateExecuting) {
-			if (pInBuffer && (pInBuffer->nFilledLen > 0))
-				shvpu_avcenc_EncodePicture(pComponent,
-							   pInBuffer);
+			if (pInBuffer)
+				encodePicture(pComponent, pInBuffer);
+			if (pOutBuffer) {
+				fillOutBuffer(pComponent, pOutBuffer);
+				checkFillDone(pComponent, &pOutBuffer,
+					      &outBufExchanged,
+					      &isOutBufferNeeded);
+			}
 		} else if (!(PORT_IS_BEING_FLUSHED(pInPort) ||
 			     PORT_IS_BEING_FLUSHED(pOutPort))) {
 			DEBUG(DEB_LEV_ERR,
@@ -1215,9 +1277,6 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 			      (int)shvpu_avcenc_Private->state);
 		}
 
-		checkFillDone(pComponent, &pOutBuffer,
-			      &outBufExchanged, &isOutBufferNeeded);
-
 		if (shvpu_avcenc_Private->state == OMX_StatePause
 		    && !(PORT_IS_BEING_FLUSHED(pInPort)
 			 || PORT_IS_BEING_FLUSHED(pOutPort))) {
@@ -1225,10 +1284,13 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 			tsem_wait(shvpu_avcenc_Private->bStateSem);
 		}
 
-		if (inBufExchanged > 0)
+		if (inBufExchanged > 0) {
 			checkEmptyDone(shvpu_avcenc_Private,
+				       &pInBuffer,
 				       &processInBufQueue,
-				       &inBufExchanged);
+				       &inBufExchanged,
+				       &isInBufferNeeded);
+		}
 
 	}
 
