@@ -258,9 +258,10 @@ shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 	}
 
 	/* register an interrupt handler */
+	tsem_init(&pCodec->uioSem, 0);
 	uio_create_int_handle(&pCodec->intrHandler,
 			      handle_vpu5intr, pCodec->pDrvInfo,
-			      NULL, NULL, NULL);
+			      &pCodec->uioSem, &pCodec->isExit);
 
 	return OMX_ErrorNone;
 }
@@ -1167,6 +1168,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 		return;
 	}
 
+	tsem_up(&pCodec->uioSem);
 	ret = encode_main(pCodec->pContext, pCodec->frameId,
 			  pInBuffer->pBuffer, width, height);
 	if (ret == 0) {

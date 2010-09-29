@@ -5,6 +5,7 @@
 #ifndef __SIMPLE_AVCENC_H_
 #define __SIMPLE_AVCENC_H_
 #include <pthread.h>
+#include <bellagio/tsemaphore.h>
 #include "mciph.h"
 #include "mcvenc.h"
 #include "uiomux/uiomux.h"
@@ -34,6 +35,8 @@ typedef struct {
 	pthread_t		intrHandler;
 	int			frameId;
 	unsigned char		isEndInput;
+	tsem_t			uioSem;
+	int			isExit;
 
 	/* only for encode */
 	shvpu_avcenc_outbuf_t streamBuffer[2];
