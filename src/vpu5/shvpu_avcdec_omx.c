@@ -220,7 +220,6 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 		return OMX_ErrorInsufficientResources;
 	}
 	tsem_init(&shvpu_avcdec_Private->uio_sem, 0);
-	tsem_init(&shvpu_avcdec_Private->return_sem, 0);
 	return eError;
 }
 
@@ -309,7 +308,6 @@ shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
 			      handle_vpu5intr,
 			      shvpu_avcdec_Private->avCodecContext,
 				&shvpu_avcdec_Private->uio_sem,
-				&shvpu_avcdec_Private->return_sem,
 				&shvpu_avcdec_Private->exit_handler);
 
 	return OMX_ErrorNone;
@@ -328,7 +326,6 @@ shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_PrivateType *
 		decode_deinit(shvpu_avcdec_Private);
 
 		uio_exit_handler( &shvpu_avcdec_Private->uio_sem,
-			&shvpu_avcdec_Private->return_sem,
 			&shvpu_avcdec_Private->exit_handler);
 		uiomux_unlock_vpu();
 
@@ -1101,7 +1098,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 					pCodec->codecMode = MCVDEC_MODE_MAIN;
 		}
 		uio_wakeup();
-		tsem_down(&shvpu_avcdec_Private->return_sem);
 		return;
 	}
 
@@ -1288,7 +1284,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		pCodec->bufferingCount--;
 	}
 	uio_wakeup();
-	tsem_down(&shvpu_avcdec_Private->return_sem);
 #else
 	/* Simply transfer input to output */
 	for (i = 0; i < pPic->n_nals; i++) {

@@ -259,7 +259,8 @@ shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 
 	/* register an interrupt handler */
 	uio_create_int_handle(&pCodec->intrHandler,
-			      handle_vpu5intr, pCodec->pDrvInfo);
+			      handle_vpu5intr, pCodec->pDrvInfo,
+			      NULL, NULL, NULL);
 
 	return OMX_ErrorNone;
 }

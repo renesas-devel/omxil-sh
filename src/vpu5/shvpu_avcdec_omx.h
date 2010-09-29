@@ -162,8 +162,6 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	OMX_PARAM_REVPU5MAXPARAM maxVideoParameters; \
 	/** @param uio_sem semaphore to synchronize uio interrupt handler*/  \
 	tsem_t			uio_sem;            \
-	/** @param return_sem semaphore to synchronize uio interrupt handler*/ \
-	tsem_t			return_sem; 	    \
 	/** @param exit_handler  used as an argument to uio_exit_handler to end
              uio interrupt handler thread*/  \
 	int			exit_handler; \

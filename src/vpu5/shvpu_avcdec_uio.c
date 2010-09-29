@@ -83,15 +83,14 @@ uio_int_handler(void *arg)
 	int ret;
 	void *(*ufunc)(void *);
 	void *uarg;
-	tsem_t *uio_sem, *return_sem;
+	tsem_t *uio_sem;
 	int *exit_flag;
 	if (arg) {
 		void **args = arg;
 		ufunc = args[0];
 		uarg = args[1];
 		uio_sem = args[2];
-		return_sem = args[3];
-		exit_flag = args[4];
+		exit_flag = args[3];
 	} else {
 		ufunc = uarg = NULL;
 		return NULL;
@@ -113,7 +112,6 @@ uio_int_handler(void *arg)
 			if (ufunc)
 				ufunc(uarg);
 		}
-		tsem_up(return_sem);
 	}
 	free (arg);
 	return NULL;
@@ -124,25 +122,24 @@ uio_wakeup() {
 }
 
 void
-uio_exit_handler(tsem_t *uio_sem, tsem_t *return_sem, int *exit_flag) {
+uio_exit_handler(tsem_t *uio_sem, int *exit_flag) {
 	*exit_flag = 1;
 	tsem_up(uio_sem);
 }
 
 int
 uio_create_int_handle(pthread_t *thid,
-		      void *(*routine)(void *), void *arg, tsem_t *uio_sem,
-		      tsem_t *return_sem, int *exit_flag)
+		      void *(*routine)(void *), void *arg,
+		      tsem_t *uio_sem, int *exit_flag)
 {
 	int ret;
 	void **args;
 
-	args = calloc(5, sizeof(void *));
+	args = calloc(4, sizeof(void *));
 	args[0] = routine;
 	args[1] = arg;
 	args[2] = uio_sem;
-	args[3] = return_sem;
-	args[4] = exit_flag;
+	args[3] = exit_flag;
 	*exit_flag = 0;
 
 	ret = pthread_create(thid, NULL, uio_int_handler,
