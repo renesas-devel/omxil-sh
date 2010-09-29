@@ -21,6 +21,7 @@ typedef enum {
 typedef struct {
 	MCVENC_STRM_BUFF_INFO_T bufferInfo;
 	shvpu_buffer_status_t	status;
+	int			frameId;
 } shvpu_avcenc_outbuf_t;
 
 typedef struct {
@@ -31,6 +32,7 @@ typedef struct {
 	UIOMux*			uiomux;
 	void*			pContext;
 	pthread_t		intrHandler;
+	int			frameId;
 
 	/* only for encode */
 	shvpu_avcenc_outbuf_t streamBuffer[2];

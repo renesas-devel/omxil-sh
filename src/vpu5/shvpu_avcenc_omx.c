@@ -1095,7 +1095,6 @@ shvpu_avcenc_EncodePicture(OMX_COMPONENTTYPE * pComponent,
 	omx_base_video_PortType *inPort;
 	shvpu_codec_t *pCodec;
 	long width, height;
-	static int frameId = 0;
 	int ret;
 
 	shvpu_avcenc_Private = pComponent->pComponentPrivate;
@@ -1110,10 +1109,12 @@ shvpu_avcenc_EncodePicture(OMX_COMPONENTTYPE * pComponent,
 		     pInBuffer->nFilledLen, (width * height * 3 / 2));
 		return;
 	}
-	ret = encode_main(pCodec->pContext, frameId++,
+	ret = encode_main(pCodec->pContext, pCodec->frameId,
 			  pInBuffer->pBuffer, width, height);
-	if (ret == 0)
+	if (ret == 0) {
 		pInBuffer->nFilledLen = 0;
+		pCodec->frameId += 1;
+	}
 
 	return;
 }
