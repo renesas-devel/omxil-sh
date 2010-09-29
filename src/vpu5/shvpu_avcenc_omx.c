@@ -605,7 +605,7 @@ shvpu_avcenc_AllocateBuffer(omx_base_PortType *pPort,
 			pPort->pInternalBufferStorage[i]->nAllocLen =
 				nSizeBytes;
 			pPort->pInternalBufferStorage[i]->pPlatformPrivate =
-				phys;
+				(OMX_PTR)phys;
 			pPort->pInternalBufferStorage[i]->pAppPrivate =
 				pAppPrivate;
 			*pBuffer = pPort->pInternalBufferStorage[i];
@@ -904,13 +904,13 @@ getInBuffer(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 	    ((*ppInBuffer)->pMarkData != NULL) ||
 	    ((*ppInBuffer)->nTimeStamp != 0) ||
 	    ((*ppInBuffer)->nFlags != 0)) {
-		loge("%s: hMarkTargetComponent = %p\n",
+		logd("%s: hMarkTargetComponent = %p\n",
 		     __FUNCTION__, (*ppInBuffer)->hMarkTargetComponent);
-		loge("%s: pMarkData = %p\n", __FUNCTION__,
+		logd("%s: pMarkData = %p\n", __FUNCTION__,
 		     (*ppInBuffer)->pMarkData);
-		loge("%s: nTimeStamp = %d\n", __FUNCTION__,
+		logd("%s: nTimeStamp = %d\n", __FUNCTION__,
 		     (*ppInBuffer)->nTimeStamp);
-		loge("%s: nFlags = %08x\n", __FUNCTION__,
+		logd("%s: nFlags = %08x\n", __FUNCTION__,
 		     (*ppInBuffer)->nFlags);
 	}
 

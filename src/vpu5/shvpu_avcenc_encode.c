@@ -166,7 +166,7 @@ encode_init(int width, int height, int bitrate, int framerate,
 		.fmem_alloc_mode	= MCVENC_ALLOC_FRAME,
 		.field_ref_mode		= MCVENC_FREF1_AUTO,
 		.ce_config		= MCVENC_2CE,
-		.virt_to_phys_func		= uio_virt_to_phys,
+		.virt_to_phys_func	= uio_virt_to_phys,
 	};
 	static MCVENC_WORK_INFO_T wbuf_enc = {
 		.work_area_size = 0x5800,  /* 20 + 2KiB */
