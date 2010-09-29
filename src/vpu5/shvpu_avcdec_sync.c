@@ -67,27 +67,7 @@ _uf_vp5_sleep(void *context, long mode, int module)
 		pthread_mutex_unlock(&mutex_vp5[module]);
 		return;
 	}
-#if 0
-	if (context) {
-		int ret;
-		shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-			(shvpu_avcdec_PrivateType *)
-			((MCVDEC_CONTEXT_T *)context)->user_info;
-		shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 
-		if (module == VP5_MODULE_VLC)
-			ret = mciph_vlc_status(pCodec->drvInfo);
-		else
-			ret = mciph_ce_status(pCodec->drvInfo);
-		logd("%s: mciph_%s_status() = %d\n",
-		       __FUNCTION__,
-		       (module == VP5_MODULE_VLC) ? "vlc" : "ce", ret);
-		if (ret == 0) {
-			pthread_mutex_unlock(&mutex_vp5[module]);
-			return;
-		}
-	}
-#endif
 	//pthread_mutex_lock(&mutex_vp5[module]);
 	prev = counter_vp5[module];
 	do {

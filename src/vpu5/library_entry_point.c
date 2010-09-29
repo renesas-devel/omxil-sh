@@ -36,6 +36,7 @@
 #define NUM_COMPONENTS (sizeof(stComponents) / sizeof(stComponent))
 
 extern OMX_ERRORTYPE shvpu_avcdec_Constructor(OMX_COMPONENTTYPE*, OMX_STRING);
+extern OMX_ERRORTYPE shvpu_avcenc_Constructor(OMX_COMPONENTTYPE*, OMX_STRING);
 
 typedef struct {
   char* role;
@@ -48,6 +49,8 @@ stComponent stComponents[] = {
   /* standard components - no functionality */
   { "video_decoder.avc",   "OMX.re.video_decoder",
     "OMX.re.video_decoder.avc",    shvpu_avcdec_Constructor  },
+  { "video_encoder.avc",   "OMX.re.video_encoder",
+    "OMX.re.video_encoder.avc",    shvpu_avcenc_Constructor  },
 };
 
 static OMX_ERRORTYPE add_component(
