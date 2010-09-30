@@ -301,7 +301,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 		return ret1;
 	pBuffer += ret1;
 	nBufferLen -= ret1;
-	loge("(SPS)");
+	logd("(SPS)");
 
 	/* PPS */
 	head.buff_size = 64;
@@ -312,7 +312,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 	logd("avcenc_put_PPS = %d\n", ret2);
 	if (ret2 < 0)
 		return ret2;
-	loge("(PPS)");
+	logd("(PPS)");
 
 	return ret1 + ret2;
 }

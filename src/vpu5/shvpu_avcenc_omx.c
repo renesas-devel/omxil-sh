@@ -608,7 +608,7 @@ shvpu_avcenc_AllocateBuffer(omx_base_PortType *pPort,
 			unsigned long phys;
 			pPort->pInternalBufferStorage[i]->pBuffer =
 				pmem_alloc(nSizeBytes, 32, &phys);
-			printf("pmem_alloc(%d, 32)\n", nSizeBytes);
+			logd("pmem_alloc(%d, 32)\n", nSizeBytes);
 			if(pPort->pInternalBufferStorage[i]->pBuffer==NULL) {
 				return OMX_ErrorInsufficientResources;
 			}

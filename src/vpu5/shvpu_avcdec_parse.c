@@ -128,45 +128,45 @@ isSubsequentPic(nal_t *pNal[], int former, OMX_BOOL *pHasSlice)
 	for (i = 0; i < 2; i++) {
 		switch (type[i]) {
 		case 2:
-			loge("%d:DP-A\n", i);
+			logd("%d:DP-A\n", i);
 			break;
 		case 3:
-			loge("%d:DP-B\n", i);
+			logd("%d:DP-B\n", i);
 			break;
 		case 4:
-			loge("%d:DP-C\n", i);
+			logd("%d:DP-C\n", i);
 			break;
 		case 1:
-			loge("%d:non IDR(%02x)\n", i, first_mb[i]);
+			logd("%d:non IDR(%02x)\n", i, first_mb[i]);
 			if (*pHasSlice && (first_mb[i] == 0x80U))
 				return OMX_TRUE;
 			*pHasSlice = 1;
 			break;
 		case 5:
-			loge("%d:IDR(%02x)\n", i, first_mb[i]);
+			logd("%d:IDR(%02x)\n", i, first_mb[i]);
 			if (*pHasSlice && (first_mb[i] == 0x80U))
 				return OMX_TRUE;
 			*pHasSlice = 1;
 			break;
 		case 6:
-			loge("%d:SEI\n", i);
+			logd("%d:SEI\n", i);
 			break;
 		case 8:
-			loge("%d:PPS\n", i);
+			logd("%d:PPS\n", i);
 			break;
 		case 9:
-			loge("AUD\n");
+			logd("AUD\n");
 			return OMX_TRUE;
 		case 7:
-			loge("%d:SPS\n", i);
+			logd("%d:SPS\n", i);
 			if (*pHasSlice)
 				return OMX_TRUE;
 			break;
 		case 10:
-			loge("%d:EoSeq\n", i);
+			logd("%d:EoSeq\n", i);
 			break;
 		case 11:
-			loge("%d:EoStr\n", i);
+			logd("%d:EoStr\n", i);
 			has_eos = 1;
 			return OMX_TRUE;
 		default:
@@ -286,7 +286,7 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 				       pStartSub, nSizeSub);
 		if (pHead == NULL) {
 			if (pStartSub) {
-				printf("it must be the final\n");
+				logd("it must be the final\n");
 				shvpu_avcdec_Private->bIsEOSReached = OMX_TRUE;
 				goto register_nal;
 			}

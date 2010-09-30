@@ -58,7 +58,7 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 	int i;
 
 	if (error_info->dec_status != 0)
-		loge("%s(%ld, %ld, %ld) invoked.\n",
+		logd("%s(%ld, %ld, %ld) invoked.\n",
 		     __FUNCTION__, strm_id,
 		     error_info->dec_status, imd_size);
 
@@ -100,7 +100,7 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
 	OMX_U8 *uioBuf, *pBuf; 
 	si_element_t *si;
 
-	printf("%s invoked.\n", __FUNCTION__);
+	logd("%s invoked.\n", __FUNCTION__);
 	uioBufSize = (4 + 0x200 + 0x600 + 255) / 256;
 	if ((uioBufSize % 2) == 0)
 		uioBufSize++;
@@ -150,17 +150,17 @@ save_omx_buffer_metainfo(OMX_BUFFERHEADERTYPE *pBuffer)
 
 	pBMI->hMarkTargetComponent = pBuffer->hMarkTargetComponent;
 	pBuffer->hMarkTargetComponent = NULL;
-	loge("%s: hMarkTargetComponent = %p\n",
+	logd("%s: hMarkTargetComponent = %p\n",
 	     __FUNCTION__, pBMI->hMarkTargetComponent);
 	pBMI->pMarkData = pBuffer->pMarkData;
 	pBuffer->pMarkData = NULL;
-	loge("%s: pMarkData = %p\n", __FUNCTION__, pBMI->pMarkData);
+	logd("%s: pMarkData = %p\n", __FUNCTION__, pBMI->pMarkData);
 	pBMI->nTimeStamp = pBuffer->nTimeStamp;
 	pBuffer->nTimeStamp = 0;
-	loge("%s: nTimeStamp = %d\n", __FUNCTION__, pBMI->nTimeStamp);
+	logd("%s: nTimeStamp = %d\n", __FUNCTION__, pBMI->nTimeStamp);
 	pBMI->nFlags = pBuffer->nFlags;
 	pBuffer->nFlags = 0;
-	loge("%s: nFlags = %08x\n", __FUNCTION__, pBMI->nFlags);
+	logd("%s: nFlags = %08x\n", __FUNCTION__, pBMI->nFlags);
 
 	return pBMI;
 }
@@ -192,7 +192,7 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 
 	if (pPicSem->semval == 0) {
 		if (shvpu_avcdec_Private->bIsEOSReached) {
-			printf("%s: EOS!\n", __FUNCTION__);
+			logd("%s: EOS!\n", __FUNCTION__);
 			if (pCodec->has_eos == 0) {
 				pCodec->has_eos = 1;
 				return setup_eos(input_strm, *pFrameCount,
@@ -242,7 +242,7 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 		     (nal->pBuffer[0]->pMarkData != NULL) ||
 		     (nal->pBuffer[0]->nTimeStamp != 0) ||
 		     (nal->pBuffer[0]->nFlags != 0))) {
-			printf("store buffer metadata\n");
+			logd("store buffer metadata\n");
 			pBMI = save_omx_buffer_metainfo(nal->pBuffer[0]);
 		}
 			
@@ -315,9 +315,8 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 		shvpu_queue(pBMIQueue, pBMI);
 	}
 
-	loge("%s: %d: %d nals input\n",
+	logd("%s: %d: %d nals input\n",
 	     __FUNCTION__, input_strm->strm_id, input_strm->strm_cnt);
 
 	return MCVDEC_NML_END;
 }
-

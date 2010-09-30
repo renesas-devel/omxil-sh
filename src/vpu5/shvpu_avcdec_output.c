@@ -51,7 +51,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
         shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
                 (shvpu_avcdec_PrivateType *)context->user_info;
 
-	loge("%s(%d, %d, %d, %d) invoked.\n",
+	logd("%s(%d, %d, %d, %d) invoked.\n",
 	       __FUNCTION__, xpic_size, ypic_size,
 	       requrired_fmem_cnt, nsampling);
 	fmem_x = (xpic_size + 15) / 16 * 16;
@@ -72,14 +72,14 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			break;
 		cpic_paddr = ypic_paddr + fmemsize;
 		_fmem[i].Ypic_addr = ypic_paddr;
-		loge("fmem[%d].Ypic_addr = %lx\n", i, _fmem[i].Ypic_addr);
+		logd("fmem[%d].Ypic_addr = %lx\n", i, _fmem[i].Ypic_addr);
 		_fmem[i].Ypic_bot_addr = ypic_paddr + fmemsize / 2;
-		loge("fmem[%d].Ypic_bot_addr = %lx\n",
+		logd("fmem[%d].Ypic_bot_addr = %lx\n",
 		       i, _fmem[i].Ypic_bot_addr);
 		_fmem[i].Cpic_addr = cpic_paddr;
-		loge("fmem[%d].Cpic_addr = %lx\n", i, _fmem[i].Cpic_addr);
+		logd("fmem[%d].Cpic_addr = %lx\n", i, _fmem[i].Cpic_addr);
 		_fmem[i].Cpic_bot_addr = cpic_paddr + fmemsize / 4;
-		loge("fmem[%d].Cpic_bot_addr = %lx\n", i,
+		logd("fmem[%d].Cpic_bot_addr = %lx\n", i,
 		       _fmem[i].Cpic_bot_addr);
 		*fmem_cnt = i + 1;
 	}

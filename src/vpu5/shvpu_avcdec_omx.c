@@ -716,13 +716,13 @@ getInBuffer(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 	    ((*ppInBuffer)->pMarkData != NULL) ||
 	    ((*ppInBuffer)->nTimeStamp != 0) ||
 	    ((*ppInBuffer)->nFlags != 0)) {
-		loge("%s: hMarkTargetComponent = %p\n",
+		logd("%s: hMarkTargetComponent = %p\n",
 		     __FUNCTION__, (*ppInBuffer)->hMarkTargetComponent);
-		loge("%s: pMarkData = %p\n", __FUNCTION__,
+		logd("%s: pMarkData = %p\n", __FUNCTION__,
 		     (*ppInBuffer)->pMarkData);
-		loge("%s: nTimeStamp = %d\n", __FUNCTION__,
+		logd("%s: nTimeStamp = %d\n", __FUNCTION__,
 		     (*ppInBuffer)->nTimeStamp);
-		loge("%s: nFlags = %08x\n", __FUNCTION__,
+		logd("%s: nFlags = %08x\n", __FUNCTION__,
 		     (*ppInBuffer)->nFlags);
 	}
 
@@ -849,7 +849,7 @@ checkEmptyDone(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 			continue;
 		}
 
-		loge("send EmptyBufferDone(%p,%08x)\n",
+		logd("send EmptyBufferDone(%p,%08x)\n",
 		     pInBuffer, pInBuffer->nFlags);
 		pInPort->ReturnBufferFunction(pInPort, pInBuffer);
 		(*pInBufExchanged)--;
@@ -1071,7 +1071,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 
 	if (shvpu_avcdec_Private->bIsEOSReached &&
 	    (pCodec->bufferingCount == 0)) {
-		printf("finalize\n");
+		logd("finalize\n");
 		shvpu_avcdec_Private->bIsEOSReached = OMX_FALSE;
 		pOutBuffer->nFlags |= OMX_BUFFERFLAG_EOS;
 		return;
@@ -1204,7 +1204,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	}
 
 	logd("----- invoke mcvdec_get_output_picture() -----\n");
-	loge("pCodec->bufferingCount = %d\n", pCodec->bufferingCount);
+	logd("pCodec->bufferingCount = %d\n", pCodec->bufferingCount);
 	ret = mcvdec_get_output_picture(pCodecContext,
 					pic_infos, &frame,
 					MCVDEC_OUTMODE_PUSH);
@@ -1240,7 +1240,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		     pic_infos[0]->frame_cnt);
 		logd("pic_infos[0]->fmem_index = %d\n",
 		     pic_infos[0]->fmem_index);
-		loge("pic_infos[0]->strm_id = %d\n",
+		logd("pic_infos[0]->strm_id = %d\n",
 		     pic_infos[0]->strm_id);
 		//last_decoded_frame = pic_infos[0]->strm_id;
 		logd("pic_infos[0]->xpic_size = %d\n",

@@ -37,7 +37,7 @@ notify_buffering(MCVDEC_CONTEXT_T *context, long status)
 		(shvpu_avcdec_PrivateType *)context->user_info;
 	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 
-	loge("%s(%ld) invoked.\n", __FUNCTION__, status);
+	logd("%s(%ld) invoked.\n", __FUNCTION__, status);
 	pCodec->enoughPreprocess = OMX_TRUE;
 	if (pCodec->enoughHeaders)
 		if (shvpu_avcdec_Private->enable_sync)

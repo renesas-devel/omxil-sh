@@ -60,9 +60,9 @@ mcvenc_uf_strm_available(MCVENC_CONTEXT_T *context,
 	     vlc_pic_info ? vlc_pic_info->strm_frm_id : -1);
 	logd("%s: pic_type = ", __FUNCTION__);
 	switch (vlc_pic_info->vlc_pic_type) {
-	case MCVENC_I_PIC: loge("I"); break;
-	case MCVENC_P_PIC: loge("P"); break;
-	case MCVENC_B_PIC: loge("B"); break;
+	case MCVENC_I_PIC: logd("I"); break;
+	case MCVENC_P_PIC: logd("P"); break;
+	case MCVENC_B_PIC: logd("B"); break;
 	default: loge("UNKNOWN"); break;
 	}
         logd("-PIC, struct = ");
@@ -89,7 +89,7 @@ mcvenc_uf_strm_available(MCVENC_CONTEXT_T *context,
 	}
 
 	if (i>=2) {
-		printf("%s: no buffer found.\n", __FUNCTION__);
+		loge("%s: no buffer found.\n", __FUNCTION__);
 	}
 
 	return;

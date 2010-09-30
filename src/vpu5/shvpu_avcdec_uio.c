@@ -371,13 +371,13 @@ uio_phys_to_virt(unsigned long paddr)
 
 void
 uiomux_lock_vpu() {
-	loge("Locking VPU in thread %lx\n", pthread_self());
+	logd("Locking VPU in thread %lx\n", pthread_self());
 	uiomux_lock(uiomux, UIOMUX_SH_VPU);
-	loge("Locked: %lx\n", pthread_self());
+	logd("Locked: %lx\n", pthread_self());
 }
 
 void
 uiomux_unlock_vpu() {
-	loge("Unlocking VPU in thread %lx\n", pthread_self());
+	logd("Unlocking VPU in thread %lx\n", pthread_self());
 	uiomux_unlock(uiomux, UIOMUX_SH_VPU);
 }
