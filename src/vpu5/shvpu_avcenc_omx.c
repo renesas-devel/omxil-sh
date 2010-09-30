@@ -273,6 +273,14 @@ void
 shvpu_avcenc_vpuLibDeInit(shvpu_avcenc_PrivateType *
 			  shvpu_avcenc_Private)
 {
+	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+
+	encode_deinit(pCodec);
+	uio_exit_handler(&pCodec->uioSem, &pCodec->isExit);
+	uio_wakeup();
+	pthread_join(pCodec->intrHandler, NULL);
+	uio_deinit();
+
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec de-initialized\n");
 }
 

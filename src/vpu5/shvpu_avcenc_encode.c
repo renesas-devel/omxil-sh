@@ -403,3 +403,9 @@ encode_finalize(void *context)
 
 	return ret;
 }
+
+void
+encode_deinit(shvpu_codec_t *pCodec)
+{
+	free(pCodec->wbufVpu5.work_area_addr);
+}
