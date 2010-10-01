@@ -1,9 +1,9 @@
 /**
-   src/vpu/shvpu_avcdec_uio.c
+   src/vpu5/shvpu5_common_uio.c
 
-   This component implements H.264 / MPEG-4 AVC video decoder.
-   The H.264 / MPEG-4 AVC Video decoder is implemented on the
-   Renesas's VPU5HG middleware library.
+   This component implements H.264 / MPEG-4 AVC video codec.
+   The H.264 / MPEG-4 AVC video encoder/decoder is implemented
+   on the Renesas's VPU5HG middleware library.
 
    Copyright (C) 2010 IGEL Co., Ltd
    Copyright (C) 2010 Renesas Solutions Corp.
@@ -29,9 +29,9 @@
 #include <string.h>
 #include <pthread.h>
 #include "uiomux/uiomux.h"
-#include "shvpu_avcdec_uio.h"
+#include "shvpu5_common_uio.h"
 #include "mciph.h"
-#include "shvpu_avcdec.h"
+#include "shvpu5_avcdec.h"
 #include "tsemaphore.h"
 #include <sys/file.h>
 

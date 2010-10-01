@@ -1,32 +1,34 @@
 AM_CPPFLAGS = -I$(srcdir) -I$(top_srcdir)/include
 
-omxshvpudecdir = $(BELLAGIO_PLUGINSDIR)
+omxshvpu5avcdir = $(BELLAGIO_PLUGINSDIR)
 
 if HAVE_SHVPU5DEC
-shvpudec_la = libomxshvpudec.la
+shvpu5avc_la = libomxshvpu5avc.la
 endif
 
-omxshvpudec_LTLIBRARIES = $(shvpudec_la)
+omxshvpu5avc_LTLIBRARIES = $(shvpu5avc_la)
 
-libomxshvpudec_la_SOURCES = \
+libomxshvpu5avc_la_SOURCES = \
 	library_entry_point.c \
-	shvpu_avcdec_omx.c shvpu_avcdec_omx.h \
-	shvpu_avcdec_parse.c shvpu_avcdec_decode.c \
-	shvpu_avcdec_input.c shvpu_avcdec_output.c \
-	shvpu_avcdec_uio.c shvpu_avcdec_sync.c \
-	shvpu_avcdec_notify.c shvpu_avcdec_log.c \
-	shvpu_avcdec_queue.c shvpu_avcdec_bufcalc.c \
-	shvpu_avcenc_omx.c shvpu_avcenc_encode.c \
-	shvpu_avcenc_output.c
-libomxshvpudec_la_LIBADD = \
+	shvpu5_common_log.c shvpu5_common_queue.c \
+	shvpu5_common_uio.c shvpu5_common_sync.c \
+	shvpu5_avcdec_omx.c shvpu5_avcdec_omx.h \
+	shvpu5_avcdec_parse.c shvpu5_avcdec_decode.c \
+	shvpu5_avcdec_input.c shvpu5_avcdec_output.c \
+	shvpu5_avcdec_notify.c shvpu5_avcdec_bufcalc.c \
+	shvpu5_avcdec.h \
+	shvpu5_avcenc_omx.c shvpu5_avcenc_omx.h \
+	shvpu5_avcenc_encode.c shvpu5_avcenc_output.c \
+	shvpu5_avcenc.h
+libomxshvpu5avc_la_LIBADD = \
 	$(OMXIL_LIBS) \
 	-L@VPUMW_PATH@/lib -lvpu5decavc -lvpu5deccmn \
 	-lvpu5encavc -lvpu5enccmn \
         -lvpu5drvcmn \
         -lvpu5drvhg \
         $(UIOMUX_LIBS)
-libomxshvpudec_la_CFLAGS = \
+libomxshvpu5avc_la_CFLAGS = \
 	$(OMXIL_CFLAGS) \
 	-I@VPUMW_PATH@/include $(UIOMUX_CFLAGS) \
 	-DVPU5HG_FIRMWARE_PATH=\"@VPUMW_PATH@/lib/firmware\"
-libomxshvpudec_la_LDFLAGS = $(OMXIL_LDFLAGS) $(VPU5HG_LDFLAGS)
+libomxshvpu5avc_la_LDFLAGS = $(OMXIL_LDFLAGS) $(VPU5HG_LDFLAGS)

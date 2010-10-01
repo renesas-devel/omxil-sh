@@ -1,9 +1,9 @@
 /**
-   src/vpu/shvpu_avcdec_sync.c
+   src/vpu5/shvpu5_common_sync.c
 
-   This component implements H.264 / MPEG-4 AVC video decoder.
-   The H.264 / MPEG-4 AVC Video decoder is implemented on the
-   Renesas's VPU5HG middleware library.
+   This component implements H.264 / MPEG-4 AVC video codec.
+   The H.264 / MPEG-4 AVC video encoder/decoder is implemented
+   on the Renesas's VPU5HG middleware library.
 
    Copyright (C) 2010 IGEL Co., Ltd
    Copyright (C) 2010 Renesas Solutions Corp.
@@ -30,8 +30,8 @@
 #include <sys/types.h>
 #include <pthread.h>
 #include "mcvdec.h"
-#include "shvpu_avcdec.h"
-#include "shvpu_avcdec_omx.h"
+#include "shvpu5_avcdec.h"
+#include "shvpu5_avcdec_omx.h"
 
 static pthread_cond_t cond_vp5[2] = {
 	PTHREAD_COND_INITIALIZER,

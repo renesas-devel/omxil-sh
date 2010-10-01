@@ -1,9 +1,9 @@
 /**
-   src/vpu/shvpu_avcenc_omx.c
+   src/vpu5/shvpu5_avcenc_omx.c
 
-   This component implements H.264 / MPEG-4 AVC video encoder.
-   The H.264 / MPEG-4 AVC Video encoder is implemented on the
-   Renesas's VPU5HG middleware library.
+   This component implements H.264 / MPEG-4 AVC video codec.
+   The H.264 / MPEG-4 AVC video encoder/decoder is implemented
+   on the Renesas's VPU5HG middleware library.
 
    Copyright (C) 2010 IGEL Co., Ltd
    Copyright (C) 2010 Renesas Solutions Corp.
@@ -27,8 +27,8 @@
 
 #include <bellagio/omxcore.h>
 #include <bellagio/omx_base_video_port.h>
-#include "shvpu_avcenc_omx.h"
-#include "shvpu_avcenc.h"
+#include "shvpu5_avcenc_omx.h"
+#include "shvpu5_avcenc.h"
 #include <OMX_Video.h>
 
 /** Maximum Number of Video Component Instance*/

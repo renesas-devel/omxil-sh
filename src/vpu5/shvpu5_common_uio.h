@@ -1,9 +1,9 @@
 /**
-   src/vpu/shvpu_avcdec_log.h
+   src/vpu5/shvpu5_common_uio.h
 
-   This component implements H.264 / MPEG-4 AVC video decoder.
-   The H.264 / MPEG-4 AVC Video decoder is implemented on the
-   Renesas's VPU5HG middleware library.
+   This component implements H.264 / MPEG-4 AVC video codec.
+   The H.264 / MPEG-4 AVC video encoder/decoder is implemented
+   on the Renesas's VPU5HG middleware library.
 
    Copyright (C) 2010 IGEL Co., Ltd
    Copyright (C) 2010 Renesas Solutions Corp.
@@ -24,40 +24,20 @@
    02110-1301 USA
 
 */
+#ifndef __UIO_H_
+#define __UIO_H_
+#define MAXNAMELEN	256
+#define MAXUIOIDS	32
 
-#include <stdio.h>
-#include <stdarg.h>
+struct uio_device {
+	char *name;
+	char *path;
+	int fd;
+};
 
-int
-logd(const char *format, ...)
-{
-#if 0
-	int ret;
-	va_list ap;
-
-	va_start(ap, format);
-	ret = vfprintf(stderr, format, ap);
-	va_end(ap);
-
-	return ret;
-#else
-	return 0;
-#endif
-}
-
-int
-loge(const char* format, ...)
-{
-#if 1
-	int ret;
-	va_list ap;
-
-	va_start(ap, format);
-	ret = vfprintf(stderr, format, ap);
-	va_end(ap);
-
-	return ret;
-#else
-	return 0;
-#endif
-}
+struct uio_map {
+	unsigned long address;
+	unsigned long size;
+	void *iomem;
+};
+#endif /* __UIO_H_ */

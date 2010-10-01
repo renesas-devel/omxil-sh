@@ -1,5 +1,5 @@
 /**
-   shvpu_avcdec_queue.c
+   src/vpu5/shvpu5_common_queue.c
 
    Implements a simple FIFO structure 
 

@@ -1,9 +1,9 @@
 /**
-   src/vpu/shvpu_avcdec_parse.c
+   src/vpu5/shvpu5_avcdec_parse.c
 
-   This component implements H.264 / MPEG-4 AVC video decoder.
-   The H.264 / MPEG-4 AVC Video decoder is implemented on the
-   Renesas's VPU5HG middleware library.
+   This component implements H.264 / MPEG-4 AVC video codec.
+   The H.264 / MPEG-4 AVC video encoder/decoder is implemented
+   on the Renesas's VPU5HG middleware library.
 
    Copyright (C) 2010 IGEL Co., Ltd
    Copyright (C) 2010 Renesas Solutions Corp.
@@ -29,7 +29,7 @@
 #include <OMX_Types.h>
 #include <OMX_Core.h>
 #include "mcvdec.h"
-#include "shvpu_avcdec_omx.h"
+#include "shvpu5_avcdec_omx.h"
 
 typedef unsigned int	uintptr_t;
 
