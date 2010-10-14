@@ -558,7 +558,8 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		    OMX_BOOL *pIsOutBufferNeeded,
 		    int *pInBufExchanged, int *pOutBufExchanged,
 		    OMX_BUFFERHEADERTYPE *pInBuffer[],
-		    OMX_BUFFERHEADERTYPE **ppOutBuffer)
+		    OMX_BUFFERHEADERTYPE **ppOutBuffer,
+		    queue_t *pInBufQueue)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
@@ -595,14 +596,15 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 			      "output buffer\n");
 		}
 
-		if (*pIsInBufferNeeded == OMX_FALSE
-		    && PORT_IS_BEING_FLUSHED(pInPort)) {
-			for (i=0; i<2; i++) {
-				if (!pInBuffer[i])
-					continue;
+		if (PORT_IS_BEING_FLUSHED(pInPort)) {
+			OMX_BUFFERHEADERTYPE *pFlushInBuffer;
+			int n;
+			for (n = *pInBufExchanged; n > 0; n--) {
+				pFlushInBuffer = dequeue(pInBufQueue);
+				logd("Flushing Buffer(%p,%08x)\n",
+				     pFlushInBuffer, pFlushInBuffer->nFlags);
 				pInPort->ReturnBufferFunction(pInPort,
-							      pInBuffer[i]);
-				pInBuffer[i] = NULL;
+					pFlushInBuffer);
 				(*pInBufExchanged)--;
 			}
 			*pIsInBufferNeeded = OMX_TRUE;
@@ -912,7 +914,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 				    &isInBufferNeeded,
 				    &isOutBufferNeeded,
 				    &inBufExchanged, &outBufExchanged,
-				    pInBuffer, &pOutBuffer);
+				    pInBuffer, &pOutBuffer,&processInBufQueue);
 
 		/*No buffer to process. So wait here */
 		ret = waitBuffers(shvpu_avcdec_Private,
