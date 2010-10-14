@@ -385,6 +385,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 
 void
 decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
+	buffer_metainfo_t *pBMI;
 	noVPUInstance--;
 	if (shvpu_avcdec_Private ) {
 		shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
@@ -414,6 +415,17 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 			pCodec->fw_size.ce_firmware_size);
 		phys_pmem_free(pCodec->fw.vlc_firmware_addr,
 			pCodec->fw_size.vlc_firmware_size);
+
+		free_remaining_streams(pCodec->pSIQueue);
+		free(pCodec->pSIQueue);
+
+		while (pCodec->pBMIQueue->nelem > 0) {
+			pBMI = shvpu_dequeue(pCodec->pBMIQueue);
+			free(pBMI);
+		}
+		free(pCodec->pBMIQueue);
+		free(pCodec);
+		shvpu_avcdec_Private->avCodec = NULL;
 	}
 }
 int
