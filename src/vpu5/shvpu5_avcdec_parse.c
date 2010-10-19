@@ -336,3 +336,26 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 
 	return pNal[cur ^ 1];
 }
+
+void free_remaining_pictures(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
+	tsem_t *pNalSem = shvpu_avcdec_Private->pNalSem;
+	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
+	queue_t *pNalQueue = shvpu_avcdec_Private->pNalQueue;
+	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
+	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	pic_t *pPic;
+	nal_t *nal;
+
+	tsem_reset(pPicSem);
+	tsem_reset(pNalSem);
+
+	while (pPicQueue->nelem > 0) {
+		pPic = shvpu_dequeue(pPicQueue);
+		free(pPic);
+	}
+
+	while (pNalQueue->nelem > 0) {
+		nal = shvpu_dequeue(pNalQueue);
+		free(nal);
+	}
+}

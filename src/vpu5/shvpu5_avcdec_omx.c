@@ -50,7 +50,6 @@ static OMX_U32 noVideoDecInstance = 0;
  * @param pComponent the component handle to be constructed
  * @param cComponentName is the name of the constructed component
  */
-
 static OMX_PARAM_REVPU5MAXINSTANCE maxVPUInstances = {
 	.nInstances = 1
 };
@@ -560,7 +559,8 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		    int *pInBufExchanged, int *pOutBufExchanged,
 		    OMX_BUFFERHEADERTYPE *pInBuffer[],
 		    OMX_BUFFERHEADERTYPE **ppOutBuffer,
-		    queue_t *pInBufQueue)
+		    queue_t *pInBufQueue,
+		    nal_t **pNal)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
@@ -570,6 +570,8 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 	tsem_t *pInputSem = pInPort->pBufferSem;
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
+	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	buffer_metainfo_t *pBMI;
 	int i;
 
 	pthread_mutex_lock(&shvpu_avcdec_Private->flush_mutex);
@@ -598,6 +600,14 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		}
 
 		if (PORT_IS_BEING_FLUSHED(pInPort)) {
+
+			mcvdec_flush_buff(shvpu_avcdec_Private->avCodecContext,
+				MCVDEC_FLMODE_CLEAR);
+
+			pInBuffer[0] = pInBuffer[1] = NULL;
+			free(*pNal);
+			*pNal = NULL;
+
 			OMX_BUFFERHEADERTYPE *pFlushInBuffer;
 			int n;
 			for (n = *pInBufExchanged; n > 0; n--) {
@@ -612,6 +622,32 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 			DEBUG(DEB_LEV_FULL_SEQ,
 			      "Ports are flushing,so returning "
 			      "input buffer\n");
+
+
+			/*Flush out Pic and Nal queues*/
+			free_remaining_pictures(shvpu_avcdec_Private);
+
+			while (pCodec->pBMIQueue->nelem > 0) {
+				pBMI = shvpu_dequeue(pCodec->pBMIQueue);
+				free(pBMI);
+			}
+
+			logd("Resetting play mode");
+			/*Flush buffers inside VPU5*/
+			mcvdec_set_play_mode(
+				shvpu_avcdec_Private->avCodecContext,
+				MCVDEC_PLAY_FORWARD, 0, 0);
+
+			mcvdec_flush_buff(shvpu_avcdec_Private->avCodecContext,
+				MCVDEC_FLMODE_CLEAR);
+
+			if (pCodec->codecMode == MCVDEC_MODE_MAIN ) {
+				pCodec->enoughHeaders = OMX_FALSE;
+				pCodec->enoughPreprocess = OMX_FALSE;
+				pCodec->codecMode = MCVDEC_MODE_BUFFERING;
+			}
+
+			shvpu_avcdec_Private->isFirstBuffer = OMX_TRUE;
 		}
 
 		DEBUG(DEB_LEV_FULL_SEQ,
@@ -915,7 +951,8 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 				    &isInBufferNeeded,
 				    &isOutBufferNeeded,
 				    &inBufExchanged, &outBufExchanged,
-				    pInBuffer, &pOutBuffer,&processInBufQueue);
+				    pInBuffer, &pOutBuffer, &processInBufQueue,
+				    &pNal);
 
 		/*No buffer to process. So wait here */
 		ret = waitBuffers(shvpu_avcdec_Private,
@@ -1280,6 +1317,10 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			free(pBMI);
 		}
 		pCodec->bufferingCount--;
+	} else {
+		logd("get_output_picture return error ret = %d\n, "
+		     "pic_infos[0] = %p, frame = %p", ret,
+		     pic_infos[0],frame);
 	}
 #else
 	/* Simply transfer input to output */
