@@ -32,8 +32,6 @@
 #include "shvpu5_avcdec_omx.h"
 
 #define MAX_NALS        8192
-MCVDEC_STRM_INFO_T si[MAX_NALS];
-int n_nals;
 
 typedef struct {
 	long	id;
