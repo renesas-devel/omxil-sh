@@ -195,7 +195,7 @@ skipFirstPadding(OMX_BUFFERHEADERTYPE *pInBuffer)
 
 	return;
 }
-	
+
 static inline OMX_BOOL
 isInsideBuffer(void *pHead, void *pBuffer, size_t nSize)
 {
@@ -264,7 +264,7 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 		loge("NULL pPrevNAL!!!\n");
 		return NULL;
 	}
-	
+
 	pNal[cur] = pPrevNal;
 	cur ^= 1;
 	splitBuffer = (pNal[cur ^ 1]->pBuffer[1]) ? OMX_TRUE : OMX_FALSE;
@@ -290,7 +290,7 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 				shvpu_avcdec_Private->bIsEOSReached = OMX_TRUE;
 				goto register_nal;
 			}
-				
+
 			*pIsInBufferNeeded = OMX_TRUE;
 			break;
 		}
@@ -330,10 +330,9 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 				    pNalQueue, pNalSem, hasSlice);
 			return pNal[cur];
 		}
-			
+
 		cur ^= 1;
-	} 
+	}
 
 	return pNal[cur ^ 1];
 }
-
