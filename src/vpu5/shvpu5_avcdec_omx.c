@@ -1816,6 +1816,8 @@ shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE * pComponent,
 				return err;
 			}
 			break;
+		default:
+			break;
 		}
 	}
 	// Execute the base message handling
