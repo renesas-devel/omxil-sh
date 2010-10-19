@@ -254,6 +254,15 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 	DEBUG(DEB_LEV_FUNCTION_NAME,
 	      "Destructor of video decoder component is called\n");
 
+	/*remove any remaining picutre elements if they haven't
+          already been remover (i.e. premature decode cancel)*/
+
+	free_remaining_pictures(shvpu_avcdec_Private);
+	free(shvpu_avcdec_Private->pNalSem);
+	free(shvpu_avcdec_Private->pNalQueue);
+	free(shvpu_avcdec_Private->pPicSem);
+	free(shvpu_avcdec_Private->pPicQueue);
+
 	omx_base_filter_Destructor(pComponent);
 	noVideoDecInstance--;
 
@@ -1047,6 +1056,9 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 				       &processInBufQueue,
 				       &inBufExchanged);
 	}
+
+	if (pNal)
+		free(pNal);
 
 	DEBUG(DEB_LEV_FUNCTION_NAME, "Out of %s of component %x\n", __func__,
 	      (int)pComponent);
