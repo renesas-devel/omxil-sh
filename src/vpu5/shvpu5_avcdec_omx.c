@@ -44,8 +44,8 @@ static OMX_U32 noVideoDecInstance = 0;
 #define DEFAULT_VIDEO_OUTPUT_BUF_SIZE					\
 	(DEFAULT_WIDTH * DEFAULT_HEIGHT * 3 / 2)	// YUV subQCIF
 
-#define INPUT_BUFFER_COUNT 2
-#define INPUT_BUFFER_SIZE 256000
+#define INPUT_BUFFER_COUNT 4
+#define INPUT_BUFFER_SIZE (1024 * 1024)
 /** The Constructor of the video decoder component
  * @param pComponent the component handle to be constructed
  * @param cComponentName is the name of the constructed component
