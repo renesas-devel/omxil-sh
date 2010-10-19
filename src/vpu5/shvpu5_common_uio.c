@@ -98,20 +98,15 @@ uio_int_handler(void *arg)
 
 	logd("%s start\n", __FUNCTION__);
 
-	while (uiomux) {
-		tsem_down(uio_sem);
-		if (*exit_flag)
+	while (uiomux && !*exit_flag) {
+		logd("wait for an interrupt...\n");
+		ret = uiomux_sleep(uiomux, UIOMUX_SH_VPU);
+		if (ret < 0) {
 			break;
-		while (uiomux && !*exit_flag) {
-			logd("wait for an interrupt...\n");
-			ret = uiomux_sleep(uiomux, UIOMUX_SH_VPU);
-			if (ret < 0) {
-				break;
-			}
-			logd("got an interrupt! (%d)\n", ret);
-			if (ufunc)
-				ufunc(uarg);
 		}
+		logd("got an interrupt! (%d)\n", ret);
+		if (ufunc)
+			ufunc(uarg);
 	}
 	free (arg);
 	return NULL;
@@ -124,7 +119,6 @@ uio_wakeup() {
 void
 uio_exit_handler(tsem_t *uio_sem, int *exit_flag) {
 	*exit_flag = 1;
-	tsem_up(uio_sem);
 }
 
 int

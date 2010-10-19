@@ -1176,7 +1176,6 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 		return;
 	}
 
-	tsem_up(&pCodec->uioSem);
 	ret = encode_main(pCodec->pContext, pCodec->frameId,
 			  pInBuffer->pBuffer, width, height);
 	if (ret == 0) {

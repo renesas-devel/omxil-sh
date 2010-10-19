@@ -31,7 +31,7 @@
 #include <OMX_Video.h>
 
 /** Maximum Number of Video Component Instance*/
-#define MAX_COMPONENT_VIDEODEC 2
+#define MAX_COMPONENT_VIDEODEC 1
 /** Counter of Video Component Instance*/
 static OMX_U32 noVideoDecInstance = 0;
 
@@ -327,6 +327,7 @@ shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_PrivateType *
 
 		uio_exit_handler( &shvpu_avcdec_Private->uio_sem,
 			&shvpu_avcdec_Private->exit_handler);
+		uio_wakeup();
 		uiomux_unlock_vpu();
 
 		pthread_join(shvpu_avcdec_Private->uioIntrThread, NULL);
@@ -970,10 +971,8 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 
 			if (shvpu_avcdec_Private->state ==
 			    OMX_StateExecuting) {
-				uiomux_lock_vpu();
 				shvpu_avcdec_DecodePicture(pComponent,
 							   pOutBuffer);
-				uiomux_unlock_vpu();
 			}
 			else if (!(PORT_IS_BEING_FLUSHED(pInPort) ||
 				   PORT_IS_BEING_FLUSHED(pOutPort))) {
@@ -1079,8 +1078,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		return;
 	}
 
-	tsem_up(&shvpu_avcdec_Private->uio_sem);
-
 	logd("----- invoke mcvdec_decode_picture() -----\n");
 	ret = mcvdec_decode_picture(pCodecContext,
 				    &shvpu_avcdec_Private->avPicInfo,
@@ -1099,7 +1096,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 				else
 					pCodec->codecMode = MCVDEC_MODE_MAIN;
 		}
-		uio_wakeup();
 		return;
 	}
 
@@ -1285,7 +1281,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		}
 		pCodec->bufferingCount--;
 	}
-	uio_wakeup();
 #else
 	/* Simply transfer input to output */
 	for (i = 0; i < pPic->n_nals; i++) {
