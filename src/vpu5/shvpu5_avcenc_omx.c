@@ -991,7 +991,7 @@ handleEventMark(OMX_COMPONENTTYPE *pComponent,
 	return;
 }
 
-static inline OMX_BOOL
+static inline void
 fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 	      OMX_BUFFERHEADERTYPE *pOutBuffer)
 {
