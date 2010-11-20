@@ -105,7 +105,7 @@ mcvenc_uf_strm_available(MCVENC_CONTEXT_T *context,
 			pStreamBuffer->status =
 				SHVPU_BUFFER_STATUS_FILL;
 			pStreamBuffer->frameId =
-				vlc_pic_info->capt_frm_id;
+				vlc_pic_info->strm_frm_id;
 			break;
 		}
 	}

@@ -56,6 +56,7 @@ typedef struct {
 	void*			pContext;
 	pthread_t		intrHandler;
 	int			frameId;
+	int			nEncoded;
 	unsigned char		isEndInput;
 	tsem_t			uioSem;
 	int			isExit;

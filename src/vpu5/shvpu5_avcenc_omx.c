@@ -1036,25 +1036,26 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 		/* check */
 		pStreamBuffer =	&shvpu_avcenc_Private->
 			avCodec->streamBuffer[i];
-		if (pStreamBuffer->status != SHVPU_BUFFER_STATUS_FILL)
-			continue;
-
-		/* copy */
-		nFilledLen = pStreamBuffer->bufferInfo.strm_size;
-		logd("%d bytes data output\n", nFilledLen);
-		if (nAvailLen < nFilledLen) {
-			loge("too small buffer(%d) available\n", nAvailLen);
-			break;
+		if (pStreamBuffer->status == SHVPU_BUFFER_STATUS_FILL) {
+			/* copy */
+			nFilledLen = pStreamBuffer->bufferInfo.strm_size;
+			logd("%d bytes data output\n", nFilledLen);
+			if (nAvailLen < nFilledLen) {
+				loge("too small buffer(%d) available\n",
+				     nAvailLen);
+				break;
+			}
+			memcpy(pBuffer, pStreamBuffer->
+			       bufferInfo.buff_addr, nFilledLen);
+			nAvailLen -= nFilledLen;
+			pBuffer += nFilledLen;
+			pOutBuffer->nFilledLen += nFilledLen;
+			pStreamBuffer->status =	SHVPU_BUFFER_STATUS_READY;
 		}
-		memcpy(pBuffer, pStreamBuffer->
-		       bufferInfo.buff_addr, nFilledLen);
-		nAvailLen -= nFilledLen;
-		pBuffer += nFilledLen;
-		pOutBuffer->nFilledLen += nFilledLen;
-		pStreamBuffer->status =	SHVPU_BUFFER_STATUS_READY;
+
 		/* check the end of stream */
 		if (pCodec->isEndInput &&
-		    (pCodec->frameId <= pStreamBuffer->frameId)) {
+		    ((pCodec->nEncoded - 1) <= pStreamBuffer->frameId)) {
 			/* put the end code (EOSeq and EOStr) */
 			nFilledLen = encode_endcode(pCodec->pContext,
 						    pBuffer, nAvailLen);
@@ -1178,9 +1179,15 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 
 	ret = encode_main(pCodec->pContext, pCodec->frameId,
 			  pInBuffer->pBuffer, width, height);
-	if (ret == 0) {
+	switch (ret) {
+	case 0: /* encoded the picture */
+		pCodec->nEncoded += 1;
+	case 2: /* skip the picture */
 		pInBuffer->nFilledLen = 0;
+	case 1: /* keep the picture */
 		pCodec->frameId += 1;
+	default:
+		break;
 	}
 
 	return;
