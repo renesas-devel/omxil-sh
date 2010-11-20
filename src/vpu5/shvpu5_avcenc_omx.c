@@ -1153,6 +1153,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private;
 	omx_base_video_PortType *inPort;
 	shvpu_codec_t *pCodec;
+	OMX_ERRORTYPE err;
 	long width, height;
 	int ret;
 
@@ -1174,21 +1175,35 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 	if (pInBuffer->nFilledLen < (width * height * 3 / 2)) {
 		loge("data too small (%d < %d)\n",
 		     pInBuffer->nFilledLen, (width * height * 3 / 2));
-		return;
+		err = OMX_ErrorStreamCorrupt;
+	} else {
+		ret = encode_main(pCodec->pContext, pCodec->frameId,
+				  pInBuffer->pBuffer, width, height);
+
+		switch (ret) {
+		case 0: /* encoded the picture */
+			pCodec->nEncoded += 1;
+		case 2: /* skip the picture */
+			pInBuffer->nFilledLen = 0;
+		case 1: /* keep the picture */
+			pCodec->frameId += 1;
+			err = OMX_ErrorNone;
+			break;
+		default:
+			//err = OMX_HardwareError;
+			loge ("encode_main error: %d\n", ret);
+			break;
+		}
 	}
 
-	ret = encode_main(pCodec->pContext, pCodec->frameId,
-			  pInBuffer->pBuffer, width, height);
-	switch (ret) {
-	case 0: /* encoded the picture */
-		pCodec->nEncoded += 1;
-	case 2: /* skip the picture */
-		pInBuffer->nFilledLen = 0;
-	case 1: /* keep the picture */
-		pCodec->frameId += 1;
-	default:
-		break;
-	}
+	/* invoke an event handler if an error occurs */
+	if (err != OMX_ErrorNone) {
+		(*(shvpu_avcenc_Private->callbacks->EventHandler))
+			(pComponent, shvpu_avcenc_Private->callbackData,
+			 OMX_EventError, // An error occured
+			 err,            // Error code
+			 0, NULL);
+        }
 
 	return;
 }
