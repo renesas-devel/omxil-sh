@@ -208,8 +208,6 @@ shvpu_avcdec_GetExtensionIndex(OMX_HANDLETYPE hComponent,
 				OMX_STRING cParameterName,
 				OMX_INDEXTYPE *pIndexType);
 
-void SetInternalVideoParameters(OMX_COMPONENTTYPE *openmaxStandComp);
-
 OMX_ERRORTYPE shvpu_avcdec_SetConfig(
 	OMX_HANDLETYPE hComponent,
 	OMX_INDEXTYPE nIndex,

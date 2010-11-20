@@ -54,6 +54,9 @@ static OMX_PARAM_REVPU5MAXINSTANCE maxVPUInstances = {
 	.nInstances = 1
 };
 
+static void
+SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent);
+
 OMX_ERRORTYPE
 shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 			 OMX_STRING cComponentName)
@@ -346,7 +349,7 @@ shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_PrivateType *
 /** internal function to set codec related parameters in the private
     type structure
 */
-void
+static void
 SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 {
 

@@ -51,6 +51,8 @@ static OMX_U32 noVideoEncInstance = 0;
 //#define DEBUG_LEVEL DEB_ALL_MESS
 static void *
 shvpu_avcenc_BufferMgmtFunction(void *param);
+static void
+SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent);
 
 /** The Constructor of the video encoder component
  * @param pComponent the component handle to be constructed
@@ -282,6 +284,58 @@ shvpu_avcenc_vpuLibDeInit(shvpu_avcenc_PrivateType *
 	uio_deinit();
 
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec de-initialized\n");
+}
+
+/** internal function to set codec related parameters in the private
+    type structure
+*/
+static void
+SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
+{
+	shvpu_avcenc_PrivateType *shvpu_avcenc_Private;
+	omx_base_video_PortType *inPort;
+	OMX_VIDEO_PARAM_AVCTYPE *pAvcType;
+
+	shvpu_avcenc_Private = pComponent->pComponentPrivate;;
+
+	strcpy(shvpu_avcenc_Private->ports
+	       [OMX_BASE_FILTER_OUTPUTPORT_INDEX]->sPortParam.format.
+	       video.cMIMEType, "video/avc(h264)");
+	shvpu_avcenc_Private->
+		ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX]->sPortParam.format.
+		video.eCompressionFormat = OMX_VIDEO_CodingAVC;
+
+	setHeader(&shvpu_avcenc_Private->avcType,
+		  sizeof(OMX_VIDEO_PARAM_AVCTYPE));
+	pAvcType = &shvpu_avcenc_Private->avcType;
+	pAvcType->nPortIndex = 0;
+	pAvcType->nSliceHeaderSpacing = 0;
+	pAvcType->bUseHadamard = OMX_FALSE;
+	pAvcType->nRefFrames = 2;
+	pAvcType->nPFrames = 0;
+	pAvcType->nBFrames = 0;
+	pAvcType->bUseHadamard = OMX_FALSE;
+	pAvcType->nRefFrames = 2;
+	pAvcType->eProfile = OMX_VIDEO_AVCProfileBaseline;
+	pAvcType->eLevel = OMX_VIDEO_AVCLevel1;
+	pAvcType->nAllowedPictureTypes = 0;
+	pAvcType->bFrameMBsOnly = OMX_FALSE;
+	pAvcType->nRefIdx10ActiveMinus1 = 0;
+	pAvcType->nRefIdx11ActiveMinus1 = 0;
+	pAvcType->bEnableUEP = OMX_FALSE;
+	pAvcType->bEnableFMO = OMX_FALSE;
+	pAvcType->bEnableASO = OMX_FALSE;
+	pAvcType->bEnableRS = OMX_FALSE;
+
+	pAvcType->bMBAFF = OMX_FALSE;
+	pAvcType->bEntropyCodingCABAC =	OMX_FALSE;
+	pAvcType->bWeightedPPrediction = OMX_FALSE;
+	pAvcType->nWeightedBipredicitonMode = 0;
+	pAvcType->bconstIpred = OMX_FALSE;
+	pAvcType->bDirect8x8Inference =	OMX_FALSE;
+	pAvcType->bDirectSpatialTemporal = OMX_FALSE;
+	pAvcType->nCabacInitIdc = 0;
+	pAvcType->eLoopFilterMode = OMX_VIDEO_AVCLoopFilterDisable;
 }
 
 /** The Initialization function of the video encoder

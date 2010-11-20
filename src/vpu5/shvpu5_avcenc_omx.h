@@ -60,7 +60,10 @@ DERIVEDCLASS(shvpu_avcenc_PrivateType, omx_base_filter_PrivateType)
 	OMX_S32 isFirstBuffer;					\
 	/** @param isNewBuffer Field that			\
 	    indicate a new buffer has arrived */		\
-	OMX_S32 isNewBuffer;
+	OMX_S32 isNewBuffer;					\
+	/** @param avcType
+	    current AVCSettings from OMX_Set/GetParameter*/	\
+	OMX_VIDEO_PARAM_AVCTYPE avcType;
 ENDCLASS(shvpu_avcenc_PrivateType)
 
 /* Component private entry points enclaration */
