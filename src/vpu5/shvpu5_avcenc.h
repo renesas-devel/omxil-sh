@@ -85,7 +85,8 @@ int
 encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen);
 int
 encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
-	    unsigned char *pBuffer, int nWidth, int nHeight);
+	    unsigned char *pBuffer, int nWidth, int nHeight,
+	    void **ppConsumed);
 int
 encode_endcode(void *context, unsigned char *pBuffer, size_t nBufferLen);
 

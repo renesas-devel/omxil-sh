@@ -341,7 +341,8 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 
 int
 encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
-	    unsigned char *pBuffer, int nWidth, int nHeight)
+	    unsigned char *pBuffer, int nWidth, int nHeight,
+	    void **ppConsumed)
 {
 	MCVENC_CAPT_INFO_T capt_info;
 	MCVENC_FRM_STAT_T frm_stat;
@@ -371,10 +372,13 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 		printf("terminating because of an error(%d)\n",
 		       ret);
 		break;
-	case MCVENC_STORE_PIC:
 	case MCVENC_SKIP_PIC:
-		printf("nothing to encode (%d)\n", ret);
+		logd("[SKIP]");
+	case MCVENC_STORE_PIC:
 	case MCVENC_NML_END:
+		if (frm_stat.ce_used_capt_frm_id >= 0)
+			*ppConsumed = uio_phys_to_virt(frm_stat.capt[0].
+						       Ypic_addr);
 		break;
 	}
 	

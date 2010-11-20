@@ -931,6 +931,26 @@ getInBuffer(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 }
 
 static inline OMX_BOOL
+updateFilledLen(queue_t *pProcessInBufQueue, void *pConsumed)
+{
+	OMX_BUFFERHEADERTYPE *pBuffer;
+	OMX_BOOL ret = OMX_FALSE;
+	int nProcBuffers;
+
+	nProcBuffers = pProcessInBufQueue->nelem;
+	while (nProcBuffers-- > 0) {
+		pBuffer = dequeue(pProcessInBufQueue);
+		if (pConsumed == (pBuffer->pBuffer + pBuffer->nOffset)) {
+			pBuffer->nFilledLen = 0;
+			ret = OMX_TRUE;
+		}
+		queue(pProcessInBufQueue, pBuffer);
+	}
+
+	return ret;
+}
+
+static inline OMX_BOOL
 takeOutBuffer(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 	      OMX_BUFFERHEADERTYPE **ppOutBuffer,
 	      int *pOutBufExchanged)
@@ -1148,11 +1168,13 @@ checkEmptyDone(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 */
 static void
 encodePicture(OMX_COMPONENTTYPE * pComponent,
-	      OMX_BUFFERHEADERTYPE * pInBuffer)
+	      OMX_BUFFERHEADERTYPE * pInBuffer,
+	      queue_t *pProcessInBufQueue)
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private;
 	omx_base_video_PortType *inPort;
 	shvpu_codec_t *pCodec;
+	void *pConsumed;
 	OMX_ERRORTYPE err;
 	long width, height;
 	int ret;
@@ -1177,15 +1199,19 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 		     pInBuffer->nFilledLen, (width * height * 3 / 2));
 		err = OMX_ErrorStreamCorrupt;
 	} else {
+		pConsumed = NULL;
 		ret = encode_main(pCodec->pContext, pCodec->frameId,
-				  pInBuffer->pBuffer, width, height);
+				  pInBuffer->pBuffer, width, height,
+				  &pConsumed);
 
 		switch (ret) {
 		case 0: /* encoded the picture */
 			pCodec->nEncoded += 1;
-		case 2: /* skip the picture */
-			pInBuffer->nFilledLen = 0;
 		case 1: /* keep the picture */
+		case 2: /* skip the picture */
+			if (pConsumed)
+				updateFilledLen(pProcessInBufQueue,
+						pConsumed);
 			pCodec->frameId += 1;
 			err = OMX_ErrorNone;
 			break;
@@ -1293,7 +1319,8 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 		   input and output buffers are ensured */
 		if (shvpu_avcenc_Private->state == OMX_StateExecuting) {
 			if (pInBuffer)
-				encodePicture(pComponent, pInBuffer);
+				encodePicture(pComponent, pInBuffer,
+					      &processInBufQueue);
 			if (pOutBuffer) {
 				fillOutBuffer(pComponent, pOutBuffer);
 				checkFillDone(pComponent, &pOutBuffer,
