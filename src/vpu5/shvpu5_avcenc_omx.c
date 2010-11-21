@@ -622,6 +622,23 @@ shvpu_avcenc_GetParameter(OMX_HANDLETYPE hComponent,
 		strcpy((char *)pComponentRole->cRole, VIDEO_ENC_H264_ROLE);
 		break;
 	}
+	case OMX_IndexParamVideoAvc:
+	{
+		OMX_VIDEO_PARAM_AVCTYPE *pVideoAvc;
+		pVideoAvc = ComponentParameterStructure;
+		if (pVideoAvc->nPortIndex != 0) {
+			return OMX_ErrorBadPortIndex;
+		}
+		if ((eError =
+		     checkHeader(ComponentParameterStructure,
+				 sizeof(OMX_VIDEO_PARAM_AVCTYPE))) !=
+		    OMX_ErrorNone) {
+			break;
+		}
+		memcpy(pVideoAvc, &shvpu_avcenc_Private->avcType,
+		       sizeof(OMX_VIDEO_PARAM_AVCTYPE));
+		break;
+	}
 	default:		/*Call the base component function */
 		eError = omx_base_component_GetParameter
 			(hComponent, nParamIndex,
