@@ -131,77 +131,79 @@ free_fmem(int width, int height, MCVENC_FMEM_INFO_T *fmem)
 	return;
 }
 
+
+shvpu_codec_t *
+encode_new()
+{
+        extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
+	shvpu_codec_t *pCodec;
+
+	/* allocate */
+	pCodec = (shvpu_codec_t *)calloc(1, sizeof(shvpu_codec_t));
+	if (!pCodec)
+		return NULL;
+	memset((void *)pCodec, 0, sizeof(shvpu_codec_t));
+
+	/* initialize const MCVENC_CMN_PROPERTY_T parameters */
+	pCodec->cmnProp.stream_type = MCVENC_H264;
+	pCodec->cmnProp.framerate_tick = 1;
+	pCodec->cmnProp.interlace_mode = MCVENC_PROGRESSIVE;
+	pCodec->cmnProp.stream_struct = MCVENC_FRAME_STRUCTURE;
+	pCodec->cmnProp.fmem_alloc_mode	= MCVENC_ALLOC_FRAME;
+	pCodec->cmnProp.field_ref_mode = MCVENC_FREF1_AUTO;
+	pCodec->cmnProp.ce_config = MCVENC_2CE;
+	pCodec->cmnProp.virt_to_phys_func = uio_virt_to_phys;
+	pCodec->cmnProp.max_GOP_length = 30;
+	pCodec->cmnProp.B_pic_mode = 0;
+	pCodec->cmnProp.num_ref_frames = 1;
+
+	return pCodec;
+}
+
 long
-encode_init(int width, int height, int bitrate, int framerate,
-	    shvpu_codec_t **ppCodec)
+encode_init(shvpu_codec_t *pCodec)
 {
 	MCVENC_CONTEXT_T *pContext;
 	long ret;
 	extern const MCIPH_API_T mciph_hg_api_tbl;
 	extern const MCVENC_API_T avcenc_api_tbl;
-
-	/*** allocate memory ***/
-	*ppCodec = (shvpu_codec_t *)calloc(1, sizeof(shvpu_codec_t));
-	if (*ppCodec == NULL)
-		return -1;
-	memset((void *)*ppCodec, 0, sizeof(shvpu_codec_t));
+	MCVENC_CMN_PROPERTY_T *pCmnProp = &pCodec->cmnProp;
 
 	/*** initialize vpu ***/
-	(*ppCodec)->wbufVpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
-	(*ppCodec)->wbufVpu5.work_area_addr = malloc_aligned((*ppCodec)->wbufVpu5.work_size, 4);
-	logd("work_area_addr = %p\n", (*ppCodec)->wbufVpu5.work_area_addr);
-	if (((*ppCodec)->wbufVpu5.work_area_addr == NULL) ||
-	    ((unsigned int)(*ppCodec)->wbufVpu5.work_area_addr & 0x03U)) {
+	pCodec->wbufVpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
+	pCodec->wbufVpu5.work_area_addr =
+		malloc_aligned(pCodec->wbufVpu5.work_size, 4);
+	logd("work_area_addr = %p\n", pCodec->wbufVpu5.work_area_addr);
+	if ((pCodec->wbufVpu5.work_area_addr == NULL) ||
+	    ((unsigned int)pCodec->wbufVpu5.work_area_addr & 0x03U)) {
 		ret = -1L;
 		goto init_failed;
 	}
 
-	(*ppCodec)->vpu5Init.vpu_base_address		= 0xfe900000;
-	(*ppCodec)->vpu5Init.vpu_image_endian		= MCIPH_LIT;
-	(*ppCodec)->vpu5Init.vpu_stream_endian		= MCIPH_LIT;
-	(*ppCodec)->vpu5Init.vpu_firmware_endian	= MCIPH_LIT;
-	(*ppCodec)->vpu5Init.vpu_interrupt_enable	= MCIPH_ON;
-	(*ppCodec)->vpu5Init.vpu_clock_supply_control	= MCIPH_CLK_CTRL;
-	(*ppCodec)->vpu5Init.vpu_constrained_mode	= MCIPH_OFF;
-	(*ppCodec)->vpu5Init.vpu_address_mode		= MCIPH_ADDR_32BIT;
-	(*ppCodec)->vpu5Init.vpu_reset_mode		= MCIPH_RESET_SOFT;
+	pCodec->vpu5Init.vpu_base_address		= 0xfe900000;
+	pCodec->vpu5Init.vpu_image_endian		= MCIPH_LIT;
+	pCodec->vpu5Init.vpu_stream_endian		= MCIPH_LIT;
+	pCodec->vpu5Init.vpu_firmware_endian	= MCIPH_LIT;
+	pCodec->vpu5Init.vpu_interrupt_enable	= MCIPH_ON;
+	pCodec->vpu5Init.vpu_clock_supply_control	= MCIPH_CLK_CTRL;
+	pCodec->vpu5Init.vpu_constrained_mode	= MCIPH_OFF;
+	pCodec->vpu5Init.vpu_address_mode		= MCIPH_ADDR_32BIT;
+	pCodec->vpu5Init.vpu_reset_mode		= MCIPH_RESET_SOFT;
 	logd("----- invoke mciph_vpu5Init() -----\n");
-	ret = mciph_vpu5_init(&((*ppCodec)->wbufVpu5),
+	ret = mciph_vpu5_init(&(pCodec->wbufVpu5),
 			      (MCIPH_API_T *)&mciph_hg_api_tbl,
-			      &((*ppCodec)->vpu5Init),
-			      &((*ppCodec)->pDrvInfo));
+			      &(pCodec->vpu5Init),
+			      &(pCodec->pDrvInfo));
 	logd("----- resume from mciph_vpu5_init() -----\n");
 	if (ret != MCIPH_NML_END)
 		goto init_failed;
 
 	/*** initialize encoder ***/
 	extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
-	static MCVENC_CMN_PROPERTY_T cprop = {
-		.stream_type		= MCVENC_H264,
-		.rate_control_mode	= MCVENC_CBR_NML,
-		.framerate_tick		= 1,
-		.max_GOP_length		= 30,
-		.num_ref_frames		= 2,
-		.B_pic_mode		= 0,
-		.interlace_mode		= MCVENC_PROGRESSIVE,
-		.stream_struct		= MCVENC_FRAME_STRUCTURE,
-		.fmem_alloc_mode	= MCVENC_ALLOC_FRAME,
-		.field_ref_mode		= MCVENC_FREF1_AUTO,
-		.ce_config		= MCVENC_2CE,
-		.virt_to_phys_func	= uio_virt_to_phys,
-	};
 	static MCVENC_WORK_INFO_T wbuf_enc = {
 		.work_area_size = 0x5800,  /* 20 + 2KiB */
 	};
 	static MCVENC_FIRMWARE_INFO_T fw;
-
-	cprop.x_pic_size = width;
-	cprop.y_pic_size = height;
-	cprop.bitrate = bitrate;
-	cprop.framerate_resolution = framerate;
-	cprop.fmem_x_size[MCVENC_FMX_LDEC] = width;
-	cprop.fmem_x_size[MCVENC_FMX_REF] = width;
-	cprop.fmem_x_size[MCVENC_FMX_CAPT] = width;
 	wbuf_enc.work_area_addr = malloc_aligned(wbuf_enc.work_area_size, 4);
 	logd("work_area_addr = %p\n", wbuf_enc.work_area_addr);
 	fw.ce_firmware_addr = load_fw(VPU5HG_FIRMWARE_PATH "/p264e_h.bin");
@@ -210,16 +212,16 @@ encode_init(int width, int height, int bitrate, int framerate,
 	logd("vlc_firmware_addr = %lx\n", fw.vlc_firmware_addr);
 	logd("----- invoke mcvenc_init_encoder() -----\n");
 	ret = mcvenc_init_encoder((MCVENC_API_T *)&avcenc_api_tbl,
-				  &cprop, &wbuf_enc,
-				  &fw, (*ppCodec)->pDrvInfo,
+				  pCmnProp, &wbuf_enc,
+				  &fw, pCodec->pDrvInfo,
 				  &pContext);
 	logd("----- resume from mcvenc_init_encoder() -----\n");
 	if (ret != MCIPH_NML_END)
 		return ret;
 
-	pContext->user_info = (void *)*ppCodec;
-	logd("drv_info = %p\n", (*ppCodec)->pDrvInfo);
-	(*ppCodec)->pContext = pContext;
+	pContext->user_info = (void *)pCodec;
+	logd("drv_info = %p\n", pCodec->pDrvInfo);
+	pCodec->pContext = pContext;
 
 	/*** initialize work area ***/
 	void *vaddr;
@@ -231,8 +233,8 @@ encode_init(int width, int height, int bitrate, int framerate,
 	size_t a, b, mem_x, mem_y, mb_width, mb_height, mv_info_size;
 	int i;
 
-	a = 4 * cprop.bitrate / 8;
-	b = cprop.x_pic_size * cprop.y_pic_size * 4;
+	a = 4 * pCmnProp->bitrate / 8;
+	b = pCmnProp->x_pic_size * pCmnProp->y_pic_size * 4;
 	imd_info.imd_buff_size = (a > b) ? a : b;
 	imd_info.imd_buff_size =
 		((imd_info.imd_buff_size + 2047) / 2048) * 2048;
@@ -244,7 +246,8 @@ encode_init(int width, int height, int bitrate, int framerate,
 		return -1;
 	ldec_info.ldec_num = 3;
 	for (i=0; i<ldec_info.ldec_num; i++) {
-		ret = alloc_fmem(cprop.x_pic_size, cprop.y_pic_size,
+		ret = alloc_fmem(pCmnProp->x_pic_size,
+				 pCmnProp->y_pic_size,
 				 &ldec_info.fmem[i][0]);
 		if (ret < 0)
 			return -1;
@@ -253,13 +256,13 @@ encode_init(int width, int height, int bitrate, int framerate,
 	}
 
 	ir_info.ir_info_size = 4800;
-	ir_info.ir_info_addr =
+	ir_info.ir_info_addr = (unsigned long)
 		pmem_alloc(ir_info.ir_info_size, 32, &paddr);
 	logd("ir_info.ir_info_addr = %lx\n", ir_info.ir_info_addr);
 	if (!ir_info.ir_info_addr)
 		return -1;
-	mb_width = (cprop.x_pic_size + 15) / 16;
-	mb_height = (cprop.y_pic_size + 15) / 16;
+	mb_width = (pCmnProp->x_pic_size + 15) / 16;
+	mb_height = (pCmnProp->y_pic_size + 15) / 16;
 	mv_info_size = ((16 * mb_width *
 			 ((mb_height + 1) / 2) + 255) / 256) * 256;
 	vaddr = pmem_alloc(mv_info_size, 32, &mv_info.mv_info_addr[0]);
@@ -300,10 +303,24 @@ encode_init(int width, int height, int bitrate, int framerate,
 	ret = avcenc_set_Q_matrix();
 #endif
 
-	return ret;
 init_failed:
-	free(*ppCodec);
 	return ret;
+}
+
+int
+encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,
+		     int framerate, int bitrate)
+{
+	pCodec->cmnProp.x_pic_size = width;
+	pCodec->cmnProp.fmem_x_size[MCVENC_FMX_LDEC] =
+		pCodec->cmnProp.fmem_x_size[MCVENC_FMX_REF] =
+		pCodec->cmnProp.fmem_x_size[MCVENC_FMX_CAPT] = width;
+	pCodec->cmnProp.y_pic_size = height;
+	pCodec->cmnProp.framerate_resolution = framerate;
+
+	pCodec->cmnProp.bitrate = bitrate;
+
+	return 0;
 }
 
 int

@@ -65,6 +65,7 @@ typedef struct {
 
 	/* only for encode */
 	shvpu_avcenc_outbuf_t	streamBuffer[SHVPU_AVCENC_OUTBUF_NUM];
+        MCVENC_CMN_PROPERTY_T	cmnProp;
 } shvpu_codec_t;
 
 int logd(const char *format, ...);
@@ -80,9 +81,13 @@ uio_virt_to_phys(void *context, long mode, unsigned long addr);
 void *
 uio_phys_to_virt(unsigned long paddr);
 
+shvpu_codec_t *
+encode_new();
 long
-encode_init(int width, int height,
-	    int bitrate, int framerate, shvpu_codec_t **ppCodec);
+encode_init(shvpu_codec_t *pCodec);
+int
+encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,
+		     int framerate, int bitrate);
 int
 encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen);
 int

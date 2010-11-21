@@ -170,6 +170,11 @@ shvpu_avcenc_Constructor(OMX_COMPONENTTYPE * pComponent,
 	pComponent->ComponentRoleEnum = shvpu_avcenc_ComponentRoleEnum;
 	//pComponent->GetExtensionIndex = shvpu_avcenc_GetExtensionIndex;
 
+	/* set up default encodeing parameters */
+	shvpu_avcenc_Private->avCodec = encode_new();
+	if (!shvpu_avcenc_Private->avCodec)
+		return OMX_ErrorInsufficientResources;
+
 	/* set a private buffer allocator for input buffer */
 	inPort->Port_AllocateBuffer = shvpu_avcenc_AllocateBuffer;
 	inPort->Port_FreeBuffer = shvpu_avcenc_FreeBuffer;
@@ -225,20 +230,22 @@ shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 	omx_base_video_PortType *inPort;
 	long width, height, bitrate, framerate;
 	MCVENC_CONTEXT_T *pContext;
-	shvpu_codec_t *pCodec;
+	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	int ret, i;
 	void *vaddr;
 
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec initializing..\n");
 	inPort = (omx_base_video_PortType *)
 		shvpu_avcenc_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+#if 0
 	width = inPort->sPortParam.format.video.nFrameWidth;
 	height = inPort->sPortParam.format.video.nFrameHeight;
 	framerate = inPort->sPortParam.format.video.xFramerate;
 	bitrate = inPort->sPortParam.format.video.nBitrate;
+#endif
 
         /* initialize the encoder middleware */
-	ret = encode_init(width, height, bitrate, framerate, &pCodec);
+	ret = encode_init(pCodec);
 	if (ret != MCVENC_NML_END) {
 		loge("encode_init() failed (%ld)\n", ret);
 		return OMX_ErrorInsufficientResources;
@@ -473,27 +480,27 @@ shvpu_avcenc_MessageHandler(OMX_COMPONENTTYPE * pComponent,
 */
 static inline void
 UpdateFrameSize(OMX_COMPONENTTYPE *pComponent) {
-	  shvpu_avcenc_PrivateType* shvpu_avcenc_Private =
-		  pComponent->pComponentPrivate;
-	  omx_base_video_PortType *inPort =
-		  (omx_base_video_PortType *)
-		  shvpu_avcenc_Private->
-		  ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+	shvpu_avcenc_PrivateType* shvpu_avcenc_Private =
+		pComponent->pComponentPrivate;
+	omx_base_video_PortType *inPort =
+		(omx_base_video_PortType *)
+		shvpu_avcenc_Private->
+		ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 
-	  switch(inPort->sPortParam.format.video.eColorFormat) {
-	  case OMX_COLOR_FormatYUV420Planar:
-		        inPort->sPortParam.nBufferSize =
-				inPort->sPortParam.format.video.nFrameWidth *
-				inPort->sPortParam.format.video.nFrameHeight *
-				3/2;
-			break;
-	  default:
-		        inPort->sPortParam.nBufferSize =
-				inPort->sPortParam.format.video.nFrameWidth *
-				inPort->sPortParam.format.video.nFrameHeight *
-				2;
-			break;
-	  }
+	switch(inPort->sPortParam.format.video.eColorFormat) {
+	case OMX_COLOR_FormatYUV420Planar:
+		inPort->sPortParam.nBufferSize =
+			inPort->sPortParam.format.video.nFrameWidth *
+			inPort->sPortParam.format.video.nFrameHeight *
+			3/2;
+		break;
+	default:
+		inPort->sPortParam.nBufferSize =
+			inPort->sPortParam.format.video.nFrameWidth *
+			inPort->sPortParam.format.video.nFrameHeight *
+			2;
+		break;
+	}
 }
 
 OMX_ERRORTYPE
@@ -504,6 +511,7 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
 	OMX_U32 portIndex;
+	int ret;
 
 	/* Check which structure we are being fed and
 	   make control its header */
@@ -519,23 +527,33 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 	switch (nParamIndex) {
 	case OMX_IndexParamPortDefinition:
 	{
-		eError = omx_base_component_SetParameter
-			(hComponent, nParamIndex,
-			 ComponentParameterStructure);
-		if (eError == OMX_ErrorNone) {
-			OMX_PARAM_PORTDEFINITIONTYPE *pPortDef =
-				(OMX_PARAM_PORTDEFINITIONTYPE *)
-				ComponentParameterStructure;
-			UpdateFrameSize(pComponent);
-			portIndex = pPortDef->nPortIndex;
-			port = (omx_base_video_PortType *)
-				shvpu_avcenc_Private->ports[portIndex];
-			port->sPortParam.format.video.nBitrate =
-				pPortDef->format.video.nBitrate;
-			port->sVideoParam.eColorFormat =
-				port->sPortParam.format.video.
-				eColorFormat;
-		}
+		OMX_PARAM_PORTDEFINITIONTYPE *pPortDef =
+			(OMX_PARAM_PORTDEFINITIONTYPE *)
+			ComponentParameterStructure;
+
+		eError = omx_base_component_SetParameter(
+			hComponent, nParamIndex,
+			ComponentParameterStructure);
+		if (eError != OMX_ErrorNone)
+			break;
+
+		UpdateFrameSize(pComponent);
+		portIndex = pPortDef->nPortIndex;
+		port = (omx_base_video_PortType *)
+			shvpu_avcenc_Private->ports[portIndex];
+		port->sPortParam.format.video.nBitrate =
+			pPortDef->format.video.nBitrate;
+		port->sVideoParam.eColorFormat =
+			port->sPortParam.format.video.eColorFormat;
+
+		ret = encode_set_propaties(
+			shvpu_avcenc_Private->avCodec,
+			pPortDef->format.video.nFrameWidth,
+			pPortDef->format.video.nFrameHeight,
+			pPortDef->format.video.xFramerate,
+			pPortDef->format.video.nBitrate);
+		if (ret)
+			eError = OMX_ErrorNone;
 		break;
 	}
 	case OMX_IndexParamStandardComponentRole:
