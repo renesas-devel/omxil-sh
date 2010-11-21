@@ -58,6 +58,7 @@ typedef struct {
 	pthread_t		intrHandler;
 	int			frameId;
 	int			nEncoded;
+	int			lastOutput;
 	unsigned char		isEndInput;
 	tsem_t			uioSem;
 	int			isExit;

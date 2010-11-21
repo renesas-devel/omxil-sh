@@ -244,6 +244,7 @@ shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 		return OMX_ErrorInsufficientResources;
 	}
 	shvpu_avcenc_Private->avCodec = pCodec;
+	pCodec->lastOutput = -1;
 
 	/* prepare output buffers for VPU M/W */
 	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
@@ -1110,7 +1111,8 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 		/* check */
 		pStreamBuffer =	&shvpu_avcenc_Private->
 			avCodec->streamBuffer[i];
-		if (pStreamBuffer->status == SHVPU_BUFFER_STATUS_FILL) {
+		if ((pStreamBuffer->status == SHVPU_BUFFER_STATUS_FILL) &&
+		    ((pCodec->lastOutput + 1) == pStreamBuffer->frameId)) {
 			/* copy */
 			nFilledLen = pStreamBuffer->bufferInfo.strm_size;
 			logd("%d bytes data output\n", nFilledLen);
@@ -1125,27 +1127,28 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 			pBuffer += nFilledLen;
 			pOutBuffer->nFilledLen += nFilledLen;
 			pStreamBuffer->status =	SHVPU_BUFFER_STATUS_READY;
+			pCodec->lastOutput = pStreamBuffer->frameId;
+		}
+	}
+
+	/* check the end of stream */
+	if (pCodec->isEndInput &&
+	    ((pCodec->nEncoded - 1) <= pCodec->lastOutput)) {
+		/* put the end code (EOSeq and EOStr) */
+		nFilledLen = encode_endcode(pCodec->pContext,
+					    pBuffer, nAvailLen);
+		if (nFilledLen > 0) {
+			nAvailLen -= nFilledLen;
+			pBuffer += nFilledLen;
+			pOutBuffer->nFilledLen += nFilledLen;
+		} else {
+			printf("cannot put end code!\n");
 		}
 
-		/* check the end of stream */
-		if (pCodec->isEndInput &&
-		    ((pCodec->nEncoded - 1) <= pStreamBuffer->frameId)) {
-			/* put the end code (EOSeq and EOStr) */
-			nFilledLen = encode_endcode(pCodec->pContext,
-						    pBuffer, nAvailLen);
-			if (nFilledLen > 0) {
-				nAvailLen -= nFilledLen;
-				pBuffer += nFilledLen;
-				pOutBuffer->nFilledLen += nFilledLen;
-			} else {
-				printf("cannot put end code!\n");
-			}
+		/* finalize the encoder */
+		encode_finalize(pCodec->pContext);
 
-			/* finalize the encoder */
-			encode_finalize(pCodec->pContext);
-
-			shvpu_avcenc_Private->bIsEOSReached = OMX_TRUE;
-		}
+		shvpu_avcenc_Private->bIsEOSReached = OMX_TRUE;
 	}
 
 	return;
