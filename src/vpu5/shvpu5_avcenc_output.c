@@ -46,12 +46,12 @@ mcvenc_uf_set_strm_addr(MCVENC_CONTEXT_T *context,
 	     vlc_pic_info ? vlc_pic_info->strm_frm_id : -1,
 	     vlc_pic_info ? vlc_pic_info->is_size : -1);
 
-	for (i=0; i<2; i++) {
+	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
 		if (pCodec->streamBuffer[i].status ==
 		    SHVPU_BUFFER_STATUS_READY)
 			break;
 	}
-	if (i>=2) {
+	if (i>=SHVPU_AVCENC_OUTBUF_NUM) {
 		printf("%s: no buffer available\n", __FUNCTION__);
 		return MCVENC_VLC_CANCEL;
 	}
@@ -96,7 +96,7 @@ mcvenc_uf_strm_available(MCVENC_CONTEXT_T *context,
 	}
 	logd(", size = %d\n", strm_buff_info->strm_size);
 
-	for (i=0; i<2; i++) {
+	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
 		pStreamBuffer = &pCodec->streamBuffer[i];
 		if (strm_buff_info->buff_addr ==
 		    pStreamBuffer->bufferInfo.buff_addr) {
@@ -110,7 +110,7 @@ mcvenc_uf_strm_available(MCVENC_CONTEXT_T *context,
 		}
 	}
 
-	if (i>=2) {
+	if (i>=SHVPU_AVCENC_OUTBUF_NUM) {
 		loge("%s: no buffer found.\n", __FUNCTION__);
 	}
 

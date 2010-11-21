@@ -33,6 +33,7 @@
 #include "uiomux/uiomux.h"
 
 #define SHVPU_AVCENC_OUTBUF_SIZE (1280 * 720)
+#define SHVPU_AVCENC_OUTBUF_NUM 3
 
 typedef enum {
 	SHVPU_BUFFER_STATUS_NONE = 0,
@@ -62,7 +63,7 @@ typedef struct {
 	int			isExit;
 
 	/* only for encode */
-	shvpu_avcenc_outbuf_t streamBuffer[2];
+	shvpu_avcenc_outbuf_t	streamBuffer[SHVPU_AVCENC_OUTBUF_NUM];
 } shvpu_codec_t;
 
 int logd(const char *format, ...);

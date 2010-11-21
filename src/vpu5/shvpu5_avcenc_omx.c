@@ -246,7 +246,7 @@ shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 	shvpu_avcenc_Private->avCodec = pCodec;
 
 	/* prepare output buffers for VPU M/W */
-	for (i=0; i<2; i++) {
+	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
 		vaddr = pmem_alloc(SHVPU_AVCENC_OUTBUF_SIZE, 256, NULL);
 		if (vaddr == NULL) {
 			printf("%s: pmem_alloc failed\n", __FUNCTION__);
@@ -1106,7 +1106,7 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 
 	/* check the VPU's output buffers and
 	   copy the output stream data if available */
-	for (i=0; i<2; i++) {
+	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
 		/* check */
 		pStreamBuffer =	&shvpu_avcenc_Private->
 			avCodec->streamBuffer[i];
