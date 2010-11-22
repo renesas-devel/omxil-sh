@@ -387,11 +387,25 @@ shvpu_avcenc_Deinit(OMX_COMPONENTTYPE * pComponent)
 	return eError;
 }
 
+static OMX_ERRORTYPE
+shvpu_avcenc_checkParameters(shvpu_codec_t *pCodec) {
+	if (pCodec->cmnProp.B_pic_mode) {
+		if (pCodec->avcOpt.sps_profile_idc == AVCENC_BASELINE)
+			return OMX_ErrorUnsupportedSetting;
+	}
+	return OMX_ErrorNone;
+}
+
+
 static inline OMX_ERRORTYPE
 handleState_IdletoExecuting(OMX_COMPONENTTYPE * pComponent)
 {
+	OMX_ERRORTYPE err;
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
 		(shvpu_avcenc_PrivateType *) pComponent->pComponentPrivate;
+	err = shvpu_avcenc_checkParameters(shvpu_avcenc_Private->avCodec);
+	if (err != OMX_ErrorNone)
+		return err;
 
 	shvpu_avcenc_Private->isFirstBuffer = OMX_TRUE;
 	return OMX_ErrorNone;
