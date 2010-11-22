@@ -89,6 +89,14 @@ encode_new();
 long
 encode_init(shvpu_codec_t *pCodec);
 int
+encode_set_profile(shvpu_codec_t *pCodec, int profile_id);
+int
+encode_set_level(shvpu_codec_t *pCodec, int level_id, int is1b);
+int
+encode_set_options(shvpu_codec_t *pCodec, int num_ref_frames,
+		   int max_GOP_length, int num_b_frames,
+		   int isCABAC, int cabac_init_idc);
+int
 encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode);
 int
 encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,

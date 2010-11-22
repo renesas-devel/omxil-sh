@@ -333,6 +333,124 @@ init_failed:
 }
 
 int
+encode_set_profile(shvpu_codec_t *pCodec, int profile_id)
+{
+        AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
+
+	switch (profile_id) {
+	case 66:
+		pAvcOpt->sps_profile_idc = AVCENC_BASELINE;
+		pAvcOpt->sps_pic_order_cnt_type = AVCENC_POC_TYPE_2;
+		pAvcOpt->sps_constraint_set0_flag = AVCENC_ON;
+		pAvcOpt->sps_constraint_set1_flag = AVCENC_ON;
+		pAvcOpt->sps_constraint_set2_flag = AVCENC_ON;
+		break;
+	case 77:
+		pAvcOpt->sps_profile_idc = AVCENC_MAIN;
+		pAvcOpt->sps_pic_order_cnt_type = AVCENC_POC_TYPE_0;
+		pAvcOpt->pps_cabac_mode = AVCENC_CABAC_INIT_IDC_0;
+		pAvcOpt->sps_constraint_set0_flag = AVCENC_OFF;
+		pAvcOpt->sps_constraint_set1_flag = AVCENC_ON;
+		pAvcOpt->sps_constraint_set2_flag = AVCENC_OFF;
+		break;
+	case 100:
+		pAvcOpt->sps_profile_idc = AVCENC_HIGH;
+		pAvcOpt->sps_pic_order_cnt_type = AVCENC_POC_TYPE_0;
+		pAvcOpt->pps_cabac_mode = AVCENC_CABAC_INIT_IDC_0;
+		pAvcOpt->sps_constraint_set0_flag = AVCENC_OFF;
+		pAvcOpt->sps_constraint_set1_flag = AVCENC_OFF;
+		pAvcOpt->sps_constraint_set2_flag = AVCENC_OFF;
+		break;
+	default:
+		return -1;
+	}
+
+	pCodec->avcOptSet |= AVCENC_OPT_SPS | AVCENC_OPT_PPS;
+
+	return 0;
+}
+
+int
+encode_set_level(shvpu_codec_t *pCodec, int level_id, int is1b)
+{
+        AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
+
+	pAvcOpt->sps_constraint_set3_flag = AVCENC_OFF;
+	pAvcOpt->sps_level_idc = level_id;
+	if (is1b && (pAvcOpt->sps_profile_idc != AVCENC_HIGH))
+		pAvcOpt->sps_constraint_set3_flag = AVCENC_ON;
+
+	pCodec->avcOptSet |= AVCENC_OPT_SPS;
+
+	return 0;
+}
+
+int
+encode_set_options(shvpu_codec_t *pCodec, int num_ref_frames,
+		   int max_GOP_length, int num_b_frames,
+		   int isCABAC, int cabac_init_idc)
+{
+	MCVENC_CMN_PROPERTY_T *pCprop = &pCodec->cmnProp;
+	AVCENC_OPTION_T *pAvcOpt = &pCodec->avcOpt;
+
+	//nSliceHeaderSpacing
+
+	if ((num_ref_frames != 1) && (num_ref_frames != 2))
+		return -1;
+	pCprop->num_ref_frames = num_ref_frames;
+
+	if ((num_b_frames == 0) && (max_GOP_length < 10)) {
+		pCprop->max_GOP_length = 0;
+	} else if ((max_GOP_length < 10) || (max_GOP_length > 120)) {
+		return -1;
+	} else {
+		pCprop->max_GOP_length = max_GOP_length;
+	}
+
+	if (num_b_frames < 0)
+		return -1;
+	pCprop->B_pic_mode =
+		(num_b_frames > 2) ? MCVENC_ADP_B_INS : num_b_frames;
+
+	if (isCABAC) {
+		switch (cabac_init_idc) {
+		case 0:
+			pAvcOpt->pps_cabac_mode = AVCENC_CABAC_INIT_IDC_0;
+			break;
+		case 1:
+			pAvcOpt->pps_cabac_mode = AVCENC_CABAC_INIT_IDC_1;
+			break;
+		case 2:
+			pAvcOpt->pps_cabac_mode = AVCENC_CABAC_INIT_IDC_2;
+			break;
+		default:
+			return -1;
+		}
+	} else {
+		pAvcOpt->pps_cabac_mode = AVCENC_CAVLC;
+	}
+	pCodec->avcOptSet |= AVCENC_OPT_PPS;
+
+
+/*	bEnableUEP - unequal protection
+	bEnableFMO - flexible macroblock ordering - not supported
+	bEnableASO - arbitrary slice ordering - not supported
+	bEnableRS - redundant slices - not supported*/
+
+
+	/*nAllowedPictureTypes - allowed picture types (whazzat)?
+	  bFrameMBsOnly - frames contain ONLY macroblocks
+	  bEntropyCodingCABAC - entropy decoding
+	  bconstIpred - intra-prediction
+	  bDirect8x8Interface - derivation of luma motions vectors
+	  bDirectSpacialTemporal - spacial or temporal mode in B-slice coding
+	  nCabacInitIdx - init CABAC
+	  eLoopFilterMode - AVC loop filter*/
+
+	return 0;
+}
+
+int
 encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode)
 {
 	switch (mode) {

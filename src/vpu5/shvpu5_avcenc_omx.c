@@ -509,6 +509,58 @@ shvpu_avcenc_SetProfileLevel(shvpu_avcenc_PrivateType *
 			     OMX_VIDEO_AVCPROFILETYPE eProfile,
 			     OMX_VIDEO_AVCLEVELTYPE eLevel)
 {
+	const struct {
+		OMX_VIDEO_AVCPROFILETYPE eProfile;
+		int			 id;
+	} profile_idx[] = {
+		{ OMX_VIDEO_AVCProfileBaseline, 66 },
+		{ OMX_VIDEO_AVCProfileMain, 77 },
+		{ OMX_VIDEO_AVCProfileHigh, 100 },
+		{ 0, 0 },
+	};
+	const struct {
+		OMX_VIDEO_AVCLEVELTYPE eLevel;
+		int			 id;
+	} level_idx[] = {
+		{ OMX_VIDEO_AVCLevel1, 10 },
+		{ OMX_VIDEO_AVCLevel1b, 10 },
+		{ OMX_VIDEO_AVCLevel11, 11 },
+		{ OMX_VIDEO_AVCLevel12, 12 },
+		{ OMX_VIDEO_AVCLevel13, 13 },
+		{ OMX_VIDEO_AVCLevel2, 20 },
+		{ OMX_VIDEO_AVCLevel21, 21 },
+		{ OMX_VIDEO_AVCLevel22, 22 },
+		{ OMX_VIDEO_AVCLevel3, 30 },
+		{ OMX_VIDEO_AVCLevel31, 31 },
+		{ OMX_VIDEO_AVCLevel32, 32 },
+		{ OMX_VIDEO_AVCLevel4, 40 },
+		{ OMX_VIDEO_AVCLevel41, 41 },
+		{ 0, 0 },
+	};
+	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	int i, ret;
+
+	/* profile */
+	for (i=0; profile_idx[i].id > 0; i++)
+		if (profile_idx[i].eProfile == eProfile)
+			break;
+	if (profile_idx[i].id == 0)
+		return OMX_ErrorUnsupportedSetting;
+	ret = encode_set_profile(pCodec, profile_idx[i].id);
+	if (ret)
+		return OMX_ErrorUnsupportedSetting;
+
+	/* level */
+	for (i=0; level_idx[i].id > 0; i++)
+		if (level_idx[i].eLevel == eLevel)
+			break;
+	if (level_idx[i].id == 0)
+		return OMX_ErrorUnsupportedSetting;
+	ret = encode_set_level(pCodec, level_idx[i].id,
+			       eLevel == OMX_VIDEO_AVCLevel1b);
+	if (ret)
+		return OMX_ErrorUnsupportedSetting;
+
 	shvpu_avcenc_Private->avcType.eProfile = eProfile;
 	shvpu_avcenc_Private->avcType.eLevel = eLevel;
 
@@ -520,6 +572,18 @@ shvpu_avcenc_SetAvcTypeParameters(shvpu_avcenc_PrivateType *
 				  shvpu_avcenc_Private,
 				  OMX_VIDEO_PARAM_AVCTYPE *pAvcType)
 {
+	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	OMX_ERRORTYPE err;
+	int ret;
+
+	ret = encode_set_options(pCodec, pAvcType->nRefFrames,
+				 pAvcType->nPFrames + pAvcType->nBFrames,
+				 pAvcType->nBFrames / pAvcType->nPFrames,
+				 pAvcType->bEntropyCodingCABAC == OMX_TRUE,
+				 pAvcType->nCabacInitIdc);
+	if (ret)
+		return OMX_ErrorUnsupportedSetting;
+
 	shvpu_avcenc_Private->avcType.nRefFrames = pAvcType->nRefFrames;
 	shvpu_avcenc_Private->avcType.nPFrames = pAvcType->nPFrames;
 	shvpu_avcenc_Private->avcType.nBFrames = pAvcType->nBFrames;
@@ -528,7 +592,11 @@ shvpu_avcenc_SetAvcTypeParameters(shvpu_avcenc_PrivateType *
 	shvpu_avcenc_Private->avcType.nCabacInitIdc =
 		pAvcType->nCabacInitIdc;
 
-	return OMX_ErrorNone;
+	err = shvpu_avcenc_SetProfileLevel(shvpu_avcenc_Private,
+					   pAvcType->eProfile,
+					   pAvcType->eLevel);
+
+	return err;
 }
 
 static OMX_ERRORTYPE
