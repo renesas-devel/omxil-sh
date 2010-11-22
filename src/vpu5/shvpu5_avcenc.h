@@ -31,6 +31,7 @@
 #include "mciph.h"
 #include "mcvenc.h"
 #include "uiomux/uiomux.h"
+#include "avcenc.h"
 
 #define SHVPU_AVCENC_OUTBUF_SIZE (1280 * 720)
 #define SHVPU_AVCENC_OUTBUF_NUM 3
@@ -66,6 +67,8 @@ typedef struct {
 	/* only for encode */
 	shvpu_avcenc_outbuf_t	streamBuffer[SHVPU_AVCENC_OUTBUF_NUM];
         MCVENC_CMN_PROPERTY_T	cmnProp;
+        AVCENC_OPTION_T		avcOpt;
+	unsigned long		avcOptSet;
 } shvpu_codec_t;
 
 int logd(const char *format, ...);

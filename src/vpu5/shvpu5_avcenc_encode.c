@@ -157,6 +157,24 @@ encode_new()
 	pCodec->cmnProp.B_pic_mode = 0;
 	pCodec->cmnProp.num_ref_frames = 1;
 
+	/* initialize the (non-zero) default AVCENC_OPTION_T parameters */
+	pCodec->avcOpt.start_code_mode = AVCENC_ON;
+	pCodec->avcOpt.hrc_mode = AVCENC_OFF;
+	/* MEMO: cbp_size and cbp_remain never set. */
+	pCodec->avcOpt.sps_profile_idc = AVCENC_BASELINE;
+	pCodec->avcOpt.sps_constraint_set0_flag = AVCENC_ON;
+	pCodec->avcOpt.sps_constraint_set1_flag = AVCENC_ON;
+	pCodec->avcOpt.sps_constraint_set2_flag = AVCENC_ON;
+	pCodec->avcOpt.sps_constraint_set3_flag = AVCENC_OFF;
+	pCodec->avcOpt.sps_level_idc = 10;
+	pCodec->avcOpt.sps_pic_order_cnt_type =	AVCENC_POC_TYPE_2;
+	pCodec->avcOpt.sps_gaps_in_frame_num_value_allowed_flag = AVCENC_OFF;
+	pCodec->avcOpt.pps_cabac_mode = AVCENC_CAVLC;
+	pCodec->avcOpt.pps_pic_init_qp_minus26 = AVCENC_REF_CMN_QP;
+	pCodec->avcOpt.pps_transform_8x8_mode_flag = AVCENC_OFF;
+	pCodec->avcOpt.slh_slice_type_mode = AVCENC_SLICE_TYPE_A;
+	pCodec->avcOpt.slh_disable_deblocking_filter_idc = AVCENC_DBF_MODE_0;
+
 	return pCodec;
 }
 
@@ -168,6 +186,7 @@ encode_init(shvpu_codec_t *pCodec)
 	extern const MCIPH_API_T mciph_hg_api_tbl;
 	extern const MCVENC_API_T avcenc_api_tbl;
 	MCVENC_CMN_PROPERTY_T *pCmnProp = &pCodec->cmnProp;
+        AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
 
 	/*** initialize vpu ***/
 	pCodec->wbufVpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
@@ -290,12 +309,18 @@ encode_init(shvpu_codec_t *pCodec)
 	logd("----- invoke mcvenc_set_option() -----\n");
 	ret = mcvenc_set_option(pContext, MCVDEC_PLAY_FORWARD, 0, 0);
 	logd("----- resume from mcvenc_set_option() -----\n");
+#endif
 
 	/*** set avc specific option ***/
-	logd("----- invoke avcdec_set_option() -----\n");
-	ret = avcenc_set_option(pContext, MCVDEC_PLAY_FORWARD, 0, 0);
-	logd("----- resume from avcdec_set_option() -----\n");
+	if (pCodec->avcOptSet) {
+		logd("----- invoke avcdec_set_option() -----\n");
+		ret = avcenc_set_option(pContext, pAvcOpt,
+					pCodec->avcOptSet);
+		logd("----- resume from avcdec_set_option() = %d -----\n",
+		     ret);
+	}
 
+#if 0
 	/*** set VUI ***/
 	ret = avcenc_set_VUI();
 
