@@ -504,6 +504,34 @@ UpdateFrameSize(OMX_COMPONENTTYPE *pComponent) {
 }
 
 static OMX_ERRORTYPE
+shvpu_avcenc_SetProfileLevel(shvpu_avcenc_PrivateType *
+			     shvpu_avcenc_Private,
+			     OMX_VIDEO_AVCPROFILETYPE eProfile,
+			     OMX_VIDEO_AVCLEVELTYPE eLevel)
+{
+	shvpu_avcenc_Private->avcType.eProfile = eProfile;
+	shvpu_avcenc_Private->avcType.eLevel = eLevel;
+
+	return OMX_ErrorNone;
+}
+
+static OMX_ERRORTYPE
+shvpu_avcenc_SetAvcTypeParameters(shvpu_avcenc_PrivateType *
+				  shvpu_avcenc_Private,
+				  OMX_VIDEO_PARAM_AVCTYPE *pAvcType)
+{
+	shvpu_avcenc_Private->avcType.nRefFrames = pAvcType->nRefFrames;
+	shvpu_avcenc_Private->avcType.nPFrames = pAvcType->nPFrames;
+	shvpu_avcenc_Private->avcType.nBFrames = pAvcType->nBFrames;
+	shvpu_avcenc_Private->avcType.bEntropyCodingCABAC =
+		pAvcType->bEntropyCodingCABAC;
+	shvpu_avcenc_Private->avcType.nCabacInitIdc =
+		pAvcType->nCabacInitIdc;
+
+	return OMX_ErrorNone;
+}
+
+static OMX_ERRORTYPE
 shvpu_avcenc_SetBitrateParameters(shvpu_codec_t *pCodec,
 				  OMX_VIDEO_PARAM_BITRATETYPE *pBRType)
 {
@@ -626,15 +654,50 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 		}
 
 		if (strcmp((char *)pComponentRole->cRole,
-			    VIDEO_ENC_H264_ROLE))
+			   VIDEO_ENC_H264_ROLE))
 			return OMX_ErrorBadParameter;
 		SetInternalVideoParameters(pComponent);
 		break;
 	}
+	case OMX_IndexParamVideoAvc:
+	{
+		OMX_VIDEO_PARAM_AVCTYPE *pAvcType;
+		pAvcType = ComponentParameterStructure;
+		eError = omx_base_component_ParameterSanityCheck(
+			hComponent, pAvcType->nPortIndex, pAvcType,
+			sizeof (OMX_VIDEO_PARAM_AVCTYPE));
+		if(eError!=OMX_ErrorNone) {
+			DEBUG(DEB_LEV_ERR,
+			      "In %s Parameter Check Error=%x\n",
+			      __func__,eError);
+			break;
+		}
+		eError = shvpu_avcenc_SetAvcTypeParameters(
+			shvpu_avcenc_Private, pAvcType);
+		break;
+	}
+	case OMX_IndexParamVideoProfileLevelCurrent:
+	{
+		OMX_VIDEO_PARAM_PROFILELEVELTYPE *pProfType;
+		pProfType = ComponentParameterStructure;
+		eError = omx_base_component_ParameterSanityCheck(
+			hComponent, pProfType->nPortIndex, pProfType,
+			sizeof (OMX_VIDEO_PARAM_PROFILELEVELTYPE));
+		if(eError!=OMX_ErrorNone) {
+			DEBUG(DEB_LEV_ERR,
+			      "In %s Parameter Check Error=%x\n",
+			      __func__,eError);
+			break;
+		}
+		eError = shvpu_avcenc_SetProfileLevel(
+			shvpu_avcenc_Private,
+			pProfType->eProfile, pProfType->eLevel);
+		break;
+	}
 	default:		/*Call the base component function */
-		eError = omx_base_component_SetParameter
-			(hComponent, nParamIndex,
-			 ComponentParameterStructure);
+		eError = omx_base_component_SetParameter(
+			hComponent, nParamIndex,
+			ComponentParameterStructure);
 	}
 	return eError;
 }
