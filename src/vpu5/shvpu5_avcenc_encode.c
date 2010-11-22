@@ -308,8 +308,36 @@ init_failed:
 }
 
 int
+encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode)
+{
+	switch (mode) {
+	case 'v':
+		pCodec->cmnProp.rate_control_mode = MCVENC_VBR;
+		break;
+	case 'c':
+		pCodec->cmnProp.rate_control_mode = MCVENC_CBR_NML;
+		break;
+	case 'S':
+		pCodec->cmnProp.rate_control_mode= MCVENC_CBR_SKIP;
+		//TODO: check the limitations for B pic and
+		//stream_struct
+		break;
+	case ' ':
+		/* not set */
+		break;
+	default:
+		loge ("Attempt to set unsupported rate control\n");
+		return -1;
+	}
+
+	pCodec->cmnProp.bitrate = bitrate;
+
+	return 0;
+}
+
+int
 encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,
-		     int framerate, int bitrate)
+		     int framerate, int bitrate, char ratecontrol)
 {
 	pCodec->cmnProp.x_pic_size = width;
 	pCodec->cmnProp.fmem_x_size[MCVENC_FMX_LDEC] =
@@ -318,7 +346,7 @@ encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,
 	pCodec->cmnProp.y_pic_size = height;
 	pCodec->cmnProp.framerate_resolution = framerate;
 
-	pCodec->cmnProp.bitrate = bitrate;
+	encode_set_bitrate(pCodec, bitrate, ratecontrol);
 
 	return 0;
 }

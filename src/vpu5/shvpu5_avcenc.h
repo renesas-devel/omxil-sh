@@ -86,8 +86,10 @@ encode_new();
 long
 encode_init(shvpu_codec_t *pCodec);
 int
+encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode);
+int
 encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,
-		     int framerate, int bitrate);
+		     int framerate, int bitrate, char ratecontrol);
 int
 encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen);
 int

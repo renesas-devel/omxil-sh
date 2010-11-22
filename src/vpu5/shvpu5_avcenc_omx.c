@@ -503,6 +503,36 @@ UpdateFrameSize(OMX_COMPONENTTYPE *pComponent) {
 	}
 }
 
+static OMX_ERRORTYPE
+shvpu_avcenc_SetBitrateParameters(shvpu_codec_t *pCodec,
+				  OMX_VIDEO_PARAM_BITRATETYPE *pBRType)
+{
+	const struct {
+		OMX_VIDEO_CONTROLRATETYPE eControlRate;
+		char id;
+	} ratecontrols[] = {
+		{ OMX_Video_ControlRateVariable, 'v' },
+		{ OMX_Video_ControlRateConstant, 'c' },
+		{ OMX_Video_ControlRateConstantSkipFrames, 'S' },
+		{ 0, '\0' },
+	};
+	int i, ret;
+
+	for (i=0; ratecontrols[i].id != '\0'; i++)
+		if (ratecontrols[i].eControlRate == pBRType->eControlRate)
+			break;
+
+	if (ratecontrols[i].id == '\0')
+		return OMX_ErrorUnsupportedSetting;
+
+	ret = encode_set_bitrate(pCodec, pBRType->nTargetBitrate,
+				 ratecontrols[i].id);
+	if (ret)
+		return OMX_ErrorUnsupportedSetting;
+
+	return OMX_ErrorNone;
+}
+
 OMX_ERRORTYPE
 shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 			  OMX_INDEXTYPE nParamIndex,
@@ -551,9 +581,27 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 			pPortDef->format.video.nFrameWidth,
 			pPortDef->format.video.nFrameHeight,
 			pPortDef->format.video.xFramerate,
-			pPortDef->format.video.nBitrate);
+			pPortDef->format.video.nBitrate,
+			' ' /* rate control not specified */);
 		if (ret)
 			eError = OMX_ErrorNone;
+		break;
+	}
+	case OMX_IndexParamVideoBitrate:
+	{
+		OMX_VIDEO_PARAM_BITRATETYPE *pBRType;
+		pBRType = ComponentParameterStructure;
+		eError = omx_base_component_ParameterSanityCheck(
+			hComponent, pBRType->nPortIndex, pBRType,
+			sizeof (OMX_VIDEO_PARAM_BITRATETYPE));
+		if(eError!=OMX_ErrorNone) {
+			DEBUG(DEB_LEV_ERR,
+			      "In %s Parameter Check Error=%x\n",
+			      __func__,eError);
+			break;
+		}
+		eError = shvpu_avcenc_SetBitrateParameters(
+			shvpu_avcenc_Private->avCodec, pBRType);
 		break;
 	}
 	case OMX_IndexParamStandardComponentRole:
