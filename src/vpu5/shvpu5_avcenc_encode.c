@@ -529,6 +529,27 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 }
 
 int
+encode_setqmatrix(MCVENC_CONTEXT_T *pContext)
+{
+	const AVCENC_QMAT_T qmat = {
+		.seq_scaling_matrix_present_flag = AVCENC_ON,
+		.seq_scaling_list_present_flag = {
+			AVCENC_OFF, AVCENC_OFF,
+			AVCENC_OFF, AVCENC_OFF,
+			AVCENC_OFF, AVCENC_OFF,
+			AVCENC_OFF, AVCENC_OFF
+		},
+	};
+	int ret;
+
+	ret = avcenc_set_Q_matrix(pContext, &qmat);
+	if (ret < 0)
+		printf("avcenc_set_Q_matrix() = %d\n", ret);
+
+	return ret;
+}
+
+int
 encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	    unsigned char *pBuffer, int nWidth, int nHeight,
 	    void **ppConsumed)

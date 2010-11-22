@@ -253,6 +253,12 @@ shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 	shvpu_avcenc_Private->avCodec = pCodec;
 	pCodec->lastOutput = -1;
 
+	/* set Q matrix if High profile selected */
+	if (shvpu_avcenc_Private->
+	    avcType.eProfile == OMX_VIDEO_AVCProfileHigh) {
+		encode_setqmatrix(pCodec->pContext);
+	}
+
 	/* prepare output buffers for VPU M/W */
 	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
 		vaddr = pmem_alloc(SHVPU_AVCENC_OUTBUF_SIZE, 256, NULL);
