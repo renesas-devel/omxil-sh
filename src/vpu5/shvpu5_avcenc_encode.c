@@ -360,6 +360,7 @@ encode_set_profile(shvpu_codec_t *pCodec, int profile_id)
 		pAvcOpt->sps_constraint_set0_flag = AVCENC_OFF;
 		pAvcOpt->sps_constraint_set1_flag = AVCENC_OFF;
 		pAvcOpt->sps_constraint_set2_flag = AVCENC_OFF;
+		pAvcOpt->pps_transform_8x8_mode_flag = AVCENC_ON;
 		break;
 	default:
 		return -1;
