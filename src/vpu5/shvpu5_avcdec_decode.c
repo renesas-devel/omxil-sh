@@ -138,6 +138,7 @@ long header_processed_callback( MCVDEC_CONTEXT_T *context,
 		}
 	}
 	logd("Got a header callback\n");
+	return 0;
 }
 	/* malloc() on 32bit environment must allocate
 	   an 8-bytes aligned region. */
