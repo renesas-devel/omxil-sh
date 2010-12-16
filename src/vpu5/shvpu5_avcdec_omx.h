@@ -40,6 +40,7 @@
 #include "uiomux/uiomux.h"
 #include "mcvdec.h"
 #include "avcdec.h"
+#include "shvpu5_driver.h"
 
 /* Specific include files */
 #include <vpu5/OMX_VPU5Ext.h>
@@ -80,11 +81,10 @@ typedef struct {
 } shvpu_firmware_size_t;
 
 typedef struct {
-	MCIPH_DRV_INFO_T*	drvInfo;
+	shvpu_driver_t		*pDriver;
+
 	/** @param mode for VPU5HG video decoder */
 	long 			codecMode;
-	MCIPH_WORK_INFO_T	wbuf_vpu5;
-	MCIPH_VPU5_INIT_T	vpu5_init;
 	AVCDEC_PARAMS_T		avcdec_params;
 	MCVDEC_WORK_INFO_T	wbuf_dec;
 	MCVDEC_FIRMWARE_INFO_T	fw;
@@ -94,7 +94,6 @@ typedef struct {
 	MCVDEC_MV_INFO_T	mv_info;
 	int			frameCount;
 	int			bufferingCount;
-	UIOMux*			uiomux;
 	/** @param queue for stream info data */
 	queue_t*		pSIQueue;
 	queue_t*		pBMIQueue;
@@ -116,8 +115,6 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	MCVDEC_CONTEXT_T *avCodecContext;				\
 	/** @param avPicInfo pointer to the VPU5HG current decoded picrure */ 	\
 	MCVDEC_CMN_PICINFO_T *avPicInfo;				\
-	/** @param thread id for UIO interrupt handler  */		\
-	pthread_t uioIntrThread;					\
 	/** @param counting semaphore for queued NAL units */		\
 	tsem_t *pNalSem; 						\
 	/** @param counting semaphore for queued picture data */	\
@@ -159,19 +156,14 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	/** @param pVideoProfile reference to current profile*/  \
 	OMX_VIDEO_PARAM_PROFILELEVELTYPE pVideoCurrentProfile;   \
 	/** @param maxVideoParameters maximu video size/level to be decoded*/  \
-	OMX_PARAM_REVPU5MAXPARAM maxVideoParameters; \
-	/** @param uio_sem semaphore to synchronize uio interrupt handler*/  \
-	tsem_t			uio_sem;            \
-	/** @param exit_handler  used as an argument to uio_exit_handler to end
-             uio interrupt handler thread*/  \
-	int			exit_handler; \
-	/** @param enable_sync enable SYNC mode for vpu decode*/ \
-	OMX_BOOL		enable_sync; \
-	/** @param uio_start start address of the uio memory range*/ \
-	void * 			uio_start; \
-	/** @param uio_size size of the uio memory range*/ \
-	unsigned long 		uio_size; \
-	unsigned long		uio_start_phys;
+	OMX_PARAM_REVPU5MAXPARAM maxVideoParameters;			\
+	/** @param enable_sync enable SYNC mode for vpu decode*/	\
+	OMX_BOOL                enable_sync;				\
+	/** @param uio_start start address of the uio memory range*/	\
+	void *                  uio_start;				\
+	/** @param uio_size size of the uio memory range*/		\
+	unsigned long           uio_size;				\
+	unsigned long           uio_start_phys;
 ENDCLASS(shvpu_avcdec_PrivateType)
 
 /* Component private entry points declaration */

@@ -251,7 +251,7 @@ shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 		return OMX_ErrorInsufficientResources;
 	}
 	shvpu_avcenc_Private->avCodec = pCodec;
-	pCodec->lastOutput = -1;
+	pCodec->pDriver->lastOutput = -1;
 
 	/* set Q matrix if High profile selected */
 	if (shvpu_avcenc_Private->
@@ -273,12 +273,6 @@ shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 		pCodec->streamBuffer[i].status = SHVPU_BUFFER_STATUS_READY;
 	}
 
-	/* register an interrupt handler */
-	tsem_init(&pCodec->uioSem, 0);
-	uio_create_int_handle(&pCodec->intrHandler,
-			      handle_vpu5intr, pCodec->pDrvInfo,
-			      &pCodec->uioSem, &pCodec->isExit);
-
 	return OMX_ErrorNone;
 }
 
@@ -292,10 +286,8 @@ shvpu_avcenc_vpuLibDeInit(shvpu_avcenc_PrivateType *
 	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 
 	encode_deinit(pCodec);
-	uio_exit_handler(&pCodec->uioSem, &pCodec->isExit);
-	uio_wakeup();
-	pthread_join(pCodec->intrHandler, NULL);
-	uio_deinit();
+	shvpu_driver_deinit(pCodec->pDriver);
+	pCodec->pDriver = NULL;
 
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec de-initialized\n");
 }
@@ -1346,7 +1338,8 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 		pStreamBuffer =	&shvpu_avcenc_Private->
 			avCodec->streamBuffer[i];
 		if ((pStreamBuffer->status == SHVPU_BUFFER_STATUS_FILL) &&
-		    ((pCodec->lastOutput + 1) == pStreamBuffer->frameId)) {
+		    ((pCodec->pDriver->lastOutput + 1) ==
+		     pStreamBuffer->frameId)) {
 			/* copy */
 			nFilledLen = pStreamBuffer->bufferInfo.strm_size;
 			logd("%d bytes data output\n", nFilledLen);
@@ -1361,13 +1354,13 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 			pBuffer += nFilledLen;
 			pOutBuffer->nFilledLen += nFilledLen;
 			pStreamBuffer->status =	SHVPU_BUFFER_STATUS_READY;
-			pCodec->lastOutput = pStreamBuffer->frameId;
+			pCodec->pDriver->lastOutput = pStreamBuffer->frameId;
 		}
 	}
 
 	/* check the end of stream */
-	if (pCodec->isEndInput &&
-	    ((pCodec->nEncoded - 1) <= pCodec->lastOutput)) {
+	if (pCodec->pDriver->isEndInput &&
+	    ((pCodec->nEncoded - 1) <= pCodec->pDriver->lastOutput)) {
 		/* put the end code (EOSeq and EOStr) */
 		nFilledLen = encode_endcode(pCodec->pContext,
 					    pBuffer, nAvailLen);
@@ -1450,7 +1443,7 @@ checkEmptyDone(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 			*ppInBuffer = NULL;
 	}
 
-	if (shvpu_avcenc_Private->avCodec->isEndInput)
+	if (shvpu_avcenc_Private->avCodec->pDriver->isEndInput)
 		*pIsInBufferNeeded = OMX_FALSE;
 }
 
@@ -1479,8 +1472,8 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 
 	if ((pInBuffer->nFilledLen == 0) &&
 	    (pInBuffer->nFlags & OMX_BUFFERFLAG_EOS)) {
-		pCodec->isEndInput = 1;
-		pCodec->frameId -= 1;
+		pCodec->pDriver->isEndInput = 1;
+		pCodec->pDriver->frameId -= 1;
 		pInBuffer->nFlags &= ~OMX_BUFFERFLAG_EOS;
 		return;
 	}
@@ -1491,7 +1484,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 		err = OMX_ErrorStreamCorrupt;
 	} else {
 		pConsumed = NULL;
-		ret = encode_main(pCodec->pContext, pCodec->frameId,
+		ret = encode_main(pCodec->pContext, pCodec->pDriver->frameId,
 				  pInBuffer->pBuffer, width, height,
 				  &pConsumed);
 
@@ -1503,7 +1496,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 			if (pConsumed)
 				updateFilledLen(pProcessInBufQueue,
 						pConsumed);
-			pCodec->frameId += 1;
+			pCodec->pDriver->frameId += 1;
 			err = OMX_ErrorNone;
 			break;
 		default:

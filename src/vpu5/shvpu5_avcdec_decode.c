@@ -40,55 +40,10 @@
 #define MAX_REF_FRAME_CNT 16
 int ibuf_ready;
 
-OMX_U32 noVPUInstance = 0;
 static inline void *
 malloc_aligned(size_t size, int align)
 {
 	return calloc(1, size);
-}
-
-static unsigned long
-load_fw(char *filename, int *size)
-{
-	void *vaddr;
-	unsigned char *p;
-	unsigned long paddr;
-	int fd;
-	size_t len;
-	ssize_t ret;
-
-	fd = open(filename, O_RDONLY);
-	if (fd < 0) {
-		perror("fw open");
-		goto fail_open;
-	}
-	len = lseek(fd, 0, SEEK_END);
-	logd("size of %s = %x\n", filename, len);
-
-	*size = len;
-	vaddr = p = pmem_alloc(len, 32, &paddr);
-	if (vaddr == NULL) {
-		fprintf(stderr, "pmem alloc failed.\n");
-		goto fail_pmem_alloc;
-	}
-
-	lseek(fd, 0, SEEK_SET);
-	do {
-		ret = read(fd, p, len);
-		if (ret <= 0) {
-			perror("read fw");
-			goto fail_read;
-		}
-		len -= ret;
-		p += ret;
-	} while (len > 0);
-	return paddr;
-fail_read:
-	pmem_free(vaddr, lseek(fd, 0, SEEK_END));
-fail_pmem_alloc:
-	close(fd);
-fail_open:
-	return -1;
 }
 
 typedef enum {
@@ -214,33 +169,10 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		return -1L;
 	memset((void *)pCodec, 0, sizeof(shvpu_codec_t));
 
-	if (noVPUInstance == 0) {
-		/*** initialize vpu ***/
-		pCodec->wbuf_vpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
-		pCodec->wbuf_vpu5.work_area_addr =
-			malloc_aligned(pCodec->wbuf_vpu5.work_size, 4);
-		logd("work_area_addr = %p\n", pCodec->wbuf_vpu5.work_area_addr);
-		if ((pCodec->wbuf_vpu5.work_area_addr == NULL) ||
-		    ((unsigned int)pCodec->wbuf_vpu5.work_area_addr & 0x03U))
-			return -1L;
-		pCodec->vpu5_init = _vpu5_init_def;
-
-		logd("----- invoke mciph_vpu5_init() -----\n");
-		ret = mciph_vpu5_init(&pCodec->wbuf_vpu5,
-			      (MCIPH_API_T *)&mciph_hg_api_tbl,
-				      &pCodec->vpu5_init, &pCodec->drvInfo);
-		logd("----- resume from mciph_vpu5_init() -----\n");
-
-		pCodec_bak = *pCodec;
-
-		if (ret != MCIPH_NML_END)
-			return ret;
-	} else {
-		pCodec->wbuf_vpu5 = pCodec_bak.wbuf_vpu5;
-		pCodec->vpu5_init = pCodec_bak.vpu5_init;
-		pCodec->drvInfo = pCodec_bak.drvInfo;
-	}
-	noVPUInstance++;
+	/*** initialize driver ***/
+	ret = shvpu_driver_init(&pCodec->pDriver);
+	if (ret != MCIPH_NML_END)
+		return ret;
 
 	/*** initialize decoder ***/
 	static const AVCDEC_PARAMS_T _avcdec_params_def = {
@@ -277,6 +209,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	static const MCVDEC_WORK_INFO_T _wbuf_dec_def = {
 		.work_area_size = 0xea000,  /* 104 + 832KiB */
 	};
+	size_t fwsize;
 
 	pCodec->avcdec_params = _avcdec_params_def;
 	pCodec->avcdec_params.slice_buffer_addr =
@@ -291,12 +224,12 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	logd("work_area_addr = %p\n",
 	     pCodec->wbuf_dec.work_area_addr);
 	pCodec->fw.ce_firmware_addr =
-		load_fw(VPU5HG_FIRMWARE_PATH "/p264d_h.bin",
-			&(pCodec->fw_size.ce_firmware_size));
+		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/p264d_h.bin",
+				     &fwsize);
 	logd("ce_firmware_addr = %lx\n", pCodec->fw.ce_firmware_addr);
 	pCodec->fw.vlc_firmware_addr =
-		load_fw(VPU5HG_FIRMWARE_PATH "/s264d.bin",
-			&(pCodec->fw_size.vlc_firmware_size));
+		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/s264d.bin",
+				     &fwsize);
 	logd("vlc_firmware_addr = %lx\n",
 	     pCodec->fw.vlc_firmware_addr);
 	pCodec->cprop = _cprop_def;
@@ -312,7 +245,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 				  &pCodec->cprop,
 				  &pCodec->wbuf_dec,
 				  &pCodec->fw, shvpu_avcdec_Private->intrinsic,
-				  pCodec->drvInfo, &pContext);
+				  pCodec->pDriver->pDrvInfo, &pContext);
 	logd("----- resume from mcvdec_init_decoder() -----\n");
 	if (ret != MCIPH_NML_END)
 		return ret;
@@ -387,8 +320,8 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 void
 decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 	buffer_metainfo_t *pBMI;
-	noVPUInstance--;
-	if (shvpu_avcdec_Private ) {
+
+	if (shvpu_avcdec_Private) {
 		shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 		decode_finalize(shvpu_avcdec_Private->avCodecContext);
 		if (shvpu_avcdec_Private->intrinsic)
@@ -435,6 +368,7 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 		}
 		free(pCodec->pBMIQueue);
 		free(pCodec);
+
 		shvpu_avcdec_Private->avCodec = NULL;
 	}
 }

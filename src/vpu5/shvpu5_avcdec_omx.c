@@ -221,7 +221,6 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 		noVideoDecInstance--;
 		return OMX_ErrorInsufficientResources;
 	}
-	tsem_init(&shvpu_avcdec_Private->uio_sem, 0);
 	return eError;
 }
 
@@ -272,19 +271,6 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 	return OMX_ErrorNone;
 }
 
-static void
-handle_vpu5intr(void *arg)
-{
-	MCVDEC_CONTEXT_T *context = arg;
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *)context->user_info;
-
-	logd("----- invoke mciph_vpu5_int_handler() -----\n");
-	mciph_vpu5_int_handler(shvpu_avcdec_Private->avCodec->drvInfo);
-	logd("----- resume from mciph_vpu5_int_handler() -----\n");
-	return;
-}
-
 /** It initializates the VPU framework, and opens an VPU videodecoder
     of type specified by IL client
 */
@@ -314,13 +300,6 @@ shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
 	}
 	uiomux_unlock_vpu();
 
-	/* register an interrupt handler */
-	uio_create_int_handle(&shvpu_avcdec_Private->uioIntrThread,
-			      handle_vpu5intr,
-			      shvpu_avcdec_Private->avCodecContext,
-				&shvpu_avcdec_Private->uio_sem,
-				&shvpu_avcdec_Private->exit_handler);
-
 	return OMX_ErrorNone;
 }
 
@@ -331,18 +310,16 @@ void
 shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_PrivateType *
 			  shvpu_avcdec_Private)
 {
+	shvpu_driver_t *pDriver = shvpu_avcdec_Private->avCodec->pDriver;
 	int err;
+
 	if (shvpu_avcdec_Private) {
 		uiomux_lock_vpu();
 		decode_deinit(shvpu_avcdec_Private);
-
-		uio_exit_handler( &shvpu_avcdec_Private->uio_sem,
-			&shvpu_avcdec_Private->exit_handler);
-		uio_wakeup();
 		uiomux_unlock_vpu();
-
-		pthread_join(shvpu_avcdec_Private->uioIntrThread, NULL);
-		uio_deinit();
+		/* decode_deinit() frees region of avCodec,
+		   but pDriver still exists. */
+		shvpu_driver_deinit(pDriver);
 	}
 }
 

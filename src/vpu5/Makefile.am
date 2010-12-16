@@ -9,7 +9,7 @@ endif
 omxshvpu5avc_LTLIBRARIES = $(shvpu5avc_la)
 
 libomxshvpu5avc_la_SOURCES = \
-	library_entry_point.c \
+	library_entry_point.c shvpu5_common_driver.c \
 	shvpu5_common_log.c shvpu5_common_queue.c \
 	shvpu5_common_uio.c shvpu5_common_sync.c \
 	shvpu5_avcdec_omx.c shvpu5_avcdec_omx.h \

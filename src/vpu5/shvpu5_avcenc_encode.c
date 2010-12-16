@@ -42,53 +42,6 @@ malloc_aligned(size_t size, int align)
 	return malloc(size);
 }
 
-static unsigned long
-load_fw(char *filename)
-{
-	void *vaddr;
-	unsigned char *p;
-	unsigned long paddr;
-	int fd;
-	size_t len;
-	ssize_t ret;
-
-	fd = open(filename, O_RDONLY);
-	if (fd < 0) {
-		perror("fw open");
-		goto fail_open;
-	}
-	len = lseek(fd, 0, SEEK_END);
-	logd("size of %s = %x\n", filename, len);
-
-	vaddr = p = pmem_alloc(len, 32, &paddr);
-	if (vaddr == NULL) {
-		fprintf(stderr, "pmem alloc failed.\n");
-		goto fail_pmem_alloc;
-	}
-
-	lseek(fd, 0, SEEK_SET);
-	do {
-		ret = read(fd, p, len);
-		if (ret <= 0) {
-			perror("read fw");
-			goto fail_read;
-		}
-		len -= ret;
-		p += ret;
-	} while (len > 0);
-
-	return paddr;
-fail_read:
-	pmem_free(vaddr, lseek(fd, 0, SEEK_END));
-fail_pmem_alloc:
-	close(fd);
-fail_open:
-	return -1;
-}
-
-	/* malloc() on 32bit environment must allocate
-	   an 8-bytes aligned region. */
-
 static inline int
 alloc_fmem(int width, int height, MCVENC_FMEM_INFO_T *fmem)
 {
@@ -188,34 +141,9 @@ encode_init(shvpu_codec_t *pCodec)
 	MCVENC_CMN_PROPERTY_T *pCmnProp = &pCodec->cmnProp;
         AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
 
-	/*** initialize vpu ***/
-	pCodec->wbufVpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
-	pCodec->wbufVpu5.work_area_addr =
-		malloc_aligned(pCodec->wbufVpu5.work_size, 4);
-	logd("work_area_addr = %p\n", pCodec->wbufVpu5.work_area_addr);
-	if ((pCodec->wbufVpu5.work_area_addr == NULL) ||
-	    ((unsigned int)pCodec->wbufVpu5.work_area_addr & 0x03U)) {
-		ret = -1L;
-		goto init_failed;
-	}
-
-	pCodec->vpu5Init.vpu_base_address		= 0xfe900000;
-	pCodec->vpu5Init.vpu_image_endian		= MCIPH_LIT;
-	pCodec->vpu5Init.vpu_stream_endian		= MCIPH_LIT;
-	pCodec->vpu5Init.vpu_firmware_endian	= MCIPH_LIT;
-	pCodec->vpu5Init.vpu_interrupt_enable	= MCIPH_ON;
-	pCodec->vpu5Init.vpu_clock_supply_control	= MCIPH_CLK_CTRL;
-	pCodec->vpu5Init.vpu_constrained_mode	= MCIPH_OFF;
-	pCodec->vpu5Init.vpu_address_mode		= MCIPH_ADDR_32BIT;
-	pCodec->vpu5Init.vpu_reset_mode		= MCIPH_RESET_SOFT;
-	logd("----- invoke mciph_vpu5Init() -----\n");
-	ret = mciph_vpu5_init(&(pCodec->wbufVpu5),
-			      (MCIPH_API_T *)&mciph_hg_api_tbl,
-			      &(pCodec->vpu5Init),
-			      &(pCodec->pDrvInfo));
-	logd("----- resume from mciph_vpu5_init() -----\n");
-	if (ret != MCIPH_NML_END)
-		goto init_failed;
+	ret = shvpu_driver_init(&pCodec->pDriver);
+	if (ret != 0)
+		return ret;
 
 	/*** initialize encoder ***/
 	extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
@@ -223,23 +151,28 @@ encode_init(shvpu_codec_t *pCodec)
 		.work_area_size = 0x5800,  /* 20 + 2KiB */
 	};
 	static MCVENC_FIRMWARE_INFO_T fw;
+	size_t fwsize;
 	wbuf_enc.work_area_addr = malloc_aligned(wbuf_enc.work_area_size, 4);
 	logd("work_area_addr = %p\n", wbuf_enc.work_area_addr);
-	fw.ce_firmware_addr = load_fw(VPU5HG_FIRMWARE_PATH "/p264e_h.bin");
+	fw.ce_firmware_addr =
+		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/p264e_h.bin",
+				     &fwsize);
 	logd("ce_firmware_addr = %lx\n", fw.ce_firmware_addr);
-	fw.vlc_firmware_addr = load_fw(VPU5HG_FIRMWARE_PATH "/s264e.bin");
+	fw.vlc_firmware_addr =
+		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/s264e.bin",
+				     &fwsize);
 	logd("vlc_firmware_addr = %lx\n", fw.vlc_firmware_addr);
 	logd("----- invoke mcvenc_init_encoder() -----\n");
 	ret = mcvenc_init_encoder((MCVENC_API_T *)&avcenc_api_tbl,
 				  pCmnProp, &wbuf_enc,
-				  &fw, pCodec->pDrvInfo,
+				  &fw, pCodec->pDriver->pDrvInfo,
 				  &pContext);
 	logd("----- resume from mcvenc_init_encoder() -----\n");
 	if (ret != MCIPH_NML_END)
 		return ret;
 
 	pContext->user_info = (void *)pCodec;
-	logd("drv_info = %p\n", pCodec->pDrvInfo);
+	logd("drv_info = %p\n", pCodec->pDriver->pDrvInfo);
 	pCodec->pContext = pContext;
 
 	/*** initialize work area ***/
@@ -643,5 +576,5 @@ encode_finalize(void *context)
 void
 encode_deinit(shvpu_codec_t *pCodec)
 {
-	free(pCodec->wbufVpu5.work_area_addr);
+	return;
 }

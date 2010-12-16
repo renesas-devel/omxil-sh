@@ -32,6 +32,7 @@
 #include "mcvenc.h"
 #include "uiomux/uiomux.h"
 #include "avcenc.h"
+#include "shvpu5_driver.h"
 
 #define SHVPU_AVCENC_OUTBUF_SIZE (1280 * 720)
 #define SHVPU_AVCENC_OUTBUF_NUM 3
@@ -50,21 +51,11 @@ typedef struct {
 } shvpu_avcenc_outbuf_t;
 
 typedef struct {
-	MCIPH_DRV_INFO_T*	pDrvInfo;
-	/** @param mode for VPU5HG video decoder */
-	MCIPH_WORK_INFO_T	wbufVpu5;
-	MCIPH_VPU5_INIT_T	vpu5Init;
-	UIOMux*			uiomux;
-	void*			pContext;
-	pthread_t		intrHandler;
-	int			frameId;
-	int			nEncoded;
-	int			lastOutput;
-	unsigned char		isEndInput;
-	tsem_t			uioSem;
-	int			isExit;
+	shvpu_driver_t		*pDriver;
 
 	/* only for encode */
+	void*			pContext;
+	int			nEncoded;
 	shvpu_avcenc_outbuf_t	streamBuffer[SHVPU_AVCENC_OUTBUF_NUM];
         MCVENC_CMN_PROPERTY_T	cmnProp;
         AVCENC_OPTION_T		avcOpt;
