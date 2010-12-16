@@ -399,8 +399,17 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 
 			MCVDEC_FMEM_INFO_T *outbuf = shvpu_avcdec_Private->avCodec->fmem;
 			for (i = 0 ; i < bufs; i++) {
-				phys_pmem_free(outbuf->Ypic_addr, (outbuf->Ypic_bot_addr - outbuf->Ypic_addr) *2 );
-				phys_pmem_free(outbuf->Cpic_addr, (outbuf->Cpic_bot_addr - outbuf->Cpic_addr) * 2);
+				/*
+				   the buffer size =
+				       width * height * 3 / 2,
+				   and
+				   Ypic_bot_addr - Y_pic_addr =
+				       (width * height) / 2 ... (A),
+				   So we need to free (A) * 3.
+				*/
+				phys_pmem_free(outbuf->Ypic_addr,
+					       (outbuf->Ypic_bot_addr -
+						outbuf->Ypic_addr) * 3);
 				outbuf++;
 			}
 			free(shvpu_avcdec_Private->avCodec->fmem);
