@@ -250,6 +250,7 @@ src/mp3/Makefile
 src/vpu/Makefile
 src/vpu5/Makefile
 src/tools/Makefile
+src/spu2/Makefile
 include/Makefile
 ])
 AC_OUTPUT
