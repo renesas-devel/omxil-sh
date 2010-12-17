@@ -242,6 +242,45 @@ if test "x${ac_enable_vpu}" = xyes ; then
   AM_CONDITIONAL(HAVE_SHCODECS, [test "x$HAVE_SHCODECS" = "xyes"])
 fi
 
+AC_ARG_WITH(spumw-path,
+	[AC_HELP_STRING(
+		[--with-spumw-path=PATH],
+		[set path prefix for the SPU middleware [default=/usr/local]])
+	],
+	[SPUMW_PATH=$withval],
+	[SPUMW_PATH=/usr/local]
+)
+AC_SUBST(SPUMW_PATH)
+AC_ARG_ENABLE(spu2aacdec,
+	[AC_HELP_STRING(
+		[--enable-spu2aacdec],
+		[enable building of SPU2 AAC decoder support])
+	],
+	[ac_enable_spu2aacdec=yes],
+	[ac_enable_spu2aacdec=no]
+)
+AC_ARG_ENABLE(spu2aacenc,
+	[AC_HELP_STRING(
+		[--enable-spu2aacenc],
+		[enable building of SPU2 AAC encoder support])
+	],
+	[ac_enable_spu2aacenc=yes],
+	[ac_enable_spu2aacenc=no]
+)
+SPU_SUPPORT_MSG=
+test "$ac_enable_spu2aacdec" = yes && SPU_SUPPORT_MSG="d$SPU_SUPPORT_MSG"
+test "$ac_enable_spu2aacenc" = yes && SPU_SUPPORT_MSG="e$SPU_SUPPORT_MSG"
+case "$SPU_SUPPORT_MSG" in
+ed)	SPU_SUPPORT="yes (SPU2AACDEC, SPU2AACENC)";;
+e)	SPU_SUPPORT="yes (SPU2AACENC)";;
+d)	SPU_SUPPORT="yes (SPU2AACDEC)";;
+*)	SPU_SUPPORT="no";;
+esac
+test "$SPU_SUPPORT_MSG" && PKG_CHECK_MODULES([UIOMUX], [uiomux])
+AM_CONDITIONAL(HAVE_SHSPU2AACDEC, [test "$ac_enable_spu2aacdec" = yes])
+AM_CONDITIONAL(HAVE_SHSPU2AACENC, [test "$ac_enable_spu2aacenc" = yes])
+AM_CONDITIONAL(HAVE_SHSPU2, [test "$ac_enable_spu2aacdec" = yes -o "$ac_enable_spu2aacenc" = yes])
+
 AC_CONFIG_FILES([
 Makefile
 src/Makefile
@@ -262,6 +301,7 @@ AC_MSG_RESULT([
     AAC support: ................. $HAACD_SUPPORT
     MP3 support: ................. $HMP3D_SUPPORT
     VPU support: ................. $VPU_SUPPORT
+    SPU support: ................. $SPU_SUPPORT
 
 ------------------------------------------------------------------------
 ])
