@@ -55,6 +55,6 @@ long
 notify_userdata(MCVDEC_CONTEXT_T *context,
 		MCVDEC_USERDATA_T *userdata, long userdata_layer)
 {
-	loge("%s() invoked.\n", __FUNCTION__);
+	logd("%s() invoked.\n", __FUNCTION__);
 	return MCVDEC_NML_END;
 }
