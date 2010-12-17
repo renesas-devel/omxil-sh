@@ -290,6 +290,7 @@ src/vpu/Makefile
 src/vpu5/Makefile
 src/tools/Makefile
 src/spu2/Makefile
+src/spu2/spu2helper/Makefile
 include/Makefile
 ])
 AC_OUTPUT

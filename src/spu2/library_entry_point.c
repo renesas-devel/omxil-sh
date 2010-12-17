@@ -28,109 +28,86 @@
 
 */
 
-#include <stdlib.h>
-#include <string.h>
-
 #include <bellagio/st_static_component_loader.h>
+#include "omx_audiodec_component.h"
+#include "omx_audioenc_component.h"
 
-#define NUM_COMPONENTS (sizeof(stComponents) / sizeof(stComponent))
-
-extern OMX_ERRORTYPE shspu2_aacdec_Constructor(OMX_COMPONENTTYPE*, OMX_STRING);
-extern OMX_ERRORTYPE shspu2_aacenc_Constructor(OMX_COMPONENTTYPE*, OMX_STRING);
-
-typedef struct {
-  char* role;
-  char *name;
-  char *name_specific;
-  OMX_ERRORTYPE (*constructor)(OMX_COMPONENTTYPE* ,OMX_STRING);
-} stComponent;
-
-stComponent stComponents[] = {
-  /* standard components - no functionality */
-  { "audio_decoder.avc",   "OMX.re.audio_decoder",
-    "OMX.re.audio_decoder.aac",    shspu2_aacdec_Constructor  },
-  { "audio_encoder.avc",   "OMX.re.audio_encoder",
-    "OMX.re.audio_encoder.avc",    shspu2_aacenc_Constructor  },
-};
-
-static OMX_ERRORTYPE add_component(
-  stLoaderComponentType* pst,
-  char* role,
-  char* name,
-  char* name_specific,
-  OMX_ERRORTYPE (*constructor)(OMX_COMPONENTTYPE* ,OMX_STRING))
+int
+omx_component_library_Setup (stLoaderComponentType **stComponents)
 {
-  unsigned int i;
+	OMX_U32 i = 0;
+	stLoaderComponentType tmp1, *tmp2[2], *p;
 
-  pst->componentVersion.s.nVersionMajor = 1;
-  pst->componentVersion.s.nVersionMinor = 1;
-  pst->componentVersion.s.nRevision = 1;
-  pst->componentVersion.s.nStep = 1;
+	if (stComponents == NULL) {
+		tmp2[0] = &tmp1;
+		tmp2[1] = &tmp1;
+		stComponents = tmp2;
+	}
+#ifdef LIBSPUHELPERAACDEC
+	p = stComponents[i++];
+	/** component 1 - audio decoder */
+	p->componentVersion.s.nVersionMajor = 1;
+	p->componentVersion.s.nVersionMinor = 1;
+	p->componentVersion.s.nRevision = 1;
+	p->componentVersion.s.nStep = 1;
 
-  pst->name = calloc(1, OMX_MAX_STRINGNAME_SIZE);
-  if (pst->name == NULL) {
-    return OMX_ErrorInsufficientResources;
-  }
-  strcpy(pst->name, name);
-  pst->name_specific_length = 1;
-  pst->constructor = constructor;
+	p->name = calloc (1, OMX_MAX_STRINGNAME_SIZE);
+	if (p->name == NULL)
+		return OMX_ErrorInsufficientResources;
+	strcpy (p->name, "OMX.re.audio_decoder");
+	p->name_specific_length = 1;
+	p->constructor = omx_audiodec_component_Constructor;
 
-  pst->name_specific = calloc(pst->name_specific_length, sizeof(char *));
-  pst->role_specific = calloc(pst->name_specific_length, sizeof(char *));
+	p->name_specific = calloc (1, sizeof p->name_specific[0]);
+	if (p->name_specific == NULL)
+		return OMX_ErrorInsufficientResources;
+	p->role_specific = calloc (1, sizeof p->role_specific[0]);
+	if (p->role_specific == NULL)
+		return OMX_ErrorInsufficientResources;
 
-  for(i=0;i<pst->name_specific_length;i++) {
-    pst->name_specific[i] = calloc(1, OMX_MAX_STRINGNAME_SIZE);
-    if (pst->name_specific[i] == NULL) {
-      return OMX_ErrorInsufficientResources;
-    }
-  }
+	p->name_specific[0] = calloc (1, OMX_MAX_STRINGNAME_SIZE);
+	if (p->name_specific[0] == NULL)
+		return OMX_ErrorInsufficientResources;
+	p->role_specific[0] = calloc (1, OMX_MAX_STRINGNAME_SIZE);
+	if (p->role_specific[0] == NULL)
+		return OMX_ErrorInsufficientResources;
 
-  for(i=0;i<pst->name_specific_length;i++) {
-    pst->role_specific[i] = calloc(1, OMX_MAX_STRINGNAME_SIZE);
-    if (pst->role_specific[i] == NULL) {
-      return OMX_ErrorInsufficientResources;
-    }
-  }
+	strcpy (p->name_specific[0], "OMX.re.audio_decoder.aac");
+	strcpy (p->role_specific[0], "audio_decoder.aac");
+#endif
 
-  strcpy(pst->name_specific[0], name_specific);
-  strcpy(pst->role_specific[0], role);
+#ifdef LIBSPUHELPERAACENC
+	p = stComponents[i++];
+	/** component 1 - audio decoder */
+	p->componentVersion.s.nVersionMajor = 1;
+	p->componentVersion.s.nVersionMinor = 1;
+	p->componentVersion.s.nRevision = 1;
+	p->componentVersion.s.nStep = 1;
 
-  return OMX_ErrorNone;
+	p->name = calloc (1, OMX_MAX_STRINGNAME_SIZE);
+	if (p->name == NULL)
+		return OMX_ErrorInsufficientResources;
+	strcpy (p->name, "OMX.re.audio_encoder");
+	p->name_specific_length = 1;
+	p->constructor = omx_audioenc_component_Constructor;
+
+	p->name_specific = calloc (1, sizeof p->name_specific[0]);
+	if (p->name_specific == NULL)
+		return OMX_ErrorInsufficientResources;
+	p->role_specific = calloc (1, sizeof p->role_specific[0]);
+	if (p->role_specific == NULL)
+		return OMX_ErrorInsufficientResources;
+
+	p->name_specific[0] = calloc (1, OMX_MAX_STRINGNAME_SIZE);
+	if (p->name_specific[0] == NULL)
+		return OMX_ErrorInsufficientResources;
+	p->role_specific[0] = calloc (1, OMX_MAX_STRINGNAME_SIZE);
+	if (p->role_specific[0] == NULL)
+		return OMX_ErrorInsufficientResources;
+
+	strcpy (p->name_specific[0], "OMX.re.audio_encoder.aac");
+	strcpy (p->role_specific[0], "audio_encoder.aac");
+#endif
+
+	return i;
 }
-
-/** @brief The library entry point. It must have the same name for each
-  * library fo the components loaded by the ST static component loader.
-  *
-  * This function fills the version, the component name and if existing also the roles
-  * and the specific names for each role. This base function is only an explanation.
-  * For each library it must be implemented, and it must fill data of any component
-  * in the library
-  *
-  * @param stComponents pointer to an array of components descriptors.If NULL, the
-  * function will return only the number of components contained in the library
-  *
-  * @return number of components contained in the library
-  */
-int omx_component_library_Setup(stLoaderComponentType **stLoader)
-{
-  int i;
-
-  DEBUG(DEB_LEV_FUNCTION_NAME, "In %s \n",__func__);
-
-  if (stLoader == NULL) {
-    DEBUG(DEB_LEV_FUNCTION_NAME, "Out of %s \n",__func__);
-    return NUM_COMPONENTS; // Return Number of Components
-  }
-
-  for(i = 0; i < sizeof(stComponents) / sizeof(stComponent); i++)
-    add_component(stLoader[i],
-		  stComponents[i].role,
-		  stComponents[i].name,
-		  stComponents[i].name_specific,
-		  stComponents[i].constructor);
-
-  DEBUG(DEB_LEV_FUNCTION_NAME, "Out of %s \n",__func__);
-
-  return NUM_COMPONENTS;
-}
-
