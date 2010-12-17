@@ -619,6 +619,7 @@ spu_aac_encode_deinit (void)
 	long ret = RAACES_R_GOOD;
 	if (initflag) {
 		ret = spu_aac_encode_stop ();
+		RAACES_Quit ();
 		spu_deinit ();
 		buflist_free (&inbuflist);
 		buflist_free (&outbuflist);

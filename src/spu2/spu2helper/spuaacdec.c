@@ -666,6 +666,7 @@ spu_aac_decode_deinit (void)
 	long err = RSACPDS_RTN_GOOD;
 	if (initflag) {
 		err = spu_aac_decode_stop ();
+		RSACPDS_Quit ();
 		spu_deinit ();
 		buflist_free (&inbuflist);
 		buflist_free (&outbuflist);
