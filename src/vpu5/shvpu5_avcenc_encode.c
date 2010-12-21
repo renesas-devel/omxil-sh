@@ -487,6 +487,7 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	    unsigned char *pBuffer, int nWidth, int nHeight,
 	    void **ppConsumed)
 {
+	shvpu_codec_t *pCodec = (shvpu_codec_t *)pContext->user_info;
 	MCVENC_CAPT_INFO_T capt_info;
 	MCVENC_FRM_STAT_T frm_stat;
 	int memWidth, memHeight, ret;
@@ -506,8 +507,11 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	capt_info.fmem[1].Ypic_addr = 0U;
 	capt_info.fmem[1].Cpic_addr = 0U;
 	logd("----- invoke mcvenc_encode_picture() -----\n");
+	uiomux_lock_vpu();
 	ret = mcvenc_encode_picture(pContext, frameId, MCVENC_OFF,
 				    &capt_info, &frm_stat);
+	if (pCodec->cmnProp.B_pic_mode != 0)
+		uiomux_unlock_vpu();
 	logd("----- resume from mcvenc_encode_picture() = %d "
 	       "-----\n", ret);
 	switch (ret) {

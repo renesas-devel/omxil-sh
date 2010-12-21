@@ -1122,10 +1122,12 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	}
 
 	logd("----- invoke mcvdec_decode_picture() -----\n");
+	uiomux_lock_vpu();
 	ret = mcvdec_decode_picture(pCodecContext,
 				    &shvpu_avcdec_Private->avPicInfo,
 				    pCodec->codecMode,
 				    &hdr_ready);
+	uiomux_unlock_vpu();
 	logd("----- resume from mcvdec_decode_picture() = %d -----\n", ret);
 	logd("hdr_ready = %s\n", (hdr_ready == MCVDEC_ON) ?
 	     "MCVDEC_ON" : "MCVDEC_OFF");
