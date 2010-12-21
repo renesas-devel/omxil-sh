@@ -31,7 +31,7 @@
 #include <OMX_Video.h>
 
 /** Maximum Number of Video Component Instance*/
-#define MAX_COMPONENT_VIDEODEC 1
+#define MAX_COMPONENT_VIDEODEC 2
 /** Counter of Video Component Instance*/
 static OMX_U32 noVideoDecInstance = 0;
 
@@ -51,6 +51,7 @@ static OMX_U32 noVideoDecInstance = 0;
  * @param cComponentName is the name of the constructed component
  */
 static OMX_PARAM_REVPU5MAXINSTANCE maxVPUInstances = {
+	/* SYNC mode set if nInstances */
 	.nInstances = 1
 };
 
