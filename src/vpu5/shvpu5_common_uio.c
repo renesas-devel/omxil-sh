@@ -126,8 +126,9 @@ uio_create_int_handle(pthread_t *thid,
 		      void *(*routine)(void *), void *arg,
 		      tsem_t *uio_sem, int *exit_flag)
 {
-	int ret;
+	int ret, priority;
 	void **args;
+	static struct sched_param sparam;
 
 	args = calloc(4, sizeof(void *));
 	args[0] = routine;
@@ -138,6 +139,12 @@ uio_create_int_handle(pthread_t *thid,
 
 	ret = pthread_create(thid, NULL, uio_int_handler,
 			     (void *)args);
+        priority = sched_get_priority_max(SCHED_RR);
+	sparam.sched_priority = priority;
+	if (ret = pthread_setschedparam(*thid, SCHED_RR, &sparam)) {
+		loge("WARN: the uio interrupt handler "
+		     "may be preempted.");
+	}
 
 	return ret;
 }
