@@ -310,6 +310,8 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	pCodec->pBMIQueue = calloc(1, sizeof(queue_t));
 	shvpu_queue_init(pCodec->pBMIQueue);
 	pCodec->enoughHeaders = pCodec->enoughPreprocess = OMX_FALSE;
+	pthread_cond_init(&pCodec->cond_buffering, NULL);
+	pthread_mutex_init(&pCodec->mutex_buffering, NULL);
 	pContext->user_info = (void *)shvpu_avcdec_Private;
 	shvpu_avcdec_Private->avCodec = pCodec;
 	shvpu_avcdec_Private->avCodecContext = pContext;

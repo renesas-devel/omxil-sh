@@ -38,7 +38,10 @@ notify_buffering(MCVDEC_CONTEXT_T *context, long status)
 	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 
 	logd("%s(%ld) invoked.\n", __FUNCTION__, status);
+	pthread_mutex_lock(&pCodec->mutex_buffering);
 	pCodec->enoughPreprocess = OMX_TRUE;
+	pthread_cond_broadcast(&pCodec->cond_buffering);
+	pthread_mutex_unlock(&pCodec->mutex_buffering);
 	if (pCodec->enoughHeaders)
 		if (shvpu_avcdec_Private->enable_sync)
 			pCodec->codecMode = MCVDEC_MODE_SYNC;

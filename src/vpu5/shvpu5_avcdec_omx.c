@@ -1074,6 +1074,19 @@ show_error(void *context)
 	return ret;
 }
 
+static inline void
+wait_vlc_buffering(shvpu_codec_t *pCodec)
+{
+	pthread_mutex_lock(&pCodec->mutex_buffering);
+	while (!pCodec->enoughPreprocess) {
+		pthread_cond_wait(&pCodec->cond_buffering,
+				  &pCodec->mutex_buffering);
+	}
+	pthread_mutex_unlock(&pCodec->mutex_buffering);
+
+	return;
+}
+
 /** This function is used to process the input buffer and
     provide one output buffer
 */
@@ -1116,18 +1129,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	logd("hdr_ready = %s\n", (hdr_ready == MCVDEC_ON) ?
 	     "MCVDEC_ON" : "MCVDEC_OFF");
 
-	if (pCodec->codecMode == MCVDEC_MODE_BUFFERING) {
-		if (hdr_ready == MCVDEC_ON) {
-			pCodec->enoughHeaders = OMX_TRUE;
-			if (pCodec->enoughPreprocess)
-				if (shvpu_avcdec_Private->enable_sync)
-					pCodec->codecMode = MCVDEC_MODE_SYNC;
-				else
-					pCodec->codecMode = MCVDEC_MODE_MAIN;
-		}
-		return;
-	}
-
 	switch (ret) {
 	case MCVDEC_CAUTION:
 	case MCVDEC_CONCEALED_1:
@@ -1150,6 +1151,10 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		loge("nothing to decode (%d)\n", ret);
 		break;
 	case MCVDEC_RESOURCE_LACK:
+		if (pCodec->codecMode == MCVDEC_MODE_BUFFERING) {
+			wait_vlc_buffering(pCodec);
+			break;
+		}
 	case MCVDEC_ERR_FMEM:
 	case MCVDEC_NO_FMEM_TO_WRITE:
 		err = OMX_ErrorInsufficientResources;
@@ -1228,6 +1233,19 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 				 0, // This is the input port index
 				 NULL);
 		}
+	}
+
+	if (pCodec->codecMode == MCVDEC_MODE_BUFFERING) {
+		if (hdr_ready == MCVDEC_ON) {
+			pCodec->enoughHeaders = OMX_TRUE;
+			if (pCodec->enoughPreprocess)
+				if (shvpu_avcdec_Private->enable_sync) {
+					pCodec->codecMode = MCVDEC_MODE_SYNC;
+				} else {
+					pCodec->codecMode = MCVDEC_MODE_MAIN;
+				}
+		}
+		return;
 	}
 
 	logd("----- invoke mcvdec_get_output_picture() -----\n");

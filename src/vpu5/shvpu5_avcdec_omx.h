@@ -99,6 +99,8 @@ typedef struct {
 	queue_t*		pBMIQueue;
 	OMX_BOOL		enoughHeaders;
 	OMX_BOOL		enoughPreprocess;
+	pthread_cond_t		cond_buffering;
+	pthread_mutex_t		mutex_buffering;
 	int 			has_eos;
 	MCVDEC_FMEM_INFO_T  	*fmem;
 	shvpu_firmware_size_t	fw_size;
