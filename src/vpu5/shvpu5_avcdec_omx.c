@@ -1147,8 +1147,10 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		return;
 	case MCVDEC_NO_STRM:
 	case MCVDEC_INPUT_END:
-		err = OMX_ErrorUnderflow;
-		loge("nothing to decode (%d)\n", ret);
+		if (!shvpu_avcdec_Private->bIsEOSReached) {
+			err = OMX_ErrorUnderflow;
+			loge("nothing to decode (%d)\n", ret);
+		}
 		break;
 	case MCVDEC_RESOURCE_LACK:
 		if (pCodec->codecMode == MCVDEC_MODE_BUFFERING) {
