@@ -16,6 +16,7 @@ libomxshvpu5avc_la_SOURCES = \
 	shvpu5_avcdec_parse.c shvpu5_avcdec_decode.c \
 	shvpu5_avcdec_input.c shvpu5_avcdec_output.c \
 	shvpu5_avcdec_notify.c shvpu5_avcdec_bufcalc.c \
+	shvpu5_common_ipmmu.c \
 	shvpu5_avcdec.h \
 	shvpu5_avcenc_omx.c shvpu5_avcenc_omx.h \
 	shvpu5_avcenc_encode.c shvpu5_avcenc_output.c \
@@ -30,5 +31,6 @@ libomxshvpu5avc_la_LIBADD = \
 libomxshvpu5avc_la_CFLAGS = \
 	$(OMXIL_CFLAGS) \
 	-I@VPUMW_PATH@/include $(UIOMUX_CFLAGS) \
-	-DVPU5HG_FIRMWARE_PATH=\"@VPUMW_PATH@/lib/firmware\"
+	-DVPU5HG_FIRMWARE_PATH=\"@VPUMW_PATH@/lib/firmware\" \
+	-DIPMMU_ENABLE
 libomxshvpu5avc_la_LDFLAGS = $(OMXIL_LDFLAGS) $(VPU5HG_LDFLAGS)

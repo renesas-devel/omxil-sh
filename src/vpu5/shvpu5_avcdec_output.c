@@ -48,28 +48,60 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	int i;
 	void *ypic_vaddr, *cpic_vaddr;
 	unsigned int ypic_paddr, cpic_paddr;
+	unsigned long pitch;
+	int next_power = 0;
+	int align_bits;
+	unsigned long align, alloc_size;
         shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
                 (shvpu_avcdec_PrivateType *)context->user_info;
 
 	logd("%s(%d, %d, %d, %d) invoked.\n",
 	       __FUNCTION__, xpic_size, ypic_size,
 	       requrired_fmem_cnt, nsampling);
-	fmem_x = (xpic_size + 15) / 16 * 16;
-	fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
 
-/*	if (_fmem != NULL)
-		free(_fmem);*/
-	_fmem = shvpu_avcdec_Private->avCodec->fmem = *fmem =
-		(MCVDEC_FMEM_INFO_T *)
+#ifdef IPMMU_ENABLE
+	pitch = xpic_size;
+	for (i = 0; i < 32; i++) {
+		if (pitch <= 1)
+			break;
+		if (pitch & 1)
+			next_power = 1;
+		pitch >>=1;
+	}
+	pitch = (1 << (i + next_power));
+	init_ipmmu(0, shvpu_avcdec_Private->uio_start_phys, i + next_power,
+		&align_bits);
+	fmem_x = pitch;
+	align = (1 << align_bits);
+	fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
+	alloc_size = ((fmemsize * 3 / 2) + (align - 1)) & ~(align - 1);
+#else
+	fmem_x = (xpic_size + 15) / 16 * 16;
+	align = 32;
+	fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
+	alloc_size = fmemsize * 3 / 2;
+#endif
+
+	shvpu_avcdec_Private->avCodec->fmem = (shvpu_fmem_data *)
+		calloc (requrired_fmem_cnt, sizeof(shvpu_fmem_data));
+
+	_fmem = *fmem = (MCVDEC_FMEM_INFO_T *)
 		calloc(requrired_fmem_cnt, sizeof(MCVDEC_FMEM_INFO_T));
 	shvpu_avcdec_Private->avCodec->fmem_size = requrired_fmem_cnt;
-	if (*fmem == NULL)
+	if (*fmem == NULL || shvpu_avcdec_Private->avCodec->fmem == NULL)
 		return MCVDEC_FMEM_SKIP_BY_USER;
 
+
 	for (i=0; i<requrired_fmem_cnt; i++) {
-		ypic_vaddr = pmem_alloc(fmemsize * 3 /2, 32, &ypic_paddr);
+		ypic_vaddr = pmem_alloc(alloc_size, align, &ypic_paddr);
 		if (ypic_vaddr == NULL)
 			break;
+		shvpu_avcdec_Private->avCodec->fmem[i].fmem_start = ypic_paddr;
+		shvpu_avcdec_Private->avCodec->fmem[i].fmem_len = alloc_size;
+#ifdef IPMMU_ENABLE
+		/*access via IPMMUI*/
+		ypic_paddr = phys_to_ipmmui(ypic_paddr);
+#endif
 		cpic_paddr = ypic_paddr + fmemsize;
 		_fmem[i].Ypic_addr = ypic_paddr;
 		logd("fmem[%d].Ypic_addr = %lx\n", i, _fmem[i].Ypic_addr);
