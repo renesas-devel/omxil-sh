@@ -36,7 +36,6 @@
 #include <OMX_Core.h>
 #include <string.h>
 #include <bellagio/omx_base_filter.h>
-#include "RSACPDS_API.h"
 
 #define AUDIO_DEC_BASE_NAME     "OMX.re.audio_decoder"
 #define AUDIO_DEC_AAC_NAME      "OMX.re.audio_decoder.aac"

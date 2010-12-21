@@ -438,7 +438,7 @@ OMX_ERRORTYPE omx_audioenc_component_Deinit(OMX_COMPONENTTYPE *openmaxStandComp)
 
   mid_ret = spu_aac_encode_deinit ();
   switch(mid_ret){
-  case RAACES_R_GOOD:
+  case 0:
     return OMX_ErrorNone;
   default:
     return OMX_ErrorTimeout;

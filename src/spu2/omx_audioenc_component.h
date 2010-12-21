@@ -36,7 +36,6 @@
 #include <OMX_Core.h>
 #include <string.h>
 #include <bellagio/omx_base_filter.h>
-#include "RAACES_API.h"
 
 #define AUDIO_ENC_BASE_NAME    "OMX.re.audio_encoder"
 

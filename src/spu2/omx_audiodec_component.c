@@ -454,7 +454,7 @@ OMX_ERRORTYPE omx_audiodec_component_Deinit(OMX_COMPONENTTYPE *openmaxStandComp)
 
   mid_ret = spu_aac_decode_deinit();
   switch(mid_ret){
-  case RSACPDS_RTN_GOOD:
+  case 0:
     return OMX_ErrorNone;
   default:
     return OMX_ErrorTimeout;
