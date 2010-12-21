@@ -10,6 +10,7 @@
 
 #define AACSIZE 1536
 #define PCMSIZE 2048
+#define BUFALIGNMENT 0x800000
 #define ERR(msg) fprintf (stderr, "spuaacenc: %s\n", msg)
 
 struct buflist {
@@ -176,6 +177,7 @@ buflist_init (void *buf, uint32_t addr, struct buflist **buflist,
 {
 	uint8_t *bufc;
 	struct buflist *p;
+	uint32_t naddr, naddrblk;
 
 	bufc = (uint8_t *)buf;
 	*buflist = NULL;
@@ -186,15 +188,24 @@ buflist_init (void *buf, uint32_t addr, struct buflist **buflist,
 	buf_used->prevnext = &buf_used->next;
 	pthread_mutex_init (&buf_used->lock, NULL);
 	while (totalsize >= blocksize) {
-		p = malloc (sizeof *p);
-		if (p == NULL)
-			abort ();
-		p->buf = (void *)bufc;
-		p->addr = addr;
-		p->alen = blocksize;
-		p->anext = *buflist;
-		*buflist = p;
-		buflist_add (buf_free, p);
+		naddr = (uint32_t)(addr / BUFALIGNMENT);
+		naddrblk = (uint32_t)((addr + blocksize) / BUFALIGNMENT);
+		if (naddr < naddrblk
+			&& (addr + blocksize) % BUFALIGNMENT) {
+			fprintf(stderr, "Avoided the over 8MB alignment "
+				"of the middleware limit.(addr=%08x)\n",
+				addr);
+		} else {
+			p = malloc (sizeof *p);
+			if (p == NULL)
+				abort ();
+			p->buf = (void *)bufc;
+			p->addr = addr;
+			p->alen = blocksize;
+			p->anext = *buflist;
+			*buflist = p;
+			buflist_add (buf_free, p);
+		}
 		bufc += blocksize;
 		addr += blocksize;
 		totalsize -= blocksize;
