@@ -1157,8 +1157,11 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			wait_vlc_buffering(pCodec);
 			break;
 		}
-	case MCVDEC_ERR_FMEM:
 	case MCVDEC_NO_FMEM_TO_WRITE:
+		/* FIXME */
+		if (pCodec->codecMode == MCVDEC_MODE_SYNC)
+			break;
+	case MCVDEC_ERR_FMEM:
 		err = OMX_ErrorInsufficientResources;
 		break;
 	case MCVDEC_NML_END:
