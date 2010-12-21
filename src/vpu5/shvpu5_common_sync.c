@@ -41,7 +41,7 @@ static pthread_mutex_t mutex_vp5[2] = {
 	PTHREAD_MUTEX_INITIALIZER,
 	PTHREAD_MUTEX_INITIALIZER
 };
-static int counter_vp5[2], status_vp5[2];
+static int counter_vp5[2][2], status_vp5[2][2];
 
 #define VP5_MODULE_VLC		0
 #define VP5_MODULE_CE		1
@@ -50,8 +50,8 @@ static inline void
 _uf_vp5_restart(void *context, long mode, int module)
 {
 	pthread_mutex_lock(&mutex_vp5[module]);
-	status_vp5[module] = 0;
-	counter_vp5[module]++;
+	status_vp5[module][mode] = 0;
+	counter_vp5[module][mode]++;
 	pthread_cond_broadcast(&cond_vp5[module]);
 	pthread_mutex_unlock(&mutex_vp5[module]);
 	return;
@@ -60,19 +60,20 @@ _uf_vp5_restart(void *context, long mode, int module)
 static inline void
 _uf_vp5_sleep(void *context, long mode, int module)
 {
-	int prev;
+	int prev, ret;
 
 	pthread_mutex_lock(&mutex_vp5[module]);
-	if (status_vp5[module] == 0) {
+	if (status_vp5[module][mode] == 0) {
+		printf("MODULE(%d) not running!\n", module);
 		pthread_mutex_unlock(&mutex_vp5[module]);
 		return;
 	}
 
 	//pthread_mutex_lock(&mutex_vp5[module]);
-	prev = counter_vp5[module];
+	prev = counter_vp5[module][mode];
 	do {
-		pthread_cond_wait(&cond_vp5[module], &mutex_vp5[module]);
-	} while (prev == counter_vp5[module]);
+		ret = pthread_cond_wait(&cond_vp5[module], &mutex_vp5[module]);
+	} while (prev == counter_vp5[module][mode]);
 	pthread_mutex_unlock(&mutex_vp5[module]);
 
 	return;
@@ -82,7 +83,7 @@ static inline void
 _uf_vp5_start(void *context, long mode, int module)
 {
 	pthread_mutex_lock(&mutex_vp5[module]);
-	status_vp5[module] = 1;
+	status_vp5[module][mode] = 1;
 	pthread_mutex_unlock(&mutex_vp5[module]);
 
 	return;
