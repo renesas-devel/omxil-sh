@@ -67,6 +67,8 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
 	omx_base_video_PortType *inPort, *outPort;
 	OMX_U32 i;
+	unsigned int reg, mem;
+	size_t memsz;
 
 	/* initialize component private data */
 	if (!pComponent->pComponentPrivate) {
@@ -222,6 +224,13 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 		noVideoDecInstance--;
 		return OMX_ErrorInsufficientResources;
 	}
+
+	/* initialize a vpu uio */
+	uio_init("VPU", &reg, &shvpu_avcdec_Private->uio_start_phys, &memsz);
+
+	loge("reg = %x, mem = %x, memsz = %d\n",
+	     reg, shvpu_avcdec_Private->uio_start_phys, memsz);
+
 	return eError;
 }
 
@@ -269,6 +278,8 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 	omx_base_filter_Destructor(pComponent);
 	noVideoDecInstance--;
 
+	uio_deinit();
+
 	return OMX_ErrorNone;
 }
 
@@ -278,17 +289,9 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 OMX_ERRORTYPE
 shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
 {
-	unsigned int reg, mem;
-	size_t memsz;
 	int ret;
 
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec initialized\n");
-	/* initialize a vpu uio */
-	uio_init("VPU", &reg, &shvpu_avcdec_Private->uio_start_phys, &memsz);
-
-	loge("reg = %x, mem = %x, memsz = %d\n",
-	     reg, shvpu_avcdec_Private->uio_start_phys, memsz);
-
 	uio_get_virt_memory(&shvpu_avcdec_Private->uio_start,
 			&shvpu_avcdec_Private->uio_size);
 

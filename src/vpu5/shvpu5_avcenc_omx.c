@@ -206,6 +206,7 @@ shvpu_avcenc_Destructor(OMX_COMPONENTTYPE * pComponent)
 
 	omx_base_filter_Destructor(pComponent);
 	noVideoEncInstance--;
+	uio_deinit();
 
 	return OMX_ErrorNone;
 }
