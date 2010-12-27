@@ -75,6 +75,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	align = (1 << align_bits);
 	fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
 	alloc_size = ((fmemsize * 3 / 2) + (align - 1)) & ~(align - 1);
+	alloc_size += align;
 #else
 	fmem_x = (xpic_size + 15) / 16 * 16;
 	align = 32;
@@ -99,6 +100,8 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		shvpu_avcdec_Private->avCodec->fmem[i].fmem_start = ypic_paddr;
 		shvpu_avcdec_Private->avCodec->fmem[i].fmem_len = alloc_size;
 #ifdef IPMMU_ENABLE
+		/*alignment offset*/
+		ypic_paddr = (ypic_paddr + (align - 1)) & ~(align - 1);
 		/*access via IPMMUI*/
 		ypic_paddr = phys_to_ipmmui(ypic_paddr);
 #endif
