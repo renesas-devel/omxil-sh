@@ -414,15 +414,22 @@ encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode)
 
 int
 encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,
-		     int framerate, int bitrate, char ratecontrol)
+		     unsigned int framerate, int bitrate, char ratecontrol)
 {
+	int fr;
+
+	/* calculate framerate_resolution */
+	fr = (framerate & 0xffffU) * 1000 / 65536;
+	fr += (framerate >> 16) * 1000;
+	if (fr <= 0)
+		return -1;
 	pCodec->cmnProp.x_pic_size = width;
 	pCodec->cmnProp.fmem_x_size[MCVENC_FMX_LDEC] =
 		pCodec->cmnProp.fmem_x_size[MCVENC_FMX_REF] =
 		pCodec->cmnProp.fmem_x_size[MCVENC_FMX_CAPT] = width;
 	pCodec->cmnProp.y_pic_size = height;
-	pCodec->cmnProp.framerate_resolution = framerate;
-
+	pCodec->cmnProp.framerate_resolution = fr;
+	pCodec->cmnProp.framerate_tick = 1000;
 	encode_set_bitrate(pCodec, bitrate, ratecontrol);
 
 	return 0;
