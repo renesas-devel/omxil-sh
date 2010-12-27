@@ -1069,8 +1069,7 @@ handle_buffer_flush(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 		      *pOutBufExchanged, *pIsOutBufferNeeded,
 		      pInputSem->semval, pOutputSem->semval);
 
-		if (*pIsOutBufferNeeded == OMX_FALSE
-		    && PORT_IS_BEING_FLUSHED(pOutPort)) {
+		if (*ppOutBuffer && PORT_IS_BEING_FLUSHED(pOutPort)) {
 			pOutPort->ReturnBufferFunction(pOutPort,
 						       *ppOutBuffer);
 			(*pOutBufExchanged)--;
@@ -1081,8 +1080,7 @@ handle_buffer_flush(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 			      "output buffer\n");
 		}
 
-		if (*pIsInBufferNeeded == OMX_FALSE
-		    && PORT_IS_BEING_FLUSHED(pInPort)) {
+		if (*ppInBuffer && PORT_IS_BEING_FLUSHED(pInPort)) {
 			pInPort->ReturnBufferFunction(pInPort, *ppInBuffer);
 			*ppInBuffer = NULL;
 			(*pInBufExchanged)--;
