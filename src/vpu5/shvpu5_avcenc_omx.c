@@ -681,13 +681,20 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 		port->sVideoParam.eColorFormat =
 			port->sPortParam.format.video.eColorFormat;
 
-		ret = encode_set_propaties(
-			shvpu_avcenc_Private->avCodec,
-			pPortDef->format.video.nFrameWidth,
-			pPortDef->format.video.nFrameHeight,
-			pPortDef->format.video.xFramerate,
-			pPortDef->format.video.nBitrate,
-			' ' /* rate control not specified */);
+		if (port->sPortParam.eDir == OMX_DirInput) {
+			ret = encode_set_propaties(
+				shvpu_avcenc_Private->avCodec,
+				pPortDef->format.video.nFrameWidth,
+				pPortDef->format.video.nFrameHeight,
+				pPortDef->format.video.xFramerate,
+				pPortDef->format.video.nBitrate,
+				' ' /* rate control not specified */);
+		} else {
+			ret = encode_set_bitrate(
+				shvpu_avcenc_Private->avCodec,
+				pPortDef->format.video.nBitrate,
+				' ' /* rate control not specified */);
+		}
 		if (ret)
 			eError = OMX_ErrorNone;
 		break;
