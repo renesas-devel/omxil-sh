@@ -42,7 +42,7 @@ static OMX_U32 noVideoEncInstance = 0;
 /** define the minimum input buffer size */
 #define DEFAULT_VIDEO_INPUT_BUF_SIZE					\
 	(DEFAULT_WIDTH * DEFAULT_HEIGHT * 3 / 2)	// YUV subQCIF
-#define DEFAULT_VIDEO_OUTPUT_BUF_SIZE	256
+#define DEFAULT_VIDEO_OUTPUT_BUF_SIZE	(1024 * 1024)	// 1MiB
 
 #define INPUT_BUFFER_COUNT 2
 #define INPUT_PICTURE_COLOR_FMT		OMX_COLOR_FormatYUV420Planar
