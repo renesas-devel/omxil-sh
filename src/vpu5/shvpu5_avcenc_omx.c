@@ -429,10 +429,6 @@ handleState_LoadedtoIdle(OMX_COMPONENTTYPE * pComponent,
 		(shvpu_avcenc_PrivateType *) pComponent->pComponentPrivate;
 	OMX_ERRORTYPE err;
 
-	err = omx_base_component_MessageHandler(pComponent, message);
-	if (err != OMX_ErrorNone)
-		return err;
-
 	err = shvpu_avcenc_vpuLibInit(shvpu_avcenc_Private);
 	if (err != OMX_ErrorNone) {
 		DEBUG(DEB_LEV_ERR,
