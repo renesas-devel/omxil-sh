@@ -57,7 +57,10 @@ static void interrupt_handler(void *arg)
 ************************************************************************/
 void uio_deinit(struct uio *uio)
 {
-	UIO_close(uio->dev.up);
+	if (uio->dev.up) {
+		UIO_close(uio->dev.up);
+		uio->dev.up = NULL;
+	}
 }
 
 int uio_init(struct uio *uio, const char *name)
