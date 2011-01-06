@@ -203,9 +203,9 @@ static void* _omx_base_filter_BufferMgmtFunction (void* param) {
       if((pInputBuffer->nFlags & OMX_BUFFERFLAG_EOS) == OMX_BUFFERFLAG_EOS && pInputBuffer->nFilledLen==0) {
         (*(omx_base_filter_Private->BufferMgmtCallback))(openmaxStandComp, pInputBuffer, pOutputBuffer);
 	if (pOutputBuffer->nFilledLen != 0) {
-		eosspecial = 1;
 		goto skip_eosspecial;
 	}
+	eosspecial = 1;
         DEBUG(DEB_LEV_FULL_SEQ, "Detected EOS flags in input buffer filled len=%d\n", (int)pInputBuffer->nFilledLen);
         pOutputBuffer->nFlags=pInputBuffer->nFlags;
         pInputBuffer->nFlags=0;
@@ -238,10 +238,11 @@ static void* _omx_base_filter_BufferMgmtFunction (void* param) {
       tsem_wait(omx_base_filter_Private->bStateSem);
     }
 
-    if (eosspecial)
-	    continue;
     /*Input Buffer has been completely consumed. So, return input buffer*/
     if((isInputBufferNeeded == OMX_FALSE) && (pInputBuffer->nFilledLen==0)) {
+      if ((pInputBuffer->nFlags & OMX_BUFFERFLAG_EOS) == OMX_BUFFERFLAG_EOS &&
+	  eosspecial == 0)
+	continue;
       if(omx_base_filter_Private->state != OMX_StateInvalid)
         pInPort->ReturnBufferFunction(pInPort,pInputBuffer);
       inBufExchanged--;
