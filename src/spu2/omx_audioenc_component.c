@@ -487,6 +487,8 @@ void omx_audioenc_component_BufferMgmtCallback(OMX_COMPONENTTYPE *openmaxStandCo
   pOutputBuffer->nFilledLen += (char *)outbuf - (char *)outbufstart;
   pInputBuffer->nOffset += (char *)inbuf - (char *)inbufstart;
   pInputBuffer->nFilledLen -= (char *)inbuf - (char *)inbufstart;
+  if (pInputBuffer->nFilledLen == 0)
+    pInputBuffer->nOffset = 0;
 
   /** return output buffer */
 }

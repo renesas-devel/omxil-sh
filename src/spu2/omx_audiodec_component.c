@@ -540,6 +540,8 @@ void omx_audiodec_component_BufferMgmtCallback(OMX_COMPONENTTYPE *openmaxStandCo
   pOutputBuffer->nFilledLen += (char *)outbuf - (char *)outbufstart;
   pInputBuffer->nOffset += (char *)inbuf - (char *)inbufstart;
   pInputBuffer->nFilledLen -= (char *)inbuf - (char *)inbufstart;
+  if (pInputBuffer->nFilledLen == 0)
+    pInputBuffer->nOffset = 0;
 #if 0
 
   DEBUG(DEB_LEV_FULL_SEQ, "In %s chl=%d sRate=%d \n", __func__,
