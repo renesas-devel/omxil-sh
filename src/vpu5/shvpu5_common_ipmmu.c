@@ -15,6 +15,11 @@
 #define IPMMUI_PAGE_SIZE 0x10 /*map all VPU accesses through one 64MB page*/
 #define IPMMUI_PAGE_MASK 0xFC000000 /*mask for 64MB page*/
 #define IMPPUI_ACCESS_BASE 0x80000000
+/*meram mapping data necessary set MERAM address mode*/
+#define MERAM_BASE 0xE8000000
+#define MERAM_LEN 0x8
+#define MEVCR1 0x4
+
 static int mem_fd;
 static void *ipmmu_base = NULL;
 
@@ -31,6 +36,7 @@ read_ipmmu_reg(void *base, int off, unsigned long *dest)
 }
 int
 init_ipmmu(int pmb, unsigned long phys_base, int log2_stride, int *align) {
+	void *meram_base;
 	if (!ipmmu_base) {
 		mem_fd = open ("/dev/mem", O_RDWR);
 		if (mem_fd < 0) {
@@ -42,8 +48,23 @@ init_ipmmu(int pmb, unsigned long phys_base, int log2_stride, int *align) {
 			MAP_SHARED, mem_fd, IPMMUI_BASE);
 		if (ipmmu_base == MAP_FAILED) {
 			perror("mmap");
+			close(mem_fd);
 			return -1;
 		}
+		/* Set the MERAM address range to 0xC0000000 - 0xDFFFFFFF
+		   so that it doesn't overlay the IPMMUI address range*/
+
+		meram_base = mmap(NULL, MERAM_LEN, PROT_READ | PROT_WRITE,
+			MAP_SHARED, mem_fd, MERAM_BASE);
+
+		if (meram_base == MAP_FAILED) {
+			loge("%s: MERAM mmap error", __FUNCTION__);
+			munmap(ipmmu_base, IPMMUI_LEN);
+			close(mem_fd);
+			return -1;
+		}
+		write_ipmmu_reg(meram_base, MEVCR1, (1 << 29));
+		munmap(meram_base, MERAM_LEN);
 	}
 
 	if (log2_stride < TB)
