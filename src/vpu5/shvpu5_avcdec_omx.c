@@ -1762,6 +1762,21 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 			sizeof(OMX_PARAM_REVPU5MAXINSTANCE));
 		break;
 	}
+	case OMX_IndexParamQueryIPMMUEnable:
+	{
+		OMX_PARAM_REVPU5IPMMUSTATUS *pIpmmuEnable;
+		pIpmmuEnable = ComponentParameterStructure;
+		if ((eError =
+			checkHeader(pIpmmuEnable,
+			sizeof(OMX_PARAM_REVPU5IPMMUSTATUS)) != OMX_ErrorNone))
+			break;
+#ifdef IPMMU_ENABLE
+		pIpmmuEnable->bIpmmuEnable = OMX_TRUE;
+#else
+		pIpmmuEnable->bIpmmuEnable = OMX_FALSE;
+#endif
+		break;
+	}
 	default:		/*Call the base component function */
 		return omx_base_component_GetParameter(hComponent,
 						       nParamIndex,
