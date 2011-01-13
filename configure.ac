@@ -242,6 +242,21 @@ if test "x${ac_enable_vpu}" = xyes ; then
   AM_CONDITIONAL(HAVE_SHCODECS, [test "x$HAVE_SHCODECS" = "xyes"])
 fi
 
+AC_ARG_ENABLE(ipmmu,
+     [  --enable-ipmmu         disable building of IPMMU support ],
+     [
+	if test "x$enableval" = "xno"; then
+		ac_enable_ipmmu=no
+	else
+		ac_enable_ipmmu=yes
+	fi
+     ], [ ac_enable_ipmmu=no] )
+AM_CONDITIONAL(USE_IPMMU,
+      [test "$ac_enable_ipmmu" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"])
+
+if test "$ac_enable_ipmmu" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"; then
+	VPU_SUPPORT="${VPU_SUPPORT} + IPMMU"
+fi
 AC_ARG_WITH(spumw-path,
 	[AC_HELP_STRING(
 		[--with-spumw-path=PATH],
