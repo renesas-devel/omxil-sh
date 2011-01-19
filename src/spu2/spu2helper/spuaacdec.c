@@ -569,6 +569,7 @@ skip_inbuf:
 			return err;
 		if (RSACPDS_SetDecOpt(paac, 0) < RSACPDS_RTN_GOOD) {
 			ERR ("RSACPDS_SetDecOpt error");
+			middleware_close ();
 			return -1;
 		}
 		stream_input_end_cb (0);
@@ -578,6 +579,7 @@ skip_inbuf:
 			if (RSACPDS_GetAdtsHeader (paac, &adtsheader, &bcnt)
 			    < RSACPDS_RTN_GOOD) {
 				ERR ("RSACPDS_GetAdtsHeader error");
+				middleware_close ();
 				return -1;
 			}
 			break;
@@ -585,6 +587,7 @@ skip_inbuf:
 			if (RSACPDS_GetAdifHeader (paac, &adifheader, &bcnt)
 			    < RSACPDS_RTN_GOOD) {
 				ERR ("RSACPDS_GetAdifHeader error");
+				middleware_close ();
 				return -1;
 			}
 			break;
@@ -592,12 +595,14 @@ skip_inbuf:
 			if (RSACPDS_SetFormat (paac, sampling_frequency_index)
 			    < RSACPDS_RTN_GOOD) {
 				ERR ("RSACPDS_SetFormat error");
+				middleware_close ();
 				return -1;
 			}
 			break;
 		}			
 		if (RSACPDS_Decode (paac, 0) < RSACPDS_RTN_GOOD) {
 			ERR ("RSACPDS_Decode error");
+			middleware_close ();
 		        return RSACPDS_GetStatusCode(paac);
 		}
 		initflag = 2;
@@ -617,7 +622,7 @@ skip_inbuf:
 			if (RSACPDS_DecodeStatus (paac, &status)
 			    < RSACPDS_RTN_GOOD) {
 				ERR ("RSACPDS_DecodeStatus error");
-				return -1;
+				status = 0;
 			}
 			if (status != 0)
 				/*ERR ("strange status; ignored")*/;

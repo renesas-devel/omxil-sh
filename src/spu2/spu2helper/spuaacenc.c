@@ -567,6 +567,7 @@ skip_inbuf:
 			} else {
 				fprintf (stderr, "Odd statusCode %08lx\n", paac2->statusCode);
 			}
+			middleware_close ();
 			return ret;
 		}
 		initflag = 2;
