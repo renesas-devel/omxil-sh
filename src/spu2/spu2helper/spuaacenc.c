@@ -28,12 +28,18 @@ struct buflist_head {
 	int popnull;
 };
 
+struct state_info {
+	/* variables set/cleared by main thread: */
+	int init;
+	int open;
+};
+
 static short *pcmbuf, *pcmaddr;
 static unsigned char *aacbuf, *aacaddr;
 static pthread_mutex_t transfer_lock, transfer_done;
 static int transfer_flag;
 static RAACES_AAC *paac2;
-static int initflag = 0; /* 0:befor initialize, 1:initialized, 2:decoding */
+static struct state_info state;
 static struct buflist *inbuflist, *outbuflist;
 static struct buflist *inbuf_current, *outbuf_current;
 static struct buflist *inbuf_copying, *outbuf_copying;
@@ -451,10 +457,10 @@ copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
 int
 spu_aac_encode_init (void)
 {
-	if (initflag == 0) {
+	if (state.init == 0) {
 		if (init3 () < 0)
 			return -1;
-		initflag = 1;
+		state.init = 1;
 	}
 	return 0;
 }
@@ -465,7 +471,7 @@ spu_aac_encode_setfmt (struct spu_aac_encode_setfmt_data *format)
 	RAACES_AACInfo ai;
 
 	spu_aac_encode_init ();
-	if (initflag == 2)
+	if (state.open != 0)
 		return -2; /* need to stop encoding before calling this func */
 	switch (format->channel) {
 	default:
@@ -565,10 +571,10 @@ once_again:
 	need_input = 0;
 	need_output = 0;
 	inbuf_added = 0;
-	if (initflag == 0) {
+	if (state.init == 0) {
 		if (init3 () < 0)
 			return -1;
-		initflag = 1;
+		state.init = 1;
 	}
 	pthread_mutex_lock (&transfer_lock);
 	endflag = outbuf_end;
@@ -582,7 +588,7 @@ once_again:
 	/* transfer input buffers */
 	copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
 
-	if (initflag == 1) {
+	if (state.open == 0) {
 		inbuf_end = 0;
 		pthread_mutex_lock (&transfer_lock);
 		outbuf_end = 0;
@@ -604,7 +610,7 @@ once_again:
 			encoder_close (0);
 			return err;
 		}
-		initflag = 2;
+		state.open = 1;
 	} else {
 		if (need_input != 0)
 			pcm_input_end_cb (0);
@@ -619,7 +625,7 @@ once_again:
 			if (paac2->statusCode != 0)
 				ERR ("strange statusCode; ignored");
 			err = encoder_close (0);
-			initflag = 1;
+			state.open = 0;
 		}
 	} else if (buflist_poll (&inbuf_used) != NULL &&
 		   buflist_poll (&outbuf_free) != NULL) {
@@ -648,9 +654,9 @@ long
 spu_aac_encode_stop (void)
 {
 	long err = RAACES_R_GOOD;
-	if (initflag == 2) {
+	if (state.open != 0) {
 		err = encoder_close (1);
-		initflag = 1;
+		state.open = 0;
 	}
 	return err;
 }
@@ -659,13 +665,13 @@ long
 spu_aac_encode_deinit (void)
 {
 	long err = RAACES_R_GOOD;
-	if (initflag) {
+	if (state.init != 0) {
 		err = spu_aac_encode_stop ();
 		RAACES_Quit ();
 		spu_deinit ();
 		buflist_free (&inbuflist);
 		buflist_free (&outbuflist);
-		initflag = 0;
+		state.init = 0;
 	}
 	return err;
 }

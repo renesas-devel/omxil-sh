@@ -28,12 +28,18 @@ struct buflist_head {
 	int popnull;
 };
 
+struct state_info {
+	/* variables set/cleared by main thread: */
+	int init;
+	int open;
+};
+
 static short *pcmbuf, *pcmaddr;
 static RSACPDS_AAC *paac;
 static unsigned char *aacbuf, *aacaddr;
 static pthread_mutex_t transfer_lock, transfer_done;
 static int transfer_flag;
-static int initflag = 0;
+static struct state_info state;
 static struct buflist *inbuflist, *outbuflist;
 static struct buflist *inbuf_current, *outbuf_current;
 static struct buflist *inbuf_copying, *outbuf_copying;
@@ -476,10 +482,10 @@ copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
 int
 spu_aac_decode_init (void)
 {
-	if (initflag == 0) {
+	if (state.init == 0) {
 		if (init2 () < 0)
 			return -1;
-		initflag = 1;
+		state.init = 1;
 	}
 	return 0;
 }
@@ -493,7 +499,7 @@ spu_aac_decode_setfmt (struct spu_aac_decode_setfmt_data *format)
 		return -1;
 	}
 	spu_aac_decode_init ();
-	if (initflag == 2)
+	if (state.open != 0)
 		return -2; /* need to stop decoding before calling this func */
 	switch (format->type) {
 	default:
@@ -603,10 +609,10 @@ once_again:
 	need_input = 0;
 	need_output = 0;
 	inbuf_added = 0;
-	if (initflag == 0) {
+	if (state.init == 0) {
 		if (init2 () < 0)
 			return -1;
-		initflag = 1;
+		state.init = 1;
 	}
 	pthread_mutex_lock (&transfer_lock);
 	endflag = outbuf_end;
@@ -620,7 +626,7 @@ once_again:
 	/* transfer input buffers */
 	copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
 
-	if (initflag == 1) {
+	if (state.open == 0) {
 		inbuf_end = 0;
 		pthread_mutex_lock (&transfer_lock);
 		outbuf_end = 0;
@@ -646,7 +652,7 @@ once_again:
 			decoder_close (0);
 			return RSACPDS_GetStatusCode(paac);
 		}
-		initflag = 2;
+		state.open = 1;
 	} else {
 		if (need_input != 0)
 			stream_input_end_cb (0);
@@ -668,7 +674,7 @@ once_again:
 			if (status != 0)
 				/*ERR ("strange status; ignored")*/;
 			err = decoder_close (0);
-			initflag = 1;
+			state.open = 0;
 		}
 	} else if (buflist_poll (&inbuf_used) != NULL &&
 		   buflist_poll (&outbuf_free) != NULL) {
@@ -697,9 +703,9 @@ long
 spu_aac_decode_stop (void)
 {
 	long err = RSACPDS_RTN_GOOD;
-	if (initflag == 2) {
+	if (state.open != 0) {
 		err = decoder_close (1);
-		initflag = 1;
+		state.open = 0;
 	}
 	return err;
 }
@@ -708,13 +714,13 @@ long
 spu_aac_decode_deinit (void)
 {
 	long err = RSACPDS_RTN_GOOD;
-	if (initflag) {
+	if (state.init != 0) {
 		err = spu_aac_decode_stop ();
 		RSACPDS_Quit ();
 		spu_deinit ();
 		buflist_free (&inbuflist);
 		buflist_free (&outbuflist);
-		initflag = 0;
+		state.init = 0;
 	}
 	return err;
 }
