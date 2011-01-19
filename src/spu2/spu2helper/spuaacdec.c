@@ -324,6 +324,39 @@ middleware_close (void)
 	return err;
 }
 
+static long
+get_header (void)
+{
+	RSACPDS_AdtsHeader adtsheader;
+	RSACPDS_AdifHeader adifheader;
+	unsigned long bcnt;
+
+	switch (format_type) {
+	case SPU_AAC_DECODE_SETFMT_TYPE_ADTS:
+		if (RSACPDS_GetAdtsHeader (paac, &adtsheader, &bcnt)
+		    < RSACPDS_RTN_GOOD) {
+			ERR ("RSACPDS_GetAdtsHeader error");
+			return -1;
+		}
+		break;
+	case SPU_AAC_DECODE_SETFMT_TYPE_ADIF:
+		if (RSACPDS_GetAdifHeader (paac, &adifheader, &bcnt)
+		    < RSACPDS_RTN_GOOD) {
+			ERR ("RSACPDS_GetAdifHeader error");
+			return -1;
+		}
+		break;
+	default:
+		if (RSACPDS_SetFormat (paac, sampling_frequency_index)
+		    < RSACPDS_RTN_GOOD) {
+			ERR ("RSACPDS_SetFormat error");
+			return -1;
+		}
+		break;
+	}
+	return 0;
+}
+
 static void
 copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
 {
@@ -549,9 +582,6 @@ spu_aac_decode_setfmt (struct spu_aac_decode_setfmt_data *format)
 long
 spu_aac_decode (void **destbuf, void *destend, void **srcbuf, void *srcend)
 {
-	RSACPDS_AdtsHeader adtsheader;
-	RSACPDS_AdifHeader adifheader;
-	unsigned long bcnt;
 	long status;
 	int need_input, need_output;
 	int inbuf_added;
@@ -595,31 +625,10 @@ once_again:
 		}
 		stream_input_end_cb (0);
 		pcm_output_end_cb (0, 0);
-		switch (format_type) {
-		case SPU_AAC_DECODE_SETFMT_TYPE_ADTS:
-			if (RSACPDS_GetAdtsHeader (paac, &adtsheader, &bcnt)
-			    < RSACPDS_RTN_GOOD) {
-				ERR ("RSACPDS_GetAdtsHeader error");
-				middleware_close ();
-				return -1;
-			}
-			break;
-		case SPU_AAC_DECODE_SETFMT_TYPE_ADIF:
-			if (RSACPDS_GetAdifHeader (paac, &adifheader, &bcnt)
-			    < RSACPDS_RTN_GOOD) {
-				ERR ("RSACPDS_GetAdifHeader error");
-				middleware_close ();
-				return -1;
-			}
-			break;
-		default:
-			if (RSACPDS_SetFormat (paac, sampling_frequency_index)
-			    < RSACPDS_RTN_GOOD) {
-				ERR ("RSACPDS_SetFormat error");
-				middleware_close ();
-				return -1;
-			}
-			break;
+		err = get_header ();
+		if (err < 0) {
+			middleware_close ();
+			return err;
 		}
 		if (RSACPDS_Decode (paac, 0) < RSACPDS_RTN_GOOD) {
 			ERR ("RSACPDS_Decode error");
