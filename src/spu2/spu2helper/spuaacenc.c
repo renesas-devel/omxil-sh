@@ -652,6 +652,24 @@ close_and_ret:
 	encoder_close (0);
 	state.open = 0;
 ret:
+	if (inbuf_copying != NULL) {
+		buflist_add (&inbuf_free, inbuf_copying);
+		inbuf_copying = NULL;
+	}
+	if (outbuf_current != NULL) {
+		buflist_add (&outbuf_free, outbuf_current);
+		outbuf_current = NULL;
+	}
+	do {
+		if (inbuf_current != NULL)
+			buflist_add (&inbuf_free, inbuf_current);
+		inbuf_current = buflist_pop (&inbuf_used);
+	} while (inbuf_current != NULL);
+	do {
+		if (outbuf_copying != NULL)
+			buflist_add (&outbuf_free, outbuf_copying);
+		outbuf_copying = buflist_pop (&outbuf_used);
+	} while (outbuf_copying != NULL);
 	return err;
 }
 
