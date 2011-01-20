@@ -594,9 +594,9 @@ once_again:
 		outbuf_end = 0;
 		pthread_mutex_unlock (&transfer_lock);
 		if (inbuf_added == 0)
-			return err;
+			goto ret;
 		if ((err = middleware_open ()) < 0)
-			return err;
+			goto ret;
 		pcm_input_end_cb (0);
 		stream_output_end_cb (0, 0);
 		/* Encoding all frames.(2nd param nframe is zero) */
@@ -607,8 +607,7 @@ once_again:
 			} else {
 				fprintf (stderr, "Odd statusCode %08lx\n", paac2->statusCode);
 			}
-			encoder_close (0);
-			return err;
+			goto close_and_ret;
 		}
 		state.open = 1;
 	} else {
@@ -641,12 +640,18 @@ once_again:
 		}
 	}
 	if (callbk_err != 0) {
-		return -1;
+		err = -1;
+		goto close_and_ret;
 	}
 
 	if (inbuf_end != 0 && (uint8_t *)destend - (uint8_t *)*destbuf != 0 &&
 	    buflist_poll (&outbuf_used) != NULL)
 		goto once_again;
+	return err;
+close_and_ret:
+	encoder_close (0);
+	state.open = 0;
+ret:
 	return err;
 }
 
