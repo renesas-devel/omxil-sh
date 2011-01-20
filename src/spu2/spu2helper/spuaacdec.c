@@ -325,6 +325,17 @@ middleware_close (void)
 }
 
 static long
+decoder_close (int decoding)
+{
+	long err;
+
+	if (decoding != 0 && RSACPDS_DecoderStop (paac) != 0)
+		ERR ("RSACPDS_DecoderStop error");
+	err = middleware_close ();
+	return err;
+}
+
+static long
 get_header (void)
 {
 	RSACPDS_AdtsHeader adtsheader;
@@ -620,19 +631,19 @@ once_again:
 			return err;
 		if (RSACPDS_SetDecOpt(paac, 0) < RSACPDS_RTN_GOOD) {
 			ERR ("RSACPDS_SetDecOpt error");
-			middleware_close ();
+			decoder_close (0);
 			return -1;
 		}
 		stream_input_end_cb (0);
 		pcm_output_end_cb (0, 0);
 		err = get_header ();
 		if (err < 0) {
-			middleware_close ();
+			decoder_close (0);
 			return err;
 		}
 		if (RSACPDS_Decode (paac, 0) < RSACPDS_RTN_GOOD) {
 			ERR ("RSACPDS_Decode error");
-			middleware_close ();
+			decoder_close (0);
 			return RSACPDS_GetStatusCode(paac);
 		}
 		initflag = 2;
@@ -656,7 +667,7 @@ once_again:
 			}
 			if (status != 0)
 				/*ERR ("strange status; ignored")*/;
-			err = middleware_close ();
+			err = decoder_close (0);
 			initflag = 1;
 		}
 	} else if (buflist_poll (&inbuf_used) != NULL &&
@@ -687,9 +698,7 @@ spu_aac_decode_stop (void)
 {
 	long err = RSACPDS_RTN_GOOD;
 	if (initflag == 2) {
-		if (RSACPDS_DecoderStop (paac) != 0)
-			ERR ("RSACPDS_DecoderStop error");
-		err = middleware_close ();
+		err = decoder_close (1);
 		initflag = 1;
 	}
 	return err;

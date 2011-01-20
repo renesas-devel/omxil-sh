@@ -330,6 +330,19 @@ middleware_close (void)
 	return ret;
 }
 
+static long
+encoder_close (int encoding)
+{
+	long err;
+
+	if (encoding != 0 && RAACES_EncoderStop (paac2) < RAACES_R_GOOD) {
+		ERR ("RAACES_EncoderStop error");
+		fprintf (stderr, "statusCode %08lx\n", paac2->statusCode);
+	}
+	err = middleware_close ();
+	return err;
+}
+
 static void
 copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
 {
@@ -588,7 +601,7 @@ once_again:
 			} else {
 				fprintf (stderr, "Odd statusCode %08lx\n", paac2->statusCode);
 			}
-			middleware_close ();
+			encoder_close (0);
 			return ret;
 		}
 		initflag = 2;
@@ -605,7 +618,7 @@ once_again:
 			 buflist_poll (&outbuf_used) == NULL) {
 			if (paac2->statusCode != 0)
 				ERR ("strange statusCode; ignored");
-			ret = middleware_close ();
+			ret = encoder_close (0);
 			initflag = 1;
 		}
 	} else if (buflist_poll (&inbuf_used) != NULL &&
@@ -636,11 +649,7 @@ spu_aac_encode_stop (void)
 {
 	long ret = RAACES_R_GOOD;
 	if (initflag == 2) {
-		if (RAACES_EncoderStop (paac2) < RAACES_R_GOOD) {
-			ERR ("RAACES_EncoderStop error");
-			fprintf (stderr, "statusCode %08lx\n", paac2->statusCode);
-		}
-		ret = middleware_close ();
+		ret = encoder_close (1);
 		initflag = 1;
 	}
 	return ret;
