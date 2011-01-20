@@ -349,7 +349,7 @@ encoder_close (int encoding)
 	return err;
 }
 
-static void
+static int
 copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
 {
 	uint8_t *_dstbuf;
@@ -379,7 +379,10 @@ copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
 		_dstlen -= copylen;
 		outbuf_copied += copylen;
 	}
+	if (*destbuf == (void *)_dstbuf && *destbuf != destend)
+		return 0;
 	*destbuf = (void *)_dstbuf;
+	return 1;
 }
 
 static void
@@ -414,7 +417,7 @@ handle_last_input_buffer (int *pneed_input, int *pinbuf_added)
 	}
 }
 
-static void
+static int
 copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
 		   int *pinbuf_added)
 {
@@ -423,7 +426,7 @@ copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
 
 	if (srcbuf == NULL) {
 		handle_last_input_buffer (pneed_input, pinbuf_added);
-		return;
+		return 1;
 	}
 	_srcbuf = (uint8_t *)*srcbuf;
 	_srclen = (uint8_t *)srcend - _srcbuf;
@@ -451,7 +454,10 @@ copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
 		_srclen -= copylen;
 		inbuf_copied += copylen;
 	}
+	if (*srcbuf == (void *)_srcbuf && *srcbuf != srcend)
+		return 0;
 	*srcbuf = (void *)_srcbuf;
+	return 1;
 }
 
 int
@@ -565,6 +571,7 @@ spu_aac_encode (void **destbuf, void *destend, void **srcbuf, void *srcend)
 	int need_input, need_output;
 	int inbuf_added;
 	int endflag;
+	int incopy, outcopy;
 	long err = RAACES_R_GOOD;
 
 once_again:
@@ -578,17 +585,14 @@ once_again:
 	}
 	pthread_mutex_lock (&transfer_lock);
 	endflag = outbuf_end;
-	if (endflag == 0)
-		transfer_flag = 1;
+	transfer_flag = 1;
 	pthread_mutex_unlock (&transfer_lock);
 
-	/* transfer output buffers */
-	copy_output_buffer (destbuf, destend, &need_output);
-
-	/* transfer input buffers */
-	copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
+	outcopy = copy_output_buffer (destbuf, destend, &need_output);
+	incopy = copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
 
 	if (state.open == 0) {
+		callbk_err = 0;
 		inbuf_end = 0;
 		pthread_mutex_lock (&transfer_lock);
 		outbuf_end = 0;
@@ -616,38 +620,23 @@ once_again:
 		if (need_output != 0)
 			stream_output_end_cb (0, 0);
 	}
-	if (inbuf_end == 2) {
-		if (endflag == 0)
-			pthread_mutex_lock (&transfer_done);
-		else if (outbuf_copying == NULL &&
-			 buflist_poll (&outbuf_used) == NULL) {
-			if (paac2->statusCode != 0)
-				ERR ("strange statusCode; ignored");
-			err = encoder_close (0);
-			state.open = 0;
-		}
-	} else if (buflist_poll (&inbuf_used) != NULL &&
-		   buflist_poll (&outbuf_free) != NULL) {
-		pthread_mutex_lock (&transfer_done);
-	} else {
-		pthread_mutex_lock (&transfer_lock);
-		if (transfer_flag == 0) {
-			pthread_mutex_unlock (&transfer_lock);
-			pthread_mutex_lock (&transfer_done);
-		} else {
-			transfer_flag = 0;
-			pthread_mutex_unlock (&transfer_lock);
-		}
+	if (inbuf_end == 2 && endflag != 0 && outbuf_copying == NULL &&
+	    buflist_poll (&outbuf_used) == NULL) {
+		if (paac2->statusCode != 0)
+			ERR ("strange statusCode; ignored");
+		err = encoder_close (0);
+		state.open = 0;
+		goto ret;
 	}
 	if (callbk_err != 0) {
 		err = -1;
 		goto close_and_ret;
 	}
-
-	if (inbuf_end != 0 && (uint8_t *)destend - (uint8_t *)*destbuf != 0 &&
-	    buflist_poll (&outbuf_used) != NULL)
+	if ((inbuf_end == 2 || incopy == 0) && outcopy == 0) {
+		pthread_mutex_lock (&transfer_done);
 		goto once_again;
-	return err;
+	}
+	goto unlock_ret;
 close_and_ret:
 	encoder_close (0);
 	state.open = 0;
@@ -670,6 +659,15 @@ ret:
 			buflist_add (&outbuf_free, outbuf_copying);
 		outbuf_copying = buflist_pop (&outbuf_used);
 	} while (outbuf_copying != NULL);
+unlock_ret:
+	pthread_mutex_lock (&transfer_lock);
+	if (transfer_flag == 0) {
+		pthread_mutex_unlock (&transfer_lock);
+		pthread_mutex_lock (&transfer_done);
+	} else {
+		transfer_flag = 0;
+		pthread_mutex_unlock (&transfer_lock);
+	}
 	return err;
 }
 
