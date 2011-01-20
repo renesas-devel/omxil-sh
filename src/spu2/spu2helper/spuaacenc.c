@@ -364,12 +364,48 @@ copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
 }
 
 static void
+handle_last_input_buffer (int *pneed_input, int *pinbuf_added)
+{
+	switch (inbuf_end) {
+	case 0:
+		if (inbuf_copying != NULL && inbuf_copied > 0) {
+			inbuf_copying->flen = inbuf_copied;
+			if (buflist_add (&inbuf_used, inbuf_copying))
+				*pneed_input = 1;
+			*pinbuf_added = 1;
+			inbuf_copying = NULL;
+		}
+		inbuf_end = 1;
+		/* fall through */
+	case 1:
+		if (inbuf_copying == NULL) {
+			inbuf_copying = buflist_pop (&inbuf_free);
+			if (inbuf_copying == NULL)
+				break;
+		}
+		inbuf_copying->flen = 0;
+		if (buflist_add (&inbuf_used, inbuf_copying))
+			*pneed_input = 1;
+		*pinbuf_added = 1;
+		inbuf_copying = NULL;
+		inbuf_end = 2;
+		/* fall through */
+	case 2:
+		break;
+	}
+}
+
+static void
 copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
 		   int *pinbuf_added)
 {
 	uint8_t *_srcbuf;
 	int _srclen, copylen;
 
+	if (srcbuf == NULL) {
+		handle_last_input_buffer (pneed_input, pinbuf_added);
+		return;
+	}
 	_srcbuf = (uint8_t *)*srcbuf;
 	_srclen = (uint8_t *)srcend - _srcbuf;
 	if (inbuf_copying == NULL) {
@@ -531,40 +567,8 @@ once_again:
 	copy_output_buffer (destbuf, destend, &need_output);
 
 	/* transfer input buffers */
-	if (srcbuf == NULL) {
-		/* handles the last input buffer */
-		switch (inbuf_end) {
-		case 0:
-			if (inbuf_copying != NULL && inbuf_copied > 0) {
-				inbuf_copying->flen = inbuf_copied;
-				if (buflist_add (&inbuf_used, inbuf_copying))
-					need_input = 1;
-				inbuf_added = 1;
-				inbuf_copying = NULL;
-			}
-			inbuf_end = 1;
-			/* fall through */
-		case 1:
-			if (inbuf_copying == NULL) {
-				inbuf_copying = buflist_pop (&inbuf_free);
-				if (inbuf_copying == NULL)
-					break;
-			}
-			inbuf_copying->flen = 0;
-			if (buflist_add (&inbuf_used, inbuf_copying))
-				need_input = 1;
-			inbuf_added = 1;
-			inbuf_copying = NULL;
-			inbuf_end = 2;
-			/* fall through */
-		case 2:
-			break;
-		}
-		goto skip_inbuf;
-	}
 	copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
 
-skip_inbuf:
 	if (initflag == 1) {
 		inbuf_end = 0;
 		pthread_mutex_lock (&transfer_lock);
