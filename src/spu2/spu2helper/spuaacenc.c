@@ -330,6 +330,75 @@ middleware_close (void)
 	return ret;
 }
 
+static void
+copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
+{
+	uint8_t *_dstbuf;
+	int _dstlen, copylen;
+
+	_dstbuf = (uint8_t *)*destbuf;
+	_dstlen = (uint8_t *)destend - _dstbuf;
+	if (outbuf_copying == NULL) {
+	get_outbuf:
+		outbuf_copying = buflist_pop (&outbuf_used);
+		outbuf_copied = 0;
+	}
+	while (outbuf_copying != NULL) {
+		copylen = outbuf_copying->flen - outbuf_copied;
+		if (copylen == 0) {
+			if (buflist_add (&outbuf_free, outbuf_copying))
+				*pneed_output = 1;
+			goto get_outbuf;
+		}
+		if (_dstlen == 0)
+			break;
+		if (copylen > _dstlen)
+			copylen = _dstlen;
+		memcpy (_dstbuf, (uint8_t *)outbuf_copying->buf +
+			outbuf_copied, copylen);
+		_dstbuf += copylen;
+		_dstlen -= copylen;
+		outbuf_copied += copylen;
+	}
+	*destbuf = (void *)_dstbuf;
+}
+
+static void
+copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
+		   int *pinbuf_added)
+{
+	uint8_t *_srcbuf;
+	int _srclen, copylen;
+
+	_srcbuf = (uint8_t *)*srcbuf;
+	_srclen = (uint8_t *)srcend - _srcbuf;
+	if (inbuf_copying == NULL) {
+	get_inbuf:
+		inbuf_copying = buflist_pop (&inbuf_free);
+		inbuf_copied = 0;
+	}
+	while (inbuf_copying != NULL) {
+		copylen = inbuf_copying->alen - inbuf_copied;
+		if (copylen == 0) {
+			inbuf_copying->flen = inbuf_copied;
+			if (buflist_add (&inbuf_used, inbuf_copying))
+				*pneed_input = 1;
+			*pinbuf_added = 1;
+			goto get_inbuf;
+		}
+		if (_srclen == 0)
+			break;
+		if (copylen > _srclen)
+			copylen = _srclen;
+		memcpy ((uint8_t *)inbuf_copying->buf + inbuf_copied,
+			_srcbuf, copylen);
+		_srcbuf += copylen;
+		_srclen -= copylen;
+		inbuf_copied += copylen;
+	}
+	*srcbuf = (void *)_srcbuf;
+}
+
 int
 spu_aac_encode_init (void)
 {
@@ -438,8 +507,6 @@ spu_aac_encode_setfmt (struct spu_aac_encode_setfmt_data *format)
 long
 spu_aac_encode (void **destbuf, void *destend, void **srcbuf, void *srcend)
 {
-	uint8_t *_srcbuf, *_dstbuf;
-	int _srclen, _dstlen, copylen;
 	int need_input, need_output;
 	int inbuf_added;
 	int endflag;
@@ -461,31 +528,7 @@ once_again:
 	pthread_mutex_unlock (&transfer_lock);
 
 	/* transfer output buffers */
-	_dstbuf = (uint8_t *)*destbuf;
-	_dstlen = (uint8_t *)destend - _dstbuf;
-	if (outbuf_copying == NULL) {
-	get_outbuf:
-		outbuf_copying = buflist_pop (&outbuf_used);
-		outbuf_copied = 0;
-	}
-	while (outbuf_copying != NULL) {
-		copylen = outbuf_copying->flen - outbuf_copied;
-		if (copylen == 0) {
-			if (buflist_add (&outbuf_free, outbuf_copying))
-				need_output = 1;
-			goto get_outbuf;
-		}
-		if (_dstlen == 0)
-			break;
-		if (copylen > _dstlen)
-			copylen = _dstlen;
-		memcpy (_dstbuf, (uint8_t *)outbuf_copying->buf +
-			outbuf_copied, copylen);
-		_dstbuf += copylen;
-		_dstlen -= copylen;
-		outbuf_copied += copylen;
-	}
-	*destbuf = (void *)_dstbuf;
+	copy_output_buffer (destbuf, destend, &need_output);
 
 	/* transfer input buffers */
 	if (srcbuf == NULL) {
@@ -519,33 +562,7 @@ once_again:
 		}
 		goto skip_inbuf;
 	}
-	_srcbuf = (uint8_t *)*srcbuf;
-	_srclen = (uint8_t *)srcend - _srcbuf;
-	if (inbuf_copying == NULL) {
-	get_inbuf:
-		inbuf_copying = buflist_pop (&inbuf_free);
-		inbuf_copied = 0;
-	}
-	while (inbuf_copying != NULL) {
-		copylen = inbuf_copying->alen - inbuf_copied;
-		if (copylen == 0) {
-			inbuf_copying->flen = inbuf_copied;
-			if (buflist_add (&inbuf_used, inbuf_copying))
-				need_input = 1;
-			inbuf_added = 1;
-			goto get_inbuf;
-		}
-		if (_srclen == 0)
-			break;
-		if (copylen > _srclen)
-			copylen = _srclen;
-		memcpy ((uint8_t *)inbuf_copying->buf + inbuf_copied,
-			_srcbuf, copylen);
-		_srcbuf += copylen;
-		_srclen -= copylen;
-		inbuf_copied += copylen;
-	}
-	*srcbuf = (void *)_srcbuf;
+	copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
 
 skip_inbuf:
 	if (initflag == 1) {
@@ -604,7 +621,7 @@ skip_inbuf:
 		return -1;
 	}
 
-	if (inbuf_end != 0 && _dstlen != 0 &&
+	if (inbuf_end != 0 && (uint8_t *)destend - (uint8_t *)*destbuf != 0 &&
 	    buflist_poll (&outbuf_used) != NULL)
 		goto once_again;
 	return ret;
