@@ -44,7 +44,7 @@ static int inbuf_end, outbuf_end;
 static enum spu_aac_decode_setfmt_type format_type;
 static int sampling_frequency_index;
 static unsigned long channel = 2;
-static int callbk_err=0;
+static int callbk_err = 0;
 
 static int
 buflist_add (struct buflist_head *buf, struct buflist *p)
@@ -150,7 +150,7 @@ pcm_output_end_cb (unsigned long size, unsigned long flush)
 			ERR ("decode error, decoded size is zero");
 			callbk_err = 1;
 			fprintf(stderr, "StatusCode=%08ld\n", RSACPDS_GetStatusCode(paac));
-                }
+		}
 		pthread_mutex_lock (&transfer_lock);
 		if (transfer_flag != 0) {
 			transfer_flag = 0;
@@ -230,10 +230,10 @@ init2 (void)
 {
 	RSACPDS_Func func;
 
-	func.reg_read                = spu_read;
-	func.reg_write               = spu_write;
-	func.set_event               = spu_set_event;
-	func.wait_for_event          = spu_wait_event;
+	func.reg_read		     = spu_read;
+	func.reg_write		     = spu_write;
+	func.set_event		     = spu_set_event;
+	func.wait_for_event	     = spu_wait_event;
 	func.enter_critical_section  = spu_enter_critical_section;
 	func.leave_critical_section  = spu_leave_critical_section;
 
@@ -279,7 +279,7 @@ init2 (void)
 	return 0;
 }
 
-static long 
+static long
 middleware_open (void)
 {
 	RSACPDS_CallbackFunc cb;
@@ -296,13 +296,13 @@ middleware_open (void)
 			  | (RSACPDS_SWAP_MODE_WORD << 8)
 			  | RSACPDS_PCM_INTERLEAVE, 0, 0, 0, 0, &cb)
 	    < RSACPDS_RTN_GOOD) {
-		long ret = RSACPDS_GetStatusCode(paac); 
+		long ret = RSACPDS_GetStatusCode(paac);
 		if (ret < 0){
 			err = ret;
 		} else {
 			fprintf(stderr, "Odd StatusCode %08lx\n", ret);
 			err = -1;
-		} 
+		}
 		ERR ("RSACPDS_Open error");
 		return err;
 	}
@@ -310,7 +310,7 @@ middleware_open (void)
 	return err;
 }
 
-static long 
+static long
 middleware_close (void)
 {
 	long err = RSACPDS_RTN_GOOD;
@@ -338,9 +338,9 @@ spu_aac_decode_init (void)
 long
 spu_aac_decode_setfmt (struct spu_aac_decode_setfmt_data *format)
 {
-    if ( format->channel >= 1 && format->channel <= 6){
-    	channel = format->channel;
-    } else {
+	if (format->channel >= 1 && format->channel <= 6) {
+		channel = format->channel;
+	} else {
 		return -1;
 	}
 	spu_aac_decode_init ();
@@ -599,11 +599,11 @@ skip_inbuf:
 				return -1;
 			}
 			break;
-		}			
+		}
 		if (RSACPDS_Decode (paac, 0) < RSACPDS_RTN_GOOD) {
 			ERR ("RSACPDS_Decode error");
 			middleware_close ();
-		        return RSACPDS_GetStatusCode(paac);
+			return RSACPDS_GetStatusCode(paac);
 		}
 		initflag = 2;
 	} else {
@@ -642,7 +642,7 @@ skip_inbuf:
 			pthread_mutex_unlock (&transfer_lock);
 		}
 	}
-	if(callbk_err) {
+	if (callbk_err != 0) {
 		return -1;
 	}
 

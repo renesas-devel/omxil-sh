@@ -42,7 +42,7 @@ static struct buflist_head outbuf_free, outbuf_used;
 static int inbuf_copied, outbuf_copied;
 static int inbuf_end, outbuf_end;
 static RAACES_AACInfo aacinfo;
-static int callbk_err=0;
+static int callbk_err = 0;
 
 static int
 buflist_add (struct buflist_head *buf, struct buflist *p)
@@ -153,7 +153,7 @@ stream_output_end_cb (unsigned long size, unsigned long flush)
 				ERR ("A minus status code indicate a encode error.");
 				callbk_err = 1;
 			}
-                }
+		}
 		pthread_mutex_lock (&transfer_lock);
 		if (transfer_flag != 0) {
 			transfer_flag = 0;
@@ -312,12 +312,12 @@ middleware_open (void)
 	return ret;
 }
 
-static long 
+static long
 middleware_close (void)
 {
 	long ret = RAACES_R_GOOD;
 	if (paac2 != NULL) {
-		if ((ret =RAACES_Close (paac2)) < RAACES_R_GOOD) {
+		if ((ret = RAACES_Close (paac2)) < RAACES_R_GOOD) {
 			ERR ("RAACES_Close error");
 			if (paac2->statusCode < 0) {
 				ret = paac2->statusCode;
@@ -550,7 +550,7 @@ once_again:
 skip_inbuf:
 	if (initflag == 1) {
 		inbuf_end = 0;
-		pthread_mutex_lock (&transfer_lock);		
+		pthread_mutex_lock (&transfer_lock);
 		outbuf_end = 0;
 		pthread_mutex_unlock (&transfer_lock);
 		if (inbuf_added == 0)
@@ -560,7 +560,7 @@ skip_inbuf:
 		pcm_input_end_cb (0);
 		stream_output_end_cb (0, 0);
 		/* Encoding all frames.(2nd param nframe is zero) */
-		if ((ret = RAACES_Encode (paac2, 0)) < RAACES_R_GOOD) { 
+		if ((ret = RAACES_Encode (paac2, 0)) < RAACES_R_GOOD) {
 			ERR ("RAACES_Encode error");
 			if (paac2->statusCode < 0) {
 				ret = paac2->statusCode;
@@ -600,7 +600,7 @@ skip_inbuf:
 			pthread_mutex_unlock (&transfer_lock);
 		}
 	}
-	if(callbk_err) {
+	if (callbk_err != 0) {
 		return -1;
 	}
 
@@ -621,7 +621,7 @@ spu_aac_encode_stop (void)
 		}
 		ret = middleware_close ();
 		initflag = 1;
-	} 
+	}
 	return ret;
 }
 
