@@ -81,6 +81,11 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
 	alloc_size = fmemsize * 3 / 2;
 #endif
+#ifdef MERAM_ENABLE
+	meram_open_mem();
+	setup_icb(0x0, fmem_x, (ypic_size + 15) / 16 * 16, 128, 0xD, 1, 21);
+	setup_icb(0x0, fmem_x, (ypic_size + 15) / 16 * 8, 64, 0xC, 1, 22);
+#endif
 
 	/*
 	   if the SYNC mode, the required_fmem_cnt value may not

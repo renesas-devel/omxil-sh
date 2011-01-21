@@ -29,7 +29,11 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <pthread.h>
+#include "mcvdec.h"
 #include "shvpu5_common_log.h"
+#include "shvpu5_avcdec.h"
+#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_avcdec_meram.h"
 
 static pthread_cond_t cond_vp5[2] = {
 	PTHREAD_COND_INITIALIZER,
@@ -91,6 +95,12 @@ void
 mciph_uf_ce_restart(void *context, long mode)
 {
 	logd("%s invoked.\n", __FUNCTION__);
+#ifdef MERAM_ENABLE
+	if (mode == MCIPH_DEC) {
+		meram_write_done(1);
+		meram_write_done(2);
+	}
+#endif
 	_uf_vp5_restart(context, mode, VP5_MODULE_CE);
 	return;
 }
@@ -108,6 +118,20 @@ void
 mciph_uf_ce_start(void *context, long mode, void *start_info)
 {
 	logd("%s invoked.\n", __FUNCTION__);
+#ifdef MERAM_ENABLE
+	if (mode == MCIPH_DEC) {
+		int i;
+		MCVDEC_FMEM_INDEX_T *fmem_index;
+		fmem_index = (MCVDEC_FMEM_INDEX_T *)start_info;
+		meram_set_address(*fmem_index->ce_img_addr.decY_addr, 21);
+		meram_set_address(*fmem_index->ce_img_addr.decC_addr, 22);
+		*fmem_index->ce_img_addr.decY_addr = MERAM_START(21,0);
+		*fmem_index->ce_img_addr.decC_addr = MERAM_START(22,0);
+		if (*fmem_index->ce_img_addr.fmem_x_size[MCVDEC_FMX_DEC] < 1024)
+			*fmem_index->ce_img_addr.fmem_x_size[MCVDEC_FMX_DEC]
+				= 1024;
+	}
+#endif
 	_uf_vp5_start(context, mode, VP5_MODULE_CE);
 	return;
 }

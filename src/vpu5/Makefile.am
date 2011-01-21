@@ -5,8 +5,12 @@ omxshvpu5avcdir = $(BELLAGIO_PLUGINSDIR)
 if HAVE_SHVPU5DEC
 shvpu5avc_la = libomxshvpu5avc.la
 endif
+VPU5_CFLAGS =
 if USE_IPMMU
-VPU5_CFLAGS = -DIPMMU_ENABLE
+VPU5_CFLAGS += -DIPMMU_ENABLE
+endif
+if USE_MERAM
+VPU5_CFLAGS += -DMERAM_ENABLE
 endif
 
 omxshvpu5avc_LTLIBRARIES = $(shvpu5avc_la)
@@ -20,6 +24,8 @@ libomxshvpu5avc_la_SOURCES = \
 	shvpu5_avcdec_input.c shvpu5_avcdec_output.c \
 	shvpu5_avcdec_notify.c \
 	shvpu5_common_ipmmu.c shvpu5_common_udfio.c \
+	shvpu5_avcdec_meram.c \
+	shvpu5_avcdec_meram.h \
 	shvpu5_avcdec.h \
 	shvpu5_avcenc_omx.c shvpu5_avcenc_omx.h \
 	shvpu5_avcenc_encode.c shvpu5_avcenc_output.c \

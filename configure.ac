@@ -256,6 +256,22 @@ AM_CONDITIONAL(USE_IPMMU,
 if test "$ac_enable_ipmmu" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"; then
 	VPU_SUPPORT="${VPU_SUPPORT} + IPMMU"
 fi
+AC_ARG_ENABLE(meram,
+     [  --enable-meram         disable building of MERAM support ],
+     [
+	if test "x$enableval" = "xno"; then
+		ac_enable_meram=no
+	else
+		ac_enable_meram=yes
+	fi
+     ], [ ac_enable_meram=no] )
+AM_CONDITIONAL(USE_MERAM,
+      [test "$ac_enable_meram" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"])
+
+if test "$ac_enable_meram" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"; then
+	VPU_SUPPORT="${VPU_SUPPORT} + MERAM"
+fi
+
 AC_ARG_WITH(spumw-path,
 	[AC_HELP_STRING(
 		[--with-spumw-path=PATH],
