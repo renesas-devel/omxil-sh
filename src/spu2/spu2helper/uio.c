@@ -69,13 +69,8 @@ int uio_init(struct uio *uio, const char *name)
 	size_t size_reg, size_pmem;
 	void *vaddr_reg;
 
-	if (strcmp(name, "SPU2DSP0") != 0) {
-		perr ("Only SPU2DSP0 is supported.\n");
-		return -1;
-	}
-	uio->dev.up = UIO_open(UIOMUX_SH_SPU, &paddr_reg, NULL, &vaddr_reg,
-			       NULL, &size_reg, &size_pmem, interrupt_handler,
-			       uio);
+	uio->dev.up = UIO_open(name, &paddr_reg, NULL, &vaddr_reg, NULL,
+			       &size_reg, &size_pmem, interrupt_handler, uio);
 	if (!uio->dev.up) {
 		perr("device open error\n");
 		return -1;
