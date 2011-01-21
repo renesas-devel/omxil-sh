@@ -134,14 +134,22 @@ UIO_open (uiomux_resource_t type, unsigned long *paddr_reg,
 {
 	uiomux_resource_t uiores;
 	UIO *up;
+	UIOMux *uiomux;
 
 	if (!type)
 		return NULL;
 	uiores = uiomux_query ();
 	if (!(uiores & type))
 		return NULL;
+	uiomux = uiomux_open ();
+	if (!uiomux)
+		return NULL;
 	up = malloc (sizeof *up);
-	up->uiomux = uiomux_open ();
+	if (!up) {
+		uiomux_close (uiomux);
+		return NULL;
+	}
+	up->uiomux = uiomux;
 	up->type = type;
 	up->interrupt_thread_ufunc = interrupt_callback;
 	up->interrupt_thread_uarg = arg;
