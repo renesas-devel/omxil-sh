@@ -633,6 +633,7 @@ spu_aac_decode (void **destbuf, void *destend, void **srcbuf, void *srcend)
 	int state_decode;
 	int state_decode_end, state_decode_really_end;
 	int incopy, outcopy;
+	unsigned long nblk;
 	long err = RSACPDS_RTN_GOOD;
 
 once_again:
@@ -677,7 +678,7 @@ once_again:
 		state.first_block = 1;
 		state.open = 1;
 		need_input = 1;
-		need_output = 1;
+		need_output = 0;
 	} else {
 		state_decode = 1;
 		if (state_decode_really_end != 0)
@@ -694,6 +695,7 @@ once_again:
 		}
 		if (state.first_block != 0) {
 			state.first_block = 0;
+			need_output = 1;
 		}
 	}
 	if (need_input != 0)
@@ -704,7 +706,10 @@ once_again:
 		err = get_header (status);
 		if (err < 0)
 			goto close_and_ret;
-		if (RSACPDS_Decode (paac, 0) < RSACPDS_RTN_GOOD) {
+		nblk = 0;
+		if (state.first_block != 0)
+			nblk = 1;
+		if (RSACPDS_Decode (paac, nblk) < RSACPDS_RTN_GOOD) {
 			err = RSACPDS_GetStatusCode (paac);
 			ERR ("RSACPDS_Decode error");
 			goto close_and_ret;
