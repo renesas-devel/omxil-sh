@@ -32,6 +32,10 @@ struct state_info {
 	/* variables set/cleared by main thread: */
 	int init;
 	int open;
+	int first_block;
+	/* variables cleared by main thread and set by interrupt thread: */
+	int decode_end;
+	int decode_really_end;
 };
 
 static short *pcmbuf, *pcmaddr;
@@ -51,6 +55,7 @@ static enum spu_aac_decode_setfmt_type format_type;
 static int sampling_frequency_index;
 static unsigned long channel = 2;
 static int callbk_err = 0;
+static long decode_end_status;
 
 static int
 buflist_add (struct buflist_head *buf, struct buflist *p)
@@ -171,6 +176,16 @@ static void
 decode_end_cb (RSACPDS_AAC *aac, long ret, unsigned long bcnt,
 	       RSACPDS_OUT_INFO outInfo, unsigned long pcnt, unsigned long n)
 {
+	decode_end_status = paac->statusCode;
+	pthread_mutex_lock (&transfer_lock);
+	state.decode_end = 1;
+	if (ret == -1 && decode_end_status == RSACPDS_ERR_DATA_EMPTY)
+		state.decode_really_end = 1;
+	if (transfer_flag != 0) {
+		transfer_flag = 0;
+		pthread_mutex_unlock (&transfer_done);
+	}
+	pthread_mutex_unlock (&transfer_lock);
 }
 
 static void
@@ -342,7 +357,7 @@ decoder_close (int decoding)
 }
 
 static long
-get_header (void)
+get_header (long status)
 {
 	RSACPDS_AdtsHeader adtsheader;
 	RSACPDS_AdifHeader adifheader;
@@ -350,6 +365,8 @@ get_header (void)
 
 	switch (format_type) {
 	case SPU_AAC_DECODE_SETFMT_TYPE_ADTS:
+		if (state.first_block == 0 && (status & 0x10) != 0)
+			break;
 		if (RSACPDS_GetAdtsHeader (paac, &adtsheader, &bcnt)
 		    < RSACPDS_RTN_GOOD) {
 			ERR ("RSACPDS_GetAdtsHeader error");
@@ -357,6 +374,8 @@ get_header (void)
 		}
 		break;
 	case SPU_AAC_DECODE_SETFMT_TYPE_ADIF:
+		if (state.first_block == 0)
+			break;
 		if (RSACPDS_GetAdifHeader (paac, &adifheader, &bcnt)
 		    < RSACPDS_RTN_GOOD) {
 			ERR ("RSACPDS_GetAdifHeader error");
@@ -364,6 +383,8 @@ get_header (void)
 		}
 		break;
 	default:
+		if (state.first_block == 0)
+			break;
 		if (RSACPDS_SetFormat (paac, sampling_frequency_index)
 		    < RSACPDS_RTN_GOOD) {
 			ERR ("RSACPDS_SetFormat error");
@@ -609,6 +630,8 @@ spu_aac_decode (void **destbuf, void *destend, void **srcbuf, void *srcend)
 	int need_input, need_output;
 	int inbuf_added;
 	int endflag;
+	int state_decode;
+	int state_decode_end, state_decode_really_end;
 	int incopy, outcopy;
 	long err = RSACPDS_RTN_GOOD;
 
@@ -623,6 +646,8 @@ once_again:
 	}
 	pthread_mutex_lock (&transfer_lock);
 	endflag = outbuf_end;
+	state_decode_end = state.decode_end;
+	state_decode_really_end = state.decode_really_end;
 	transfer_flag = 1;
 	pthread_mutex_unlock (&transfer_lock);
 
@@ -630,6 +655,11 @@ once_again:
 	incopy = copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
 
 	if (state.open == 0) {
+		state_decode = 0;
+		state.decode_end = 0;
+		state.decode_really_end = 0;
+		state_decode_end = 0;
+		state_decode_really_end = 0;
 		callbk_err = 0;
 		inbuf_end = 0;
 		pthread_mutex_lock (&transfer_lock);
@@ -644,9 +674,34 @@ once_again:
 			goto close_and_ret;
 		}
 		err = RSACPDS_RTN_GOOD;
+		state.first_block = 1;
+		state.open = 1;
+		need_input = 1;
+		need_output = 1;
+	} else {
+		state_decode = 1;
+		if (state_decode_really_end != 0)
+			state_decode = 0;
+	}
+	status = 0;
+	if (state_decode_end != 0) {
+		state_decode = 0;
+		state.decode_end = 0;
+		err = RSACPDS_DecodeStatus (paac, &status);
+		if (err < RSACPDS_RTN_GOOD) {
+			ERR ("RSACPDS_DecodeStatus error");
+			goto close_and_ret;
+		}
+		if (state.first_block != 0) {
+			state.first_block = 0;
+		}
+	}
+	if (need_input != 0)
 		stream_input_end_cb (0);
+	if (need_output != 0)
 		pcm_output_end_cb (0, 0);
-		err = get_header ();
+	if (state_decode == 0 && state_decode_really_end == 0) {
+		err = get_header (status);
 		if (err < 0)
 			goto close_and_ret;
 		if (RSACPDS_Decode (paac, 0) < RSACPDS_RTN_GOOD) {
@@ -654,23 +709,12 @@ once_again:
 			ERR ("RSACPDS_Decode error");
 			goto close_and_ret;
 		}
-		state.open = 1;
-	} else {
-		if (need_input != 0)
-			stream_input_end_cb (0);
-		if (need_output != 0)
-			pcm_output_end_cb (0, 0);
+		state_decode = 1;
 	}
 	if (inbuf_end == 2 && endflag != 0 && outbuf_copying == NULL &&
 	    buflist_poll (&outbuf_used) == NULL) {
-		if (paac->statusCode != 0)
+		if (decode_end_status != RSACPDS_ERR_DATA_EMPTY)
 			ERR ("strange statusCode; ignored");
-		if (RSACPDS_DecodeStatus (paac, &status) < RSACPDS_RTN_GOOD) {
-			ERR ("RSACPDS_DecodeStatus error");
-			status = 0;
-		}
-		if (status != 0)
-			/*ERR ("strange status; ignored")*/;
 		err = decoder_close (0);
 		state.open = 0;
 		goto ret;
@@ -685,7 +729,7 @@ once_again:
 	}
 	goto unlock_ret;
 close_and_ret:
-	decoder_close (0);
+	decoder_close (state_decode);
 	state.open = 0;
 ret:
 	if (inbuf_copying != NULL) {
