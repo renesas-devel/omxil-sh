@@ -56,6 +56,9 @@ static int sampling_frequency_index;
 static unsigned long channel = 2;
 static int callbk_err = 0;
 static long decode_end_status;
+static struct spu_aac_decode_fmt format_current, format_next;
+static int next_sampling_frequency_index;
+static long output_remain, output_remain_add;
 
 static int
 buflist_add (struct buflist_head *buf, struct buflist *p)
@@ -176,8 +179,86 @@ static void
 decode_end_cb (RSACPDS_AAC *aac, long ret, unsigned long bcnt,
 	       RSACPDS_OUT_INFO outInfo, unsigned long pcnt, unsigned long n)
 {
+	static const int freqlist[2][0xc] = {
+		{
+			96000, 88200, 64000, 48000,
+			44100, 32000, 24000, 22050,
+			16000, 12000, 11025, 8000,
+		},
+		{
+			0, 0, 0, 0,
+			0, 0, 24000 * 2, 22050 * 2,
+			16000 * 2, 12000 * 2, 11025 * 2, 8000 * 2,
+		},
+	};
+	long end_block_size;
+
 	decode_end_status = paac->statusCode;
+	end_block_size = 1024;
+	if (format_current.aacplus != 0)
+		end_block_size = 2048;
+	if (ret == 0) {
+		if (n >= 1) {
+			switch (pcnt - (n - 1) * end_block_size) {
+			case 1024:
+				format_next.aacplus = 0;
+				break;
+			case 2048:
+				format_next.aacplus = 1;
+				break;
+			default:
+				ERR ("unknown block size");
+				format_next.aacplus = 0;
+				break;
+			}
+		}
+		if (next_sampling_frequency_index >= 0 &&
+		    next_sampling_frequency_index < 0xc)
+			format_next.sampling_frequency = freqlist
+				[format_next.aacplus]
+				[next_sampling_frequency_index];
+		else
+			format_next.sampling_frequency = 0;
+		if (format_next.sampling_frequency == 0)
+			ERR ("sampling frequency error");
+		switch (outInfo.channelMode) {
+		case 0:		/* monaural */
+			format_next.channel = 1;
+			break;
+		case 1:		/* stereo */
+		case 2:		/* dual monaural */
+		case 3:		/* parametric stereo */
+			format_next.channel = 2;
+			break;
+		case 4:		/* 3/0 */
+			format_next.channel = 3;
+			break;
+		case 5:		/* 3/1 */
+			format_next.channel = 4;
+			break;
+		case 6:		/* 3/2 */
+			format_next.channel = 5;
+			break;
+		case 7:		/* 3/2 + LFE (5.1) */
+			format_next.channel = 6;
+			break;
+		case 8:		/* 2/1 */
+		case 9:		/* 2/2 */
+			ERR ("channel mode 2/1 or 2/2 not supported");
+			format_next.channel = 0;
+			break;
+		case -1:
+			ERR ("channel mode error");
+			format_next.channel = 0;
+			break;
+		}
+	}
+	if (ret == -1)
+		n++;		/* last block */
+	if (state.first_block != 0 && n >= 1)
+		n--;		/* first block */
 	pthread_mutex_lock (&transfer_lock);
+	output_remain_add += n * format_current.channel * end_block_size * 2;
 	state.decode_end = 1;
 	if (ret == -1 && decode_end_status == RSACPDS_ERR_DATA_EMPTY)
 		state.decode_really_end = 1;
@@ -357,11 +438,13 @@ decoder_close (int decoding)
 }
 
 static long
-get_header (long status)
+get_header_and_pce (long status)
 {
 	RSACPDS_AdtsHeader adtsheader;
 	RSACPDS_AdifHeader adifheader;
 	unsigned long bcnt;
+	struct buflist *p;
+	RSACPDS_PCE pce;
 
 	switch (format_type) {
 	case SPU_AAC_DECODE_SETFMT_TYPE_ADTS:
@@ -372,6 +455,8 @@ get_header (long status)
 			ERR ("RSACPDS_GetAdtsHeader error");
 			return -1;
 		}
+		next_sampling_frequency_index =
+			adtsheader.sampling_frequency_index;
 		break;
 	case SPU_AAC_DECODE_SETFMT_TYPE_ADIF:
 		if (state.first_block == 0)
@@ -381,6 +466,24 @@ get_header (long status)
 			ERR ("RSACPDS_GetAdifHeader error");
 			return -1;
 		}
+		/* No outbuf should be used before decoding the first block. */
+		p = buflist_pop (&outbuf_free);
+		if (p == NULL) {
+			ERR ("No buffers available for GetPce");
+			return -1;
+		}
+		if (sizeof pce > p->alen) {
+			ERR ("Buffer is too small for GetPce");
+			return -1;
+		}
+		if (RSACPDS_GetPce (paac, (RSACPDS_PCE *)p->addr)
+		    < RSACPDS_RTN_GOOD) {
+			ERR ("RSACPDS_GetPce error");
+			return -1;
+		}
+		memcpy (&pce, p->buf, sizeof pce);
+		buflist_add (&outbuf_free, p);
+		next_sampling_frequency_index = pce.sampling_frequency_index;
 		break;
 	default:
 		if (state.first_block == 0)
@@ -390,6 +493,7 @@ get_header (long status)
 			ERR ("RSACPDS_SetFormat error");
 			return -1;
 		}
+		next_sampling_frequency_index = sampling_frequency_index;
 		break;
 	}
 	return 0;
@@ -419,11 +523,18 @@ copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
 			break;
 		if (copylen > _dstlen)
 			copylen = _dstlen;
+		if (output_remain > 0 && copylen > output_remain)
+			copylen = copylen > output_remain;
 		memcpy (_dstbuf, (uint8_t *)outbuf_copying->buf +
 			outbuf_copied, copylen);
 		_dstbuf += copylen;
 		_dstlen -= copylen;
 		outbuf_copied += copylen;
+		if (output_remain == 0)
+			format_current = format_next;
+		output_remain -= copylen;
+		if (output_remain == 0)
+			break;
 	}
 	if (*destbuf == (void *)_dstbuf && *destbuf != destend)
 		return 0;
@@ -624,7 +735,8 @@ spu_aac_decode_setfmt (struct spu_aac_decode_setfmt_data *format)
 }
 
 long
-spu_aac_decode (void **destbuf, void *destend, void **srcbuf, void *srcend)
+spu_aac_decode (void **destbuf, void *destend, void **srcbuf, void *srcend,
+		struct spu_aac_decode_fmt *format)
 {
 	long status;
 	int need_input, need_output;
@@ -646,6 +758,8 @@ once_again:
 		state.init = 1;
 	}
 	pthread_mutex_lock (&transfer_lock);
+	output_remain += output_remain_add;
+	output_remain_add = 0;
 	endflag = outbuf_end;
 	state_decode_end = state.decode_end;
 	state_decode_really_end = state.decode_really_end;
@@ -654,6 +768,7 @@ once_again:
 
 	outcopy = copy_output_buffer (destbuf, destend, &need_output);
 	incopy = copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
+	*format = format_current;
 
 	if (state.open == 0) {
 		state_decode = 0;
@@ -679,6 +794,8 @@ once_again:
 		state.open = 1;
 		need_input = 1;
 		need_output = 0;
+		output_remain = 0;
+		output_remain_add = 0;
 	} else {
 		state_decode = 1;
 		if (state_decode_really_end != 0)
@@ -686,16 +803,18 @@ once_again:
 	}
 	status = 0;
 	if (state_decode_end != 0) {
-		state_decode = 0;
-		state.decode_end = 0;
-		err = RSACPDS_DecodeStatus (paac, &status);
-		if (err < RSACPDS_RTN_GOOD) {
-			ERR ("RSACPDS_DecodeStatus error");
-			goto close_and_ret;
-		}
 		if (state.first_block != 0) {
 			state.first_block = 0;
 			need_output = 1;
+		}
+		if (output_remain <= 0) {
+			state_decode = 0;
+			state.decode_end = 0;
+			err = RSACPDS_DecodeStatus (paac, &status);
+			if (err < RSACPDS_RTN_GOOD) {
+				ERR ("RSACPDS_DecodeStatus error");
+				goto close_and_ret;
+			}
 		}
 	}
 	if (need_input != 0)
@@ -703,7 +822,7 @@ once_again:
 	if (need_output != 0)
 		pcm_output_end_cb (0, 0);
 	if (state_decode == 0 && state_decode_really_end == 0) {
-		err = get_header (status);
+		err = get_header_and_pce (status);
 		if (err < 0)
 			goto close_and_ret;
 		nblk = 0;
@@ -734,6 +853,8 @@ once_again:
 	}
 	goto unlock_ret;
 close_and_ret:
+	if (state.decode_end != 0 || state.decode_really_end != 0)
+		state_decode = 0;
 	decoder_close (state_decode);
 	state.open = 0;
 ret:

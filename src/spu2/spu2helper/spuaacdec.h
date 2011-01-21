@@ -9,8 +9,14 @@ struct spu_aac_decode_setfmt_data {
 	int channel;
 };
 
+struct spu_aac_decode_fmt {
+	int sampling_frequency;
+	int channel;
+	int aacplus;
+};
+
 long spu_aac_decode (void **destbuf, void *destend, void **srcbuf,
-		    void *srcend);
+		     void *srcend, struct spu_aac_decode_fmt *format);
 long spu_aac_decode_stop (void);
 int spu_aac_decode_init (void);
 long spu_aac_decode_deinit (void);

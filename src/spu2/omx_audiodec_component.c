@@ -516,6 +516,7 @@ void omx_audiodec_component_BufferMgmtCallback(OMX_COMPONENTTYPE *openmaxStandCo
   void *outbufstart, *inbufstart;
   void *outbufend, *inbufend;
   internalRequestMessageType message;
+  struct spu_aac_decode_fmt format;
 
   outbuf = outbufstart = pOutputBuffer->pBuffer + pOutputBuffer->nOffset
 	  + pOutputBuffer->nFilledLen;
@@ -524,14 +525,14 @@ void omx_audiodec_component_BufferMgmtCallback(OMX_COMPONENTTYPE *openmaxStandCo
   inbufend = pInputBuffer->pBuffer + pInputBuffer->nOffset
 	  + pInputBuffer->nFilledLen;
   if ((pInputBuffer->nFlags & OMX_BUFFERFLAG_EOS) == OMX_BUFFERFLAG_EOS) {
-    if (spu_aac_decode (&outbuf, outbufend, NULL, NULL) < 0) {
+    if (spu_aac_decode (&outbuf, outbufend, NULL, NULL, &format) < 0) {
       fprintf (stderr, "Decode error\n");
       message.messageType = OMX_CommandStateSet;
       message.messageParam = OMX_StateInvalid;
       omx_audiodec_component_Private->messageHandler(openmaxStandComp, &message);
     }
   } else {
-    if (spu_aac_decode (&outbuf, outbufend, &inbuf, inbufend) < 0) {
+    if (spu_aac_decode (&outbuf, outbufend, &inbuf, inbufend, &format) < 0) {
       fprintf (stderr, "Decode error\n");
       message.messageType = OMX_CommandStateSet;
       message.messageParam = OMX_StateInvalid;
@@ -543,56 +544,21 @@ void omx_audiodec_component_BufferMgmtCallback(OMX_COMPONENTTYPE *openmaxStandCo
   pInputBuffer->nFilledLen -= (char *)inbuf - (char *)inbufstart;
   if (pInputBuffer->nFilledLen == 0)
     pInputBuffer->nOffset = 0;
-#if 0
 
-  DEBUG(DEB_LEV_FULL_SEQ, "In %s chl=%d sRate=%d \n", __func__,
-    (int)omx_audiodec_component_Private->pAudioPcmMode.nChannels,
-    (int)omx_audiodec_component_Private->pAudioPcmMode.nSamplingRate);
-
-
-  if((omx_audiodec_component_Private->pAudioPcmMode.nSamplingRate != omx_audiodec_component_Private->avCodecContext->sample_rate) ||
-     ( omx_audiodec_component_Private->pAudioPcmMode.nChannels != omx_audiodec_component_Private->avCodecContext->channels)) {
+  if(format.sampling_frequency != 0 && format.channel != 0 &&
+     (omx_audiodec_component_Private->pAudioPcmMode.nSamplingRate != format.sampling_frequency ||
+      omx_audiodec_component_Private->pAudioPcmMode.nChannels != format.channel)) {
     DEBUG(DEB_LEV_FULL_SEQ, "Sending Port Settings Change Event\n");
-    /* has MP3 dependency--requires modification */
     //switch for different audio formats---parameter settings accordingly
-    switch(omx_audiodec_component_Private->audio_coding_type)  {
       /*Update Parameter which has changed from avCodecContext*/
-    case OMX_AUDIO_CodingAAC :
       /*pAudioAAC is for input port AAC data*/
-      omx_audiodec_component_Private->pAudioAac.nChannels = omx_audiodec_component_Private->avCodecContext->channels;
-      omx_audiodec_component_Private->pAudioAac.nBitRate = omx_audiodec_component_Private->avCodecContext->bit_rate;
-      omx_audiodec_component_Private->pAudioAac.nSampleRate = omx_audiodec_component_Private->avCodecContext->sample_rate;
-      omx_audiodec_component_Private->pAudioAac.eAACStreamFormat = OMX_AUDIO_AACStreamFormatRAW;
-      switch(omx_audiodec_component_Private->avCodecContext->profile){
-      case  FF_PROFILE_AAC_MAIN:
-        omx_audiodec_component_Private->pAudioAac.eAACProfile = OMX_AUDIO_AACObjectMain;
-        break;
-      case  FF_PROFILE_AAC_LOW:
-        omx_audiodec_component_Private->pAudioAac.eAACProfile = OMX_AUDIO_AACObjectLC;
-        break;
-      case  FF_PROFILE_AAC_SSR:
-        omx_audiodec_component_Private->pAudioAac.eAACProfile = OMX_AUDIO_AACObjectSSR;
-        break;
-      case  FF_PROFILE_AAC_LTP:
-        omx_audiodec_component_Private->pAudioAac.eAACProfile = OMX_AUDIO_AACObjectLTP;
-        break;
-      case  FF_PROFILE_UNKNOWN:
-        omx_audiodec_component_Private->pAudioAac.eAACProfile = OMX_AUDIO_AACObjectNull;
-        break;
-      }
-      break;
-    default :
-      DEBUG(DEB_LEV_ERR, "Audio format other than MP3, VORBIS or AAC not supported\nCodec type %lu not found\n",omx_audiodec_component_Private->audio_coding_type);
-      break;
-    }//end of switch
+      omx_audiodec_component_Private->pAudioAac.nChannels = format.channel;
+      omx_audiodec_component_Private->pAudioAac.nSampleRate = format.sampling_frequency;
 
     /*pAudioPcmMode is for output port PCM data*/
-    omx_audiodec_component_Private->pAudioPcmMode.nChannels = omx_audiodec_component_Private->avCodecContext->channels;
-    if(omx_audiodec_component_Private->avCodecContext->sample_fmt==SAMPLE_FMT_S16)
+    omx_audiodec_component_Private->pAudioPcmMode.nChannels = format.channel;
       omx_audiodec_component_Private->pAudioPcmMode.nBitPerSample = 16;
-    else if(omx_audiodec_component_Private->avCodecContext->sample_fmt==SAMPLE_FMT_S32)
-      omx_audiodec_component_Private->pAudioPcmMode.nBitPerSample = 32;
-    omx_audiodec_component_Private->pAudioPcmMode.nSamplingRate = omx_audiodec_component_Private->avCodecContext->sample_rate;
+    omx_audiodec_component_Private->pAudioPcmMode.nSamplingRate = format.sampling_frequency;
 
     /*Send Port Settings changed call back*/
     (*(omx_audiodec_component_Private->callbacks->EventHandler))
@@ -603,18 +569,6 @@ void omx_audiodec_component_BufferMgmtCallback(OMX_COMPONENTTYPE *openmaxStandCo
       1, /* This is the output port index */
       NULL);
   }
-
-  if(len < 0) {
-    DEBUG(DEB_LEV_ERR,"error in packet decoding in audio decoder \n");
-  } else {
-    /*If output is max length it might be an error, so Don't send output buffer*/
-    if((output_length != OUTPUT_LEN_STANDARD_FFMPEG) || (output_length <= pOutputBuffer->nAllocLen)) {
-      pOutputBuffer->nFilledLen += output_length;
-    }
-    pInputBuffer->nFilledLen = 0;
-    omx_audiodec_component_Private->isNewBuffer = 1;
-  }
-#endif
 
   /** return output buffer */
 }
