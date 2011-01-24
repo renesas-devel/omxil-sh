@@ -31,10 +31,20 @@
 #include <OMX_Types.h>
 #include <OMX_Core.h>
 #include <OMX_Component.h>
+#include <meram/meram.h>
 
 void
 free_remaining_streams(queue_t *pSIQueue);
 
 int
 decode_finalize(void *context);
+
+typedef struct {
+#ifdef MERAM_ENABLE
+	MERAM *meram;
+	ICB *decY_icb;
+	ICB *decC_icb;
+#endif
+} shvpu_meram_t;
+
 #endif /* __SIMPLE_AVCDEC_H_ */

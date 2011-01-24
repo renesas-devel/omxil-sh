@@ -4,7 +4,9 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <stdlib.h>
-#include "shvpu5_avcdec_meram.h"
+#include <meram/meram.h>
+#include "shvpu5_avcdec.h"
+
 static void *meram_base = NULL;
 static int mem_fd;
 write_meram_icb(void *base, int ind, int off, unsigned long val)
@@ -25,31 +27,30 @@ read_meram_reg(void *base, int off, unsigned long *dest)
 {
 	*dest = *(unsigned long *)(base + off);
 }
-int
-meram_open_mem()
-{
-        mem_fd = open ("/dev/mem", O_RDWR);
-        if (mem_fd < 0) {
-                perror("open");
-                exit(-1);
-        }
 
-        meram_base = mmap(NULL, MERAM_REG_SIZE, PROT_READ | PROT_WRITE,
-                MAP_SHARED, mem_fd, MERAM_REG_BASE);
-        if (meram_base == MAP_FAILED) {
-                perror("mmap");
+int
+meram_open_mem(shvpu_meram_t *mdata)
+{
+	MERAM_REG *reg;
+	unsigned long tmp;
+	mdata->meram = meram_open();
+	if (mdata->meram == NULL)
 		return -1;
-	}
+	reg = meram_lock_reg(mdata->meram);
+	meram_read_reg(mdata->meram, reg, MEVCR1, &tmp);
+	meram_write_reg(mdata->meram, reg, MEVCR1, tmp | 0x20000000);
+	meram_unlock_reg(mdata->meram, reg);
+	return 0;
 }
 void
-meram_close_mem()
+meram_close_mem(shvpu_meram_t *mdata)
 {
-
-	munmap(meram_base, MERAM_REG_SIZE);
-	close(mem_fd);
+	if (mdata->meram)
+		meram_close(mdata->meram);
 }
 unsigned long
-setup_icb(unsigned long address,
+setup_icb(shvpu_meram_t *mdata,
+	  ICB **icb,
 	  unsigned long pitch,
 	  unsigned long lines,
 	  int res_lines,
@@ -61,47 +62,61 @@ setup_icb(unsigned long address,
 	unsigned int xk_lines;
 	unsigned int line_len;
 	unsigned long tmp;
+	int pitch_2n;
 	int md, res;
 	int memblk;
 
+	MERAM *meram = mdata->meram;
+
 	md = rdnwr == 0 ? 1 : 2;
         res = rdnwr == 0 ? 2 : 1;
-	if (index == 21)
-		memblk = 512;
-	else
-		memblk = ((index - 20 )/ 2) * 512 + (index - 21 ) / 2 *
-			 128 + 512;
-	write_meram_reg(meram_base, 0x4, 0x20000000);
-	write_meram_icb(meram_base, index, MExxCTL, (block_lines << 28) |
+
+	if (pitch <= 1024)
+		pitch_2n = 1;
+	else if (pitch <= 2048)
+		pitch_2n = 2;
+	else if (pitch <= 4096)
+		pitch_2n = 4;
+
+	memblk = meram_alloc_memory_block(meram, pitch_2n * res_lines);
+
+	if ((*icb = meram_lock_icb(meram, index)) == NULL)
+		return -1;
+
+	meram_write_icb(meram, *icb, MExxCTL, (block_lines << 28) |
 		(memblk  << 16) | 0x708 | md);
 
-	write_meram_icb(meram_base, index, MExxSIZE, (lines-1) << 16 |
+	meram_write_icb(meram, *icb, MExxSIZE, (lines-1) << 16 |
 		(pitch -1));
 
-	write_meram_icb(meram_base, index, MExxMNCF, (res_lines-1 << 16) |
+	meram_write_icb(meram, *icb, MExxMNCF, (res_lines-1 << 16) |
 		(res << 28) | (0 << 15 ));
 
-	write_meram_icb(meram_base, index, MExxSARA, address);
-	write_meram_icb(meram_base, index, MExxBSIZE, pitch | 0x90000000);
+	meram_write_icb(meram, *icb, MExxBSIZE, pitch | 0x90000000);
 
-	return MERAM_START(index, 0);
+	return 0;
 }
 void
-meram_set_address(unsigned long address, int index)
+meram_set_address(shvpu_meram_t *mdata, ICB *icb, unsigned long address)
 {
-	write_meram_icb(meram_base, index, MExxSARA, address);
+	if (icb && mdata)
+		meram_write_icb(mdata->meram, icb, MExxSARA, address);
 }
 void
-meram_write_done(int index) {
+meram_write_done(shvpu_meram_t *mdata, ICB *icb) {
 	unsigned long tmp;
-	read_meram_icb(meram_base, index, MExxCTL, &tmp);
-	write_meram_icb(meram_base, index, MExxCTL, tmp | 0x20);
+	if (icb && mdata) {
+		meram_read_icb(mdata->meram, icb, MExxCTL, &tmp);
+		meram_write_icb(mdata->meram, icb, MExxCTL, tmp | 0x20);
+	}
 }
 
 void
-meram_read_done(int index) {
+meram_read_done(shvpu_meram_t *mdata, ICB *icb) {
 	unsigned long tmp;
-	read_meram_icb(meram_base, index, MExxCTL, &tmp);
-	write_meram_icb(meram_base, index, MExxCTL, tmp | 0x10);
+	if (icb && mdata) {
+		meram_read_icb(mdata->meram, icb, MExxCTL, &tmp);
+		meram_write_icb(mdata->meram, icb, MExxCTL, tmp | 0x10);
+	}
 }
 #endif

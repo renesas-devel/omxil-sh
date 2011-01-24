@@ -40,8 +40,9 @@
 #include "uiomux/uiomux.h"
 #include "mcvdec.h"
 #include "avcdec.h"
-#include "shvpu5_driver.h"
 #include "shvpu5_common_uio.h"
+#include "shvpu5_driver.h"
+#include "shvpu5_avcdec.h"
 
 /* Specific include files */
 #include <vpu5/OMX_VPU5Ext.h>
@@ -172,7 +173,8 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	void *                  uio_start;				\
 	/** @param uio_size size of the uio memory range*/		\
 	unsigned long           uio_size;				\
-	unsigned long           uio_start_phys;
+	unsigned long           uio_start_phys;				\
+	shvpu_meram_t		meram_data;
 ENDCLASS(shvpu_avcdec_PrivateType)
 
 /* Component private entry points declaration */

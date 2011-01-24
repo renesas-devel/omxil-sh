@@ -97,8 +97,13 @@ mciph_uf_ce_restart(void *context, long mode)
 	logd("%s invoked.\n", __FUNCTION__);
 #ifdef MERAM_ENABLE
 	if (mode == MCIPH_DEC) {
-		meram_write_done(1);
-		meram_write_done(2);
+		MCVDEC_CONTEXT_T *dec_context = (MCVDEC_CONTEXT_T *)context;
+		shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+	                (shvpu_avcdec_PrivateType *)dec_context->user_info;
+		meram_write_done(&shvpu_avcdec_Private->meram_data,
+			shvpu_avcdec_Private->meram_data.decY_icb);
+		meram_write_done(&shvpu_avcdec_Private->meram_data,
+			shvpu_avcdec_Private->meram_data.decC_icb);
 	}
 #endif
 	_uf_vp5_restart(context, mode, VP5_MODULE_CE);
@@ -120,13 +125,26 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 	logd("%s invoked.\n", __FUNCTION__);
 #ifdef MERAM_ENABLE
 	if (mode == MCIPH_DEC) {
+		MCVDEC_CONTEXT_T *dec_context = (MCVDEC_CONTEXT_T *)context;
 		int i;
+		shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+	                (shvpu_avcdec_PrivateType *)dec_context->user_info;
+
 		MCVDEC_FMEM_INDEX_T *fmem_index;
 		fmem_index = (MCVDEC_FMEM_INDEX_T *)start_info;
-		meram_set_address(*fmem_index->ce_img_addr.decY_addr, 21);
-		meram_set_address(*fmem_index->ce_img_addr.decC_addr, 22);
-		*fmem_index->ce_img_addr.decY_addr = MERAM_START(21,0);
-		*fmem_index->ce_img_addr.decC_addr = MERAM_START(22,0);
+		meram_set_address(&shvpu_avcdec_Private->meram_data,
+			shvpu_avcdec_Private->meram_data.decY_icb,
+			*fmem_index->ce_img_addr.decY_addr);
+		meram_set_address(&shvpu_avcdec_Private->meram_data,
+			shvpu_avcdec_Private->meram_data.decC_icb,
+			*fmem_index->ce_img_addr.decC_addr);
+		*fmem_index->ce_img_addr.decY_addr =
+			meram_get_icb_address(&shvpu_avcdec_Private->meram_data,
+			shvpu_avcdec_Private->meram_data.decY_icb, 0);
+		*fmem_index->ce_img_addr.decC_addr =
+			meram_get_icb_address(&shvpu_avcdec_Private->meram_data,
+			shvpu_avcdec_Private->meram_data.decC_icb, 0);
+
 		if (*fmem_index->ce_img_addr.fmem_x_size[MCVDEC_FMX_DEC] < 1024)
 			*fmem_index->ce_img_addr.fmem_x_size[MCVDEC_FMX_DEC]
 				= 1024;

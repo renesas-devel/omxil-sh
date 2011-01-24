@@ -269,6 +269,7 @@ AM_CONDITIONAL(USE_MERAM,
       [test "$ac_enable_meram" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"])
 
 if test "$ac_enable_meram" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"; then
+	PKG_CHECK_MODULES([MERAM], [meram])
 	VPU_SUPPORT="${VPU_SUPPORT} + MERAM"
 fi
 

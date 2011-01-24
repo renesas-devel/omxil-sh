@@ -354,6 +354,8 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 			pBMI = shvpu_dequeue(pCodec->pBMIQueue);
 			free(pBMI);
 		}
+		meram_close_mem(&shvpu_avcdec_Private->meram_data);
+
 		free(pCodec->pBMIQueue);
 		free(pCodec);
 
