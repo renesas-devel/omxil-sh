@@ -81,6 +81,11 @@ typedef struct {
 } shvpu_firmware_size_t;
 
 typedef struct {
+	unsigned long fmem_start;
+	unsigned long fmem_len;
+} shvpu_fmem_data;
+
+typedef struct {
 	shvpu_driver_t		*pDriver;
 
 	/** @param mode for VPU5HG video decoder */
@@ -102,7 +107,7 @@ typedef struct {
 	pthread_cond_t		cond_buffering;
 	pthread_mutex_t		mutex_buffering;
 	int 			has_eos;
-	MCVDEC_FMEM_INFO_T  	*fmem;
+	shvpu_fmem_data		*fmem;
 	shvpu_firmware_size_t	fw_size;
 	int 			fmem_size;
 } shvpu_codec_t;

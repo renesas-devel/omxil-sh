@@ -138,6 +138,7 @@ long header_processed_callback( MCVDEC_CONTEXT_T *context,
 		}
 	}
 	logd("Got a header callback\n");
+	return 0;
 }
 	/* malloc() on 32bit environment must allocate
 	   an 8-bytes aligned region. */
@@ -332,19 +333,10 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 			shvpu_avcdec_Private->avCodec->fmem) {
 			int i, bufs = shvpu_avcdec_Private->avCodec->fmem_size;
 
-			MCVDEC_FMEM_INFO_T *outbuf = shvpu_avcdec_Private->avCodec->fmem;
+			shvpu_fmem_data *outbuf = shvpu_avcdec_Private->avCodec->fmem;
 			for (i = 0 ; i < bufs; i++) {
-				/*
-				   the buffer size =
-				       width * height * 3 / 2,
-				   and
-				   Ypic_bot_addr - Y_pic_addr =
-				       (width * height) / 2 ... (A),
-				   So we need to free (A) * 3.
-				*/
-				phys_pmem_free(outbuf->Ypic_addr,
-					       (outbuf->Ypic_bot_addr -
-						outbuf->Ypic_addr) * 3);
+				phys_pmem_free(outbuf->fmem_start,
+						outbuf->fmem_len);
 				outbuf++;
 			}
 			free(shvpu_avcdec_Private->avCodec->fmem);

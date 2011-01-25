@@ -1289,6 +1289,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		void *vaddr;
 		size_t pic_size;
 		int i;
+		unsigned long real_phys;
 		buffer_metainfo_t *pBMI;
 		queue_t *pBMIQueue = pCodec->pBMIQueue;
 
@@ -1310,7 +1311,13 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		pic_size = pic_infos[0]->xpic_size *
 			(pic_infos[0]->ypic_size -
 			 pic_infos[0]->frame_crop[MCVDEC_CROP_BOTTOM]);
-		vaddr = uio_phys_to_virt(frame->Ypic_addr);
+#ifdef IPMMU_ENABLE
+		real_phys = ipmmui_to_phys(frame->Ypic_addr,
+			shvpu_avcdec_Private->uio_start_phys);
+#else
+		real_phys = frame->Ypic_addr;
+#endif
+		vaddr = uio_phys_to_virt(real_phys);
 		if ((pic_size / 2 * 3) > pOutBuffer->nAllocLen) {
 			loge("WARNING: shrink output size %d to %d\n",
 			     pic_size / 2 * 3, pOutBuffer->nAllocLen);
@@ -1753,6 +1760,21 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 
 		memcpy (pMaxInst, &maxVPUInstances,
 			sizeof(OMX_PARAM_REVPU5MAXINSTANCE));
+		break;
+	}
+	case OMX_IndexParamQueryIPMMUEnable:
+	{
+		OMX_PARAM_REVPU5IPMMUSTATUS *pIpmmuEnable;
+		pIpmmuEnable = ComponentParameterStructure;
+		if ((eError =
+			checkHeader(pIpmmuEnable,
+			sizeof(OMX_PARAM_REVPU5IPMMUSTATUS)) != OMX_ErrorNone))
+			break;
+#ifdef IPMMU_ENABLE
+		pIpmmuEnable->bIpmmuEnable = OMX_TRUE;
+#else
+		pIpmmuEnable->bIpmmuEnable = OMX_FALSE;
+#endif
 		break;
 	}
 	default:		/*Call the base component function */

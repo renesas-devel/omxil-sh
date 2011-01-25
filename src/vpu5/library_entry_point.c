@@ -63,7 +63,11 @@ static OMX_ERRORTYPE add_component(
   unsigned int i;
 
   pst->componentVersion.s.nVersionMajor = 1;
+#if HAVE_ANDROID_OS
+  pst->componentVersion.s.nVersionMinor = 0;
+#else
   pst->componentVersion.s.nVersionMinor = 1;
+#endif
   pst->componentVersion.s.nRevision = 1;
   pst->componentVersion.s.nStep = 1;
 

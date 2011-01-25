@@ -31,7 +31,8 @@
 #define OMX_VPU5_CommandMaxInst "OMX.RE.VPU5MaxInstance"
 typedef enum OMX_REVPU5INDEXTYPE {
 	OMX_IndexParamVPUMaxOutputSetting = OMX_IndexVendorStartUnused + 0x200,
-	OMX_IndexParamVPUMaxInstance
+	OMX_IndexParamVPUMaxInstance,
+	OMX_IndexParamQueryIPMMUEnable
 } OMX_REVPU5INDEXTYPE;
 
 typedef enum OMX_REVPU5LEVEL {
@@ -63,3 +64,9 @@ typedef struct OMX_PARAM_REVPU5MAXINSTANCE {
 	OMX_VERSIONTYPE nVersion;
 	OMX_U32 nInstances;
 } OMX_PARAM_REVPU5MAXINSTANCE;
+
+typedef struct OMX_PARAM_REVPU5IPMMUSTATUS {
+	OMX_U32 nSize;
+	OMX_VERSIONTYPE nVersion;
+	OMX_BOOL bIpmmuEnable;
+} OMX_PARAM_REVPU5IPMMUSTATUS;
