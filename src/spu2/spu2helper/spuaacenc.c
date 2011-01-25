@@ -28,12 +28,18 @@ struct buflist_head {
 	int popnull;
 };
 
+struct state_info {
+	/* variables set/cleared by main thread: */
+	int init;
+	int open;
+};
+
 static short *pcmbuf, *pcmaddr;
 static unsigned char *aacbuf, *aacaddr;
 static pthread_mutex_t transfer_lock, transfer_done;
 static int transfer_flag;
 static RAACES_AAC *paac2;
-static int initflag = 0; /* 0:befor initialize, 1:initialized, 2:decoding */
+static struct state_info state;
 static struct buflist *inbuflist, *outbuflist;
 static struct buflist *inbuf_current, *outbuf_current;
 static struct buflist *inbuf_copying, *outbuf_copying;
@@ -42,7 +48,7 @@ static struct buflist_head outbuf_free, outbuf_used;
 static int inbuf_copied, outbuf_copied;
 static int inbuf_end, outbuf_end;
 static RAACES_AACInfo aacinfo;
-static int callbk_err=0;
+static int callbk_err = 0;
 
 static int
 buflist_add (struct buflist_head *buf, struct buflist *p)
@@ -153,7 +159,7 @@ stream_output_end_cb (unsigned long size, unsigned long flush)
 				ERR ("A minus status code indicate a encode error.");
 				callbk_err = 1;
 			}
-                }
+		}
 		pthread_mutex_lock (&transfer_lock);
 		if (transfer_flag != 0) {
 			transfer_flag = 0;
@@ -290,7 +296,7 @@ middleware_open (void)
 {
 	RAACES_CallbackFunc cb;
 	static RAACES_AAC aac;
-	long ret = RAACES_R_GOOD;
+	long err = RAACES_R_GOOD;
 
 	if (paac2 != NULL)
 		return 0;
@@ -298,45 +304,169 @@ middleware_open (void)
 	cb.pcm_input_end_cb = pcm_input_end_cb;
 	cb.stream_output_end_cb = stream_output_end_cb;
 	cb.encode_end_cb = encode_end_cb;
-	if ((ret = RAACES_Open (&aac, &aacinfo, 0, 0, 0x10200, &cb))
+	if ((err = RAACES_Open (&aac, &aacinfo, 0, 0, 0x10200, &cb))
 		 < RAACES_R_GOOD) {
 		ERR ("RAACES_Open error");
 		if (paac2->statusCode < 0) {
-			ret = paac2->statusCode;
+			err = paac2->statusCode;
 		} else {
 			fprintf (stderr, "Odd statusCode %08lx\n", paac2->statusCode);
 		}
-		return ret;
+		return err;
 	}
 	paac2 = &aac;
-	return ret;
+	return err;
 }
 
-static long 
+static long
 middleware_close (void)
 {
-	long ret = RAACES_R_GOOD;
+	long err = RAACES_R_GOOD;
 	if (paac2 != NULL) {
-		if ((ret =RAACES_Close (paac2)) < RAACES_R_GOOD) {
+		if ((err = RAACES_Close (paac2)) < RAACES_R_GOOD) {
 			ERR ("RAACES_Close error");
 			if (paac2->statusCode < 0) {
-				ret = paac2->statusCode;
+				err = paac2->statusCode;
 			} else {
 				fprintf (stderr, "Odd statusCode %08lx\n", paac2->statusCode);
 			}
 		}
 		paac2 = NULL;
 	}
-	return ret;
+	return err;
+}
+
+static long
+encoder_close (int encoding)
+{
+	long err;
+
+	if (encoding != 0 && RAACES_EncoderStop (paac2) < RAACES_R_GOOD) {
+		ERR ("RAACES_EncoderStop error");
+		fprintf (stderr, "statusCode %08lx\n", paac2->statusCode);
+	}
+	err = middleware_close ();
+	return err;
+}
+
+static int
+copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
+{
+	uint8_t *_dstbuf;
+	int _dstlen, copylen;
+
+	_dstbuf = (uint8_t *)*destbuf;
+	_dstlen = (uint8_t *)destend - _dstbuf;
+	if (outbuf_copying == NULL) {
+	get_outbuf:
+		outbuf_copying = buflist_pop (&outbuf_used);
+		outbuf_copied = 0;
+	}
+	while (outbuf_copying != NULL) {
+		copylen = outbuf_copying->flen - outbuf_copied;
+		if (copylen == 0) {
+			if (buflist_add (&outbuf_free, outbuf_copying))
+				*pneed_output = 1;
+			goto get_outbuf;
+		}
+		if (_dstlen == 0)
+			break;
+		if (copylen > _dstlen)
+			copylen = _dstlen;
+		memcpy (_dstbuf, (uint8_t *)outbuf_copying->buf +
+			outbuf_copied, copylen);
+		_dstbuf += copylen;
+		_dstlen -= copylen;
+		outbuf_copied += copylen;
+	}
+	if (*destbuf == (void *)_dstbuf && *destbuf != destend)
+		return 0;
+	*destbuf = (void *)_dstbuf;
+	return 1;
+}
+
+static void
+handle_last_input_buffer (int *pneed_input, int *pinbuf_added)
+{
+	switch (inbuf_end) {
+	case 0:
+		if (inbuf_copying != NULL && inbuf_copied > 0) {
+			inbuf_copying->flen = inbuf_copied;
+			if (buflist_add (&inbuf_used, inbuf_copying))
+				*pneed_input = 1;
+			*pinbuf_added = 1;
+			inbuf_copying = NULL;
+		}
+		inbuf_end = 1;
+		/* fall through */
+	case 1:
+		if (inbuf_copying == NULL) {
+			inbuf_copying = buflist_pop (&inbuf_free);
+			if (inbuf_copying == NULL)
+				break;
+		}
+		inbuf_copying->flen = 0;
+		if (buflist_add (&inbuf_used, inbuf_copying))
+			*pneed_input = 1;
+		*pinbuf_added = 1;
+		inbuf_copying = NULL;
+		inbuf_end = 2;
+		/* fall through */
+	case 2:
+		break;
+	}
+}
+
+static int
+copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
+		   int *pinbuf_added)
+{
+	uint8_t *_srcbuf;
+	int _srclen, copylen;
+
+	if (srcbuf == NULL) {
+		handle_last_input_buffer (pneed_input, pinbuf_added);
+		return 1;
+	}
+	_srcbuf = (uint8_t *)*srcbuf;
+	_srclen = (uint8_t *)srcend - _srcbuf;
+	if (inbuf_copying == NULL) {
+	get_inbuf:
+		inbuf_copying = buflist_pop (&inbuf_free);
+		inbuf_copied = 0;
+	}
+	while (inbuf_copying != NULL) {
+		copylen = inbuf_copying->alen - inbuf_copied;
+		if (copylen == 0) {
+			inbuf_copying->flen = inbuf_copied;
+			if (buflist_add (&inbuf_used, inbuf_copying))
+				*pneed_input = 1;
+			*pinbuf_added = 1;
+			goto get_inbuf;
+		}
+		if (_srclen == 0)
+			break;
+		if (copylen > _srclen)
+			copylen = _srclen;
+		memcpy ((uint8_t *)inbuf_copying->buf + inbuf_copied,
+			_srcbuf, copylen);
+		_srcbuf += copylen;
+		_srclen -= copylen;
+		inbuf_copied += copylen;
+	}
+	if (*srcbuf == (void *)_srcbuf && *srcbuf != srcend)
+		return 0;
+	*srcbuf = (void *)_srcbuf;
+	return 1;
 }
 
 int
 spu_aac_encode_init (void)
 {
-	if (initflag == 0) {
+	if (state.init == 0) {
 		if (init3 () < 0)
 			return -1;
-		initflag = 1;
+		state.init = 1;
 	}
 	return 0;
 }
@@ -347,7 +477,7 @@ spu_aac_encode_setfmt (struct spu_aac_encode_setfmt_data *format)
 	RAACES_AACInfo ai;
 
 	spu_aac_encode_init ();
-	if (initflag == 2)
+	if (state.open != 0)
 		return -2; /* need to stop encoding before calling this func */
 	switch (format->channel) {
 	default:
@@ -438,203 +568,131 @@ spu_aac_encode_setfmt (struct spu_aac_encode_setfmt_data *format)
 long
 spu_aac_encode (void **destbuf, void *destend, void **srcbuf, void *srcend)
 {
-	uint8_t *_srcbuf, *_dstbuf;
-	int _srclen, _dstlen, copylen;
 	int need_input, need_output;
 	int inbuf_added;
 	int endflag;
-	long ret = RAACES_R_GOOD;
+	int incopy, outcopy;
+	long err = RAACES_R_GOOD;
 
 once_again:
 	need_input = 0;
 	need_output = 0;
 	inbuf_added = 0;
-	if (initflag == 0) {
+	if (state.init == 0) {
 		if (init3 () < 0)
 			return -1;
-		initflag = 1;
+		state.init = 1;
 	}
 	pthread_mutex_lock (&transfer_lock);
 	endflag = outbuf_end;
-	if (endflag == 0)
-		transfer_flag = 1;
+	transfer_flag = 1;
 	pthread_mutex_unlock (&transfer_lock);
 
-	/* transfer output buffers */
-	_dstbuf = (uint8_t *)*destbuf;
-	_dstlen = (uint8_t *)destend - _dstbuf;
-	if (outbuf_copying == NULL) {
-	get_outbuf:
-		outbuf_copying = buflist_pop (&outbuf_used);
-		outbuf_copied = 0;
-	}
-	while (outbuf_copying != NULL) {
-		copylen = outbuf_copying->flen - outbuf_copied;
-		if (copylen == 0) {
-			if (buflist_add (&outbuf_free, outbuf_copying))
-				need_output = 1;
-			goto get_outbuf;
-		}
-		if (_dstlen == 0)
-			break;
-		if (copylen > _dstlen)
-			copylen = _dstlen;
-		memcpy (_dstbuf, (uint8_t *)outbuf_copying->buf +
-			outbuf_copied, copylen);
-		_dstbuf += copylen;
-		_dstlen -= copylen;
-		outbuf_copied += copylen;
-	}
-	*destbuf = (void *)_dstbuf;
+	outcopy = copy_output_buffer (destbuf, destend, &need_output);
+	incopy = copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
 
-	/* transfer input buffers */
-	if (srcbuf == NULL) {
-		/* handles the last input buffer */
-		switch (inbuf_end) {
-		case 0:
-			if (inbuf_copying != NULL && inbuf_copied > 0) {
-				inbuf_copying->flen = inbuf_copied;
-				if (buflist_add (&inbuf_used, inbuf_copying))
-					need_input = 1;
-				inbuf_added = 1;
-				inbuf_copying = NULL;
-			}
-			inbuf_end = 1;
-			/* fall through */
-		case 1:
-			if (inbuf_copying == NULL) {
-				inbuf_copying = buflist_pop (&inbuf_free);
-				if (inbuf_copying == NULL)
-					break;
-			}
-			inbuf_copying->flen = 0;
-			if (buflist_add (&inbuf_used, inbuf_copying))
-				need_input = 1;
-			inbuf_added = 1;
-			inbuf_copying = NULL;
-			inbuf_end = 2;
-			/* fall through */
-		case 2:
-			break;
-		}
-		goto skip_inbuf;
-	}
-	_srcbuf = (uint8_t *)*srcbuf;
-	_srclen = (uint8_t *)srcend - _srcbuf;
-	if (inbuf_copying == NULL) {
-	get_inbuf:
-		inbuf_copying = buflist_pop (&inbuf_free);
-		inbuf_copied = 0;
-	}
-	while (inbuf_copying != NULL) {
-		copylen = inbuf_copying->alen - inbuf_copied;
-		if (copylen == 0) {
-			inbuf_copying->flen = inbuf_copied;
-			if (buflist_add (&inbuf_used, inbuf_copying))
-				need_input = 1;
-			inbuf_added = 1;
-			goto get_inbuf;
-		}
-		if (_srclen == 0)
-			break;
-		if (copylen > _srclen)
-			copylen = _srclen;
-		memcpy ((uint8_t *)inbuf_copying->buf + inbuf_copied,
-			_srcbuf, copylen);
-		_srcbuf += copylen;
-		_srclen -= copylen;
-		inbuf_copied += copylen;
-	}
-	*srcbuf = (void *)_srcbuf;
-
-skip_inbuf:
-	if (initflag == 1) {
+	if (state.open == 0) {
+		callbk_err = 0;
 		inbuf_end = 0;
-		pthread_mutex_lock (&transfer_lock);		
+		pthread_mutex_lock (&transfer_lock);
 		outbuf_end = 0;
 		pthread_mutex_unlock (&transfer_lock);
 		if (inbuf_added == 0)
-			return ret;
-		if ((ret = middleware_open ()) < 0)
-			return ret;
+			goto ret;
+		if ((err = middleware_open ()) < 0)
+			goto ret;
 		pcm_input_end_cb (0);
 		stream_output_end_cb (0, 0);
 		/* Encoding all frames.(2nd param nframe is zero) */
-		if ((ret = RAACES_Encode (paac2, 0)) < RAACES_R_GOOD) { 
+		if ((err = RAACES_Encode (paac2, 0)) < RAACES_R_GOOD) {
 			ERR ("RAACES_Encode error");
 			if (paac2->statusCode < 0) {
-				ret = paac2->statusCode;
+				err = paac2->statusCode;
 			} else {
 				fprintf (stderr, "Odd statusCode %08lx\n", paac2->statusCode);
 			}
-			return ret;
+			goto close_and_ret;
 		}
-		initflag = 2;
+		state.open = 1;
 	} else {
 		if (need_input != 0)
 			pcm_input_end_cb (0);
 		if (need_output != 0)
 			stream_output_end_cb (0, 0);
 	}
-	if (inbuf_end == 2) {
-		if (endflag == 0)
-			pthread_mutex_lock (&transfer_done);
-		else if (outbuf_copying == NULL &&
-			 buflist_poll (&outbuf_used) == NULL) {
-			if (paac2->statusCode != 0)
-				ERR ("strange statusCode; ignored");
-			ret = middleware_close ();
-			initflag = 1;
-		}
-	} else if (buflist_poll (&inbuf_used) != NULL &&
-		   buflist_poll (&outbuf_free) != NULL) {
+	if (inbuf_end == 2 && endflag != 0 && outbuf_copying == NULL &&
+	    buflist_poll (&outbuf_used) == NULL) {
+		if (paac2->statusCode != 0)
+			ERR ("strange statusCode; ignored");
+		err = encoder_close (0);
+		state.open = 0;
+		goto ret;
+	}
+	if (callbk_err != 0) {
+		err = -1;
+		goto close_and_ret;
+	}
+	if ((inbuf_end == 2 || incopy == 0) && outcopy == 0) {
+		pthread_mutex_lock (&transfer_done);
+		goto once_again;
+	}
+	goto unlock_ret;
+close_and_ret:
+	encoder_close (0);
+	state.open = 0;
+ret:
+	if (inbuf_copying != NULL) {
+		buflist_add (&inbuf_free, inbuf_copying);
+		inbuf_copying = NULL;
+	}
+	if (outbuf_current != NULL) {
+		buflist_add (&outbuf_free, outbuf_current);
+		outbuf_current = NULL;
+	}
+	do {
+		if (inbuf_current != NULL)
+			buflist_add (&inbuf_free, inbuf_current);
+		inbuf_current = buflist_pop (&inbuf_used);
+	} while (inbuf_current != NULL);
+	do {
+		if (outbuf_copying != NULL)
+			buflist_add (&outbuf_free, outbuf_copying);
+		outbuf_copying = buflist_pop (&outbuf_used);
+	} while (outbuf_copying != NULL);
+unlock_ret:
+	pthread_mutex_lock (&transfer_lock);
+	if (transfer_flag == 0) {
+		pthread_mutex_unlock (&transfer_lock);
 		pthread_mutex_lock (&transfer_done);
 	} else {
-		pthread_mutex_lock (&transfer_lock);
-		if (transfer_flag == 0) {
-			pthread_mutex_unlock (&transfer_lock);
-			pthread_mutex_lock (&transfer_done);
-		} else {
-			transfer_flag = 0;
-			pthread_mutex_unlock (&transfer_lock);
-		}
+		transfer_flag = 0;
+		pthread_mutex_unlock (&transfer_lock);
 	}
-	if(callbk_err) {
-		return -1;
-	}
-
-	if (inbuf_end != 0 && _dstlen != 0 &&
-	    buflist_poll (&outbuf_used) != NULL)
-		goto once_again;
-	return ret;
+	return err;
 }
 
 long
 spu_aac_encode_stop (void)
 {
-	long ret = RAACES_R_GOOD;
-	if (initflag == 2) {
-		if (RAACES_EncoderStop (paac2) < RAACES_R_GOOD) {
-			ERR ("RAACES_EncoderStop error");
-			fprintf (stderr, "statusCode %08lx\n", paac2->statusCode);
-		}
-		ret = middleware_close ();
-		initflag = 1;
-	} 
-	return ret;
+	long err = RAACES_R_GOOD;
+	if (state.open != 0) {
+		err = encoder_close (1);
+		state.open = 0;
+	}
+	return err;
 }
 
 long
 spu_aac_encode_deinit (void)
 {
-	long ret = RAACES_R_GOOD;
-	if (initflag) {
-		ret = spu_aac_encode_stop ();
+	long err = RAACES_R_GOOD;
+	if (state.init != 0) {
+		err = spu_aac_encode_stop ();
 		RAACES_Quit ();
 		spu_deinit ();
 		buflist_free (&inbuflist);
 		buflist_free (&outbuflist);
-		initflag = 0;
+		state.init = 0;
 	}
-	return ret;
+	return err;
 }

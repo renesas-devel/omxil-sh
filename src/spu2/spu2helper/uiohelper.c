@@ -127,22 +127,30 @@ UIO_interrupt_enable (UIO *up)
 }
 
 UIO *
-UIO_open (uiomux_resource_t type, unsigned long *paddr_reg,
+UIO_open (const char *name, unsigned long *paddr_reg,
 	  unsigned long *paddr_pmem, void **vaddr_reg, void **vaddr_pmem,
 	  size_t *size_reg, size_t *size_pmem,
 	  void (*interrupt_callback) (void *arg), void *arg)
 {
 	uiomux_resource_t uiores;
 	UIO *up;
+	UIOMux *uiomux;
+	const char *names[2] = { name, NULL };
 
-	if (!type)
+	uiomux = uiomux_open_named (names);
+	if (!uiomux)
 		return NULL;
-	uiores = uiomux_query ();
-	if (!(uiores & type))
+	if (!uiomux_check_resource (uiomux, 1)) {
+		uiomux_close (uiomux);
 		return NULL;
+	}
 	up = malloc (sizeof *up);
-	up->uiomux = uiomux_open ();
-	up->type = type;
+	if (!up) {
+		uiomux_close (uiomux);
+		return NULL;
+	}
+	up->uiomux = uiomux;
+	up->type = 1;
 	up->interrupt_thread_ufunc = interrupt_callback;
 	up->interrupt_thread_uarg = arg;
 	up->interrupt_enabled = 0;

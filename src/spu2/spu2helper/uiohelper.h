@@ -29,7 +29,7 @@ void UIO_pmem_free (UIO *up, void *vaddr, size_t size);
 void UIO_phys_pmem_free (UIO *up, unsigned long paddr, size_t size);
 void UIO_interrupt_disable (UIO *up);
 int UIO_interrupt_enable (UIO *up);
-UIO *UIO_open (uiomux_resource_t type, unsigned long *paddr_reg,
+UIO *UIO_open (const char *name, unsigned long *paddr_reg,
 	       unsigned long *paddr_pmem, void **vaddr_reg, void **vaddr_pmem,
 	       size_t *size_reg, size_t *size_pmem,
 	       void (*interrupt_callback) (void *arg), void *arg);
