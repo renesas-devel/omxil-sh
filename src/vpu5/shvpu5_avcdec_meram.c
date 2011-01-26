@@ -45,8 +45,13 @@ meram_open_mem(shvpu_meram_t *mdata)
 void
 meram_close_mem(shvpu_meram_t *mdata)
 {
-	if (mdata->meram)
-		meram_close(mdata->meram);
+	if (!mdata || !mdata->meram)
+		return;
+	if (mdata->decY_icb)
+		meram_release_icb(mdata->meram, mdata->decY_icb);
+	if (mdata->decC_icb)
+		meram_release_icb(mdata->meram, mdata->decC_icb);
+	meram_close(mdata->meram);
 }
 unsigned long
 setup_icb(shvpu_meram_t *mdata,
@@ -78,10 +83,11 @@ setup_icb(shvpu_meram_t *mdata,
 	else if (pitch <= 4096)
 		pitch_2n = 4;
 
-	memblk = meram_alloc_memory_block(meram, pitch_2n * res_lines);
 
 	if ((*icb = meram_lock_icb(meram, index)) == NULL)
 		return -1;
+
+	memblk = meram_alloc_icb_memory(meram, icb, pitch_2n * res_lines);
 
 	meram_write_icb(meram, *icb, MExxCTL, (block_lines << 28) |
 		(memblk  << 16) | 0x708 | md);
@@ -105,7 +111,7 @@ meram_set_address(shvpu_meram_t *mdata, ICB *icb, unsigned long address)
 void
 meram_write_done(shvpu_meram_t *mdata, ICB *icb) {
 	unsigned long tmp;
-	if (icb && mdata) {
+	if (icb && mdata && mdata->meram) {
 		meram_read_icb(mdata->meram, icb, MExxCTL, &tmp);
 		meram_write_icb(mdata->meram, icb, MExxCTL, tmp | 0x20);
 	}
@@ -114,9 +120,16 @@ meram_write_done(shvpu_meram_t *mdata, ICB *icb) {
 void
 meram_read_done(shvpu_meram_t *mdata, ICB *icb) {
 	unsigned long tmp;
-	if (icb && mdata) {
+	if (icb && mdata && mdata->meram) {
 		meram_read_icb(mdata->meram, icb, MExxCTL, &tmp);
 		meram_write_icb(mdata->meram, icb, MExxCTL, tmp | 0x10);
+	}
+}
+void
+meram_release_icb(shvpu_meram_t *mdata, ICB *icb) {
+	if (icb && mdata && mdata->meram) {
+		meram_free_icb_memory(mdata->meram, icb);
+		meram_unlock_icb(mdata->meram, icb);
 	}
 }
 #endif
