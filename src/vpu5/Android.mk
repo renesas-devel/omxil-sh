@@ -44,6 +44,8 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_avcdec_bufcalc.c \
 	shvpu5_avcenc_encode.c \
 	shvpu5_avcenc_omx.c \
+	shvpu5_common_driver.c \
+	shvpu5_common_ipmmu.c
 
 LOCAL_LDFLAGS = -L$(LOCAL_PATH)/../vpu5_mid/lib \
 	-lvpu5decavc \
