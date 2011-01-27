@@ -31,7 +31,9 @@
 #include "mcvdec.h"
 #include "shvpu5_avcdec_omx.h"
 
+#ifndef HAVE_ANDROID_OS
 typedef unsigned int	uintptr_t;
+#endif
 
 /* stream end code table indicated by stream type */
 static unsigned char end_code_table[8][16] = {
