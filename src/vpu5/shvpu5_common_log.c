@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdarg.h>
 
-#if HAVE_ANDROID_OS
+#ifdef HAVE_ANDROID_OS
 #include <utils/Log.h>
 #endif
 int
@@ -39,7 +39,7 @@ logd(const char *format, ...)
 	va_list ap;
 
 	va_start(ap, format);
-#if HAVE_ANDROID_OS
+#ifdef HAVE_ANDROID_OS
         LOG_PRI_VA(ANDROID_LOG_DEBUG, LOG_TAG, format, ap);
 #else
 	ret = vfprintf(stderr, format, ap);
@@ -60,7 +60,7 @@ loge(const char* format, ...)
 	va_list ap;
 
 	va_start(ap, format);
-#if HAVE_ANDROID_OS
+#ifdef HAVE_ANDROID_OS
         LOG_PRI_VA(ANDROID_LOG_ERROR, LOG_TAG, format, ap);
 #else
 	ret = vfprintf(stderr, format, ap);
