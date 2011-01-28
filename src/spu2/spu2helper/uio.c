@@ -58,6 +58,7 @@ static void interrupt_handler(void *arg)
 void uio_deinit(struct uio *uio)
 {
 	if (uio->dev.up) {
+		UIO_pmem_free(uio->dev.up, uio->mem.iomem, uio->mem.size);
 		UIO_close(uio->dev.up);
 		uio->dev.up = NULL;
 	}
