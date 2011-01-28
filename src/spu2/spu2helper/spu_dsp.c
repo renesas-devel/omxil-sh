@@ -133,7 +133,7 @@ static int get_dsp_def(struct dsp_def *def)
 		def->xbank_num		= 1;
 		break;
 	default:
-		perr("Un-supported CPU\n");
+		/* perr("Un-supported CPU\n"); */
 		def->total_pbank_num	= 5;
 		def->total_xbank_num	= 7;
 		def->pbank_num		= 4;//1;
