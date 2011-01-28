@@ -26,16 +26,23 @@
 #include "uiomux/uiomux.h"
 #include "uiohelper.h"
 
+enum interrupt_thread_state {
+	INTERRUPT_THREAD_STATE_DISABLED,
+	INTERRUPT_THREAD_STATE_ENABLED,
+	INTERRUPT_THREAD_STATE_ERROR,
+};
+
 struct uio_data {
 	UIOMux *uiomux;
 	uiomux_resource_t type;
 	void (*interrupt_thread_ufunc) (void *arg);
 	void *interrupt_thread_uarg;
-	int interrupt_enabled;
-	pthread_mutex_t interrupt_lock, interrupt_thread_end_lock;
+	enum interrupt_thread_state interrupt_state;
+	pthread_mutex_t interrupt_lock;
 	unsigned long paddr_reg, paddr_pmem;
 	unsigned long size_reg, size_pmem;
 	void *vaddr_reg, *vaddr_pmem;
+	pthread_t thid;
 };
 
 void *
@@ -76,13 +83,12 @@ UIO_interrupt_thread (void *arg)
 	for (;;) {
 		ret = uiomux_sleep (up->uiomux, up->type);
 		pthread_mutex_lock (&up->interrupt_lock);
-		if (!up->interrupt_enabled) {
+		if (up->interrupt_state == INTERRUPT_THREAD_STATE_DISABLED) {
 			pthread_mutex_unlock (&up->interrupt_lock);
-			pthread_mutex_unlock (&up->interrupt_thread_end_lock);
 			break;
 		}
 		if (ret < 0) {
-			up->interrupt_enabled = 0;
+			up->interrupt_state = INTERRUPT_THREAD_STATE_ERROR;
 			pthread_mutex_unlock (&up->interrupt_lock);
 			break;
 		}
@@ -96,17 +102,22 @@ UIO_interrupt_thread (void *arg)
 void
 UIO_interrupt_disable (UIO *up)
 {
-	int action = 0;
+	enum interrupt_thread_state state;
 
 	pthread_mutex_lock (&up->interrupt_lock);
-	if (up->interrupt_enabled) {
-		up->interrupt_enabled = 0;
-		action = 1;
-	}
+	state = up->interrupt_state;
+	up->interrupt_state = INTERRUPT_THREAD_STATE_DISABLED;
 	pthread_mutex_unlock (&up->interrupt_lock);
-	if (action) {
+	switch (state) {
+	case INTERRUPT_THREAD_STATE_ENABLED:
 		uiomux_wakeup (up->uiomux, up->type);
-		pthread_mutex_lock (&up->interrupt_thread_end_lock);
+		/* fall through */
+	case INTERRUPT_THREAD_STATE_ERROR:
+		pthread_join (up->thid, NULL);
+		/* fall through */
+	case INTERRUPT_THREAD_STATE_DISABLED:
+	default:
+		break;
 	}
 }
 
@@ -114,12 +125,11 @@ int
 UIO_interrupt_enable (UIO *up)
 {
 	int ret = 0;
-	pthread_t thid;
 
 	pthread_mutex_lock (&up->interrupt_lock);
-	if (!up->interrupt_enabled) {
-		up->interrupt_enabled = 1;
-		ret = pthread_create (&thid, NULL, UIO_interrupt_thread,
+	if (up->interrupt_state == INTERRUPT_THREAD_STATE_DISABLED) {
+		up->interrupt_state = INTERRUPT_THREAD_STATE_ENABLED;
+		ret = pthread_create (&up->thid, NULL, UIO_interrupt_thread,
 				      (void *)up);
 	}
 	pthread_mutex_unlock (&up->interrupt_lock);
@@ -153,10 +163,8 @@ UIO_open (const char *name, unsigned long *paddr_reg,
 	up->type = 1;
 	up->interrupt_thread_ufunc = interrupt_callback;
 	up->interrupt_thread_uarg = arg;
-	up->interrupt_enabled = 0;
+	up->interrupt_state = INTERRUPT_THREAD_STATE_DISABLED;
 	pthread_mutex_init (&up->interrupt_lock, NULL);
-	pthread_mutex_init (&up->interrupt_thread_end_lock, NULL);
-	pthread_mutex_lock (&up->interrupt_thread_end_lock);
 	uiomux_get_mmio (up->uiomux, up->type, &up->paddr_reg, &up->size_reg,
 			 &up->vaddr_reg);
 	uiomux_get_mem (up->uiomux, up->type, &up->paddr_pmem, &up->size_pmem,
