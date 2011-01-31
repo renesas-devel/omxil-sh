@@ -23,12 +23,14 @@ LOCAL_PRELINK_MODULE := false
 LOCAL_SHARED_LIBRARIES := liblog  \
 			libcutils \
 			libomxil-bellagio \
-			libvpu5uio
+			libvpu5uio \
+			libmeram
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
+		external/libmeram/include \
 		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
 
@@ -56,7 +58,7 @@ LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/lib \
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libshvpu5avc
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID -DIPMMU_ENABLE
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -71,6 +73,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
+		external/libmeram/include \
 		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
 
@@ -80,7 +83,7 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5uio
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DANDROID
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DANDROID  -DIPMMU_ENABLE
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -94,6 +97,7 @@ LOCAL_SHARED_LIBRARIES := liblog  \
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
+		external/libmeram/include \
 		external/libuiomux/include \
 		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
@@ -105,7 +109,7 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udf
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID -DIPMMU_ENABLE
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -115,11 +119,13 @@ LOCAL_SHARED_LIBRARIES := liblog  \
 			libcutils \
 			libuiomux \
 			libomxil-bellagio \
-			libvpu5uio
+			libvpu5uio \
+			libmeram
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
+		external/libmeram/include \
 		external/libuiomux/include \
 		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
@@ -128,11 +134,12 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_common_queue.c \
 	shvpu5_avcdec_output.c \
 	shvpu5_avcdec_input.c \
+	shvpu5_common_ipmmu.c \
 	shvpu5_common_log.c
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfdec
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID -DIPMMU_ENABLE
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -157,5 +164,5 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfenc
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID -DIPMMU_ENABLE
 include $(BUILD_SHARED_LIBRARY)
