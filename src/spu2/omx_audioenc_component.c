@@ -352,6 +352,12 @@ OMX_ERRORTYPE omx_audioenc_component_Destructor(OMX_COMPONENTTYPE *openmaxStandC
   omx_audioenc_component_PrivateType* omx_audioenc_component_Private = openmaxStandComp->pComponentPrivate;
   OMX_U32 i;
 
+  if (omx_audioenc_component_Private->internalOutputBuffer) {
+    free(omx_audioenc_component_Private->internalOutputBuffer);
+    omx_audioenc_component_Private->internalOutputBuffer = NULL;
+  }
+  spu_aac_encode_deinit ();
+
   /* frees port/s */
   if (omx_audioenc_component_Private->ports) {
     for (i=0; i < omx_audioenc_component_Private->sPortTypesParam[OMX_PortDomainAudio].nPorts; i++) {

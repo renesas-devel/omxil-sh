@@ -372,6 +372,12 @@ OMX_ERRORTYPE omx_audiodec_component_Destructor(OMX_COMPONENTTYPE *openmaxStandC
   omx_audiodec_component_PrivateType* omx_audiodec_component_Private = openmaxStandComp->pComponentPrivate;
   OMX_U32 i;
 
+  if (omx_audiodec_component_Private->internalOutputBuffer) {
+    free(omx_audiodec_component_Private->internalOutputBuffer);
+    omx_audiodec_component_Private->internalOutputBuffer = NULL;
+  }
+  spu_aac_decode_deinit();
+
   if(omx_audiodec_component_Private->extradata) {
     free(omx_audiodec_component_Private->extradata);
   }
