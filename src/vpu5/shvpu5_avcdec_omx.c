@@ -175,6 +175,16 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	outPort->Port_FreeBuffer = shvpu_avcdec_port_FreeOutBuffer;
 	SetInternalVideoParameters(pComponent);
 
+	/*OMX_PARAM_REVPU5MAXPARAM*/
+		setHeader(&shvpu_avcdec_Private->maxVideoParameters,
+			  sizeof(OMX_PARAM_REVPU5MAXPARAM));
+		shvpu_avcdec_Private->maxVideoParameters.nWidth = 1280;
+		shvpu_avcdec_Private->maxVideoParameters.nHeight = 720;
+		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel31;
+		/*OMX_PARAM_REVPU5MAXINSTANCE*/
+		setHeader(&maxVPUInstances,
+			sizeof (OMX_PARAM_REVPU5MAXINSTANCE));
+
 	shvpu_avcdec_Private->eOutFramePixFmt = 0;
 
 	if (shvpu_avcdec_Private->video_coding_type ==
@@ -449,15 +459,6 @@ SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 		memcpy(&shvpu_avcdec_Private->pVideoCurrentProfile,
 			&shvpu_avcdec_Private->pVideoProfile[0],
 			sizeof (OMX_VIDEO_PARAM_PROFILELEVELTYPE));
-	/*OMX_PARAM_REVPU5MAXPARAM*/
-		setHeader(&shvpu_avcdec_Private->maxVideoParameters,
-			  sizeof(OMX_PARAM_REVPU5MAXPARAM));
-		shvpu_avcdec_Private->maxVideoParameters.nWidth = 1280;
-		shvpu_avcdec_Private->maxVideoParameters.nHeight = 720;
-		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel31;
-		/*OMX_PARAM_REVPU5MAXINSTANCE*/
-		setHeader(&maxVPUInstances,
-			sizeof (OMX_PARAM_REVPU5MAXINSTANCE));
 
 		inPort =
 			(omx_base_video_PortType *)
