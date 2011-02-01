@@ -28,15 +28,22 @@
 #include <stdio.h>
 #include <stdarg.h>
 
+#if HAVE_ANDROID_OS
+#include <utils/Log.h>
+#endif
 int
 logd(const char *format, ...)
 {
 #if 0
-	int ret;
+	int ret = 0;
 	va_list ap;
 
 	va_start(ap, format);
+#if HAVE_ANDROID_OS
+        LOG_PRI_VA(ANDROID_LOG_DEBUG, LOG_TAG, format, ap);
+#else
 	ret = vfprintf(stderr, format, ap);
+#endif
 	va_end(ap);
 
 	return ret;
@@ -49,11 +56,15 @@ int
 loge(const char* format, ...)
 {
 #if 1
-	int ret;
+	int ret = 0;
 	va_list ap;
 
 	va_start(ap, format);
+#if HAVE_ANDROID_OS
+        LOG_PRI_VA(ANDROID_LOG_ERROR, LOG_TAG, format, ap);
+#else
 	ret = vfprintf(stderr, format, ap);
+#endif
 	va_end(ap);
 
 	return ret;
