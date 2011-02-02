@@ -77,7 +77,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	alloc_size = ((fmemsize * 3 / 2) + (align - 1)) & ~(align - 1);
 	alloc_size += align;
 #else
-	fmem_x = (xpic_size + 15) / 16 * 16;
+	fmem_x = (xpic_size + 31) / 32 * 32;
 	align = 32;
 	fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
 	alloc_size = fmemsize * 3 / 2;
