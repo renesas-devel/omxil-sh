@@ -87,7 +87,7 @@ setup_icb(shvpu_meram_t *mdata,
 	if ((*icb = meram_lock_icb(meram, index)) == NULL)
 		return -1;
 
-	memblk = meram_alloc_icb_memory(meram, icb, pitch_2n * res_lines);
+	memblk = meram_alloc_icb_memory(meram, *icb, pitch_2n * res_lines);
 
 	meram_write_icb(meram, *icb, MExxCTL, (block_lines << 28) |
 		(memblk  << 16) | 0x708 | md);
