@@ -23,14 +23,12 @@ LOCAL_PRELINK_MODULE := false
 LOCAL_SHARED_LIBRARIES := liblog  \
 			libcutils \
 			libomxil-bellagio \
-			libvpu5uio \
-			libmeram
+			libvpu5uio
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
-		external/libmeram/include \
 		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
 
@@ -45,8 +43,7 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_common_queue.c \
 	shvpu5_avcenc_encode.c \
 	shvpu5_avcenc_omx.c \
-	shvpu5_common_driver.c \
-	shvpu5_common_ipmmu.c
+	shvpu5_common_driver.c
 
 LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/lib \
 	-lvpu5decavc \
@@ -58,7 +55,22 @@ LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/lib \
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libshvpu5avc
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID -DIPMMU_ENABLE
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
+
+ifeq ($(VPU_DECODE_WITH_IPMMU), true)
+	LOCAL_SHARED_LIBRARIES += libmeram
+	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c
+	LOCAL_CFLAGS += -DIPMMU_ENABLE
+endif
+
+ifeq ($(VPU_DECODE_WITH_MERAM), true)
+	LOCAL_SHARED_LIBRARIES += libmeram
+	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
+	LOCAL_CFLAGS += -DMERAM_ENABLE
+endif
+>>>>>>> vpu5: Update Android.mk to use the values defined in BoardConfig
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -73,7 +85,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
-		external/libmeram/include \
 		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
 
@@ -83,7 +94,17 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5uio
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DANDROID  -DIPMMU_ENABLE
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DANDROID
+
+ifeq ($(VPU_DECODE_WITH_IPMMU), true)
+	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_CFLAGS += -DIPMMU_ENABLE
+endif
+
+ifeq ($(VPU_DECODE_WITH_MERAM), true)
+	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_CFLAGS += -DMERAM_ENABLE
+endif
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -97,7 +118,6 @@ LOCAL_SHARED_LIBRARIES := liblog  \
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
-		external/libmeram/include \
 		external/libuiomux/include \
 		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
@@ -109,7 +129,20 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udf
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID -DIPMMU_ENABLE
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
+
+ifeq ($(VPU_DECODE_WITH_IPMMU), true)
+	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_CFLAGS += -DIPMMU_ENABLE
+endif
+
+ifeq ($(VPU_DECODE_WITH_MERAM), true)
+	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
+	LOCAL_SHARED_LIBRARIES += libmeram
+	LOCAL_CFLAGS += -DMERAM_ENABLE
+endif
+>>>>>>> vpu5: Update Android.mk to use the values defined in BoardConfig
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -120,12 +153,10 @@ LOCAL_SHARED_LIBRARIES := liblog  \
 			libuiomux \
 			libomxil-bellagio \
 			libvpu5uio \
-			libmeram
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
-		external/libmeram/include \
 		external/libuiomux/include \
 		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
@@ -134,12 +165,26 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_common_queue.c \
 	shvpu5_avcdec_output.c \
 	shvpu5_avcdec_input.c \
-	shvpu5_common_ipmmu.c \
 	shvpu5_common_log.c
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfdec
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID -DIPMMU_ENABLE
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
+
+ifeq ($(VPU_DECODE_WITH_IPMMU), true)
+	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c
+	LOCAL_CFLAGS += -DIPMMU_ENABLE
+	LOCAL_SHARED_LIBRARIES += libmeram
+endif
+
+ifeq ($(VPU_DECODE_WITH_MERAM), true)
+	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
+	LOCAL_SHARED_LIBRARIES += libmeram
+	LOCAL_CFLAGS += -DMERAM_ENABLE
+endif
+>>>>>>> vpu5: Update Android.mk to use the values defined in BoardConfig
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -164,5 +209,5 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfenc
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID -DIPMMU_ENABLE
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
