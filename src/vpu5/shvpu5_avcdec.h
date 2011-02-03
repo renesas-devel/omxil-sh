@@ -31,7 +31,9 @@
 #include <OMX_Types.h>
 #include <OMX_Core.h>
 #include <OMX_Component.h>
+#ifdef MERAM_ENABLE
 #include <meram/meram.h>
+#endif
 
 void
 free_remaining_streams(queue_t *pSIQueue);
