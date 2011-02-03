@@ -76,7 +76,7 @@ setup_icb(shvpu_meram_t *mdata,
 	meram_write_icb(meram, *icb, MExxSIZE, (lines-1) << 16 |
 		(pitch -1));
 
-	meram_write_icb(meram, *icb, MExxMNCF, (res_lines-1 << 16) |
+	meram_write_icb(meram, *icb, MExxMNCF, ((res_lines - 1) << 16) |
 		(res << 28) | (0 << 15 ));
 
 	meram_write_icb(meram, *icb, MExxBSIZE, pitch | 0x90000000);
