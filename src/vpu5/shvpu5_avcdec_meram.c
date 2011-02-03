@@ -9,25 +9,6 @@
 
 static void *meram_base = NULL;
 static int mem_fd;
-write_meram_icb(void *base, int ind, int off, unsigned long val)
-{
-	*(unsigned long *)(base + 0x400 + ((ind) * 0x20) + off) = val;
-}
-
-read_meram_icb(void *base, int ind, int off, unsigned long *dest)
-{
-	*dest = *(unsigned long *)(base + 0x400 + ((ind) * 0x20) + off);
-}
-write_meram_reg(void *base, int off, unsigned long val)
-{
-	*(unsigned long *)(base + off) = val;
-}
-
-read_meram_reg(void *base, int off, unsigned long *dest)
-{
-	*dest = *(unsigned long *)(base + off);
-}
-
 int
 meram_open_mem(shvpu_meram_t *mdata)
 {
