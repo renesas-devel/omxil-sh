@@ -55,6 +55,7 @@ LOCAL_LDFLAGS = -L$(LOCAL_PATH)/../vpu5_mid/lib \
 	-lvpu5drvcmn \
 	-lvpu5drvhg
 
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libshvpu5avc
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/avc_dec/\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
@@ -77,6 +78,7 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_common_uio.c \
 	shvpu5_common_log.c
 
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5uio
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
@@ -101,6 +103,7 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_common_udfio.c \
 	shvpu5_common_log.c
 
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udf
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/avc_dec/\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
@@ -127,6 +130,7 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_avcdec_input.c \
 	shvpu5_common_log.c
 
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfdec
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/avc_dec/\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
@@ -151,6 +155,7 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_avcenc_output.c \
 	shvpu5_common_log.c
 
+LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfenc
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/avc_dec/\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
