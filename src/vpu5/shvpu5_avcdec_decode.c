@@ -37,7 +37,6 @@
 #include "shvpu5_avcdec.h"
 #include "shvpu5_avcdec_omx.h"
 
-#define MAX_REF_FRAME_CNT 16
 int ibuf_ready;
 
 static inline void *
@@ -269,7 +268,8 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	pCodec->imd_info.imd_buff_mode = MCVDEC_MODE_NOMAL;
 
         pCodec->ir_info.ir_info_size = ir_info_size_calc(
-                       shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel);
+		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel,
+		pCodec->cprop.max_slice_cnt);
 
 	pCodec->ir_info.ir_info_addr =
 		pmem_alloc(pCodec->ir_info.ir_info_size, 32, &paddr);
@@ -280,7 +280,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
         pCodec->mv_info.mv_info_size = mv_info_size_calc(
                        shvpu_avcdec_Private->maxVideoParameters.nWidth,
                        shvpu_avcdec_Private->maxVideoParameters.nHeight,
-                       MAX_REF_FRAME_CNT);
+                       pCodec->avcdec_params.max_num_ref_frames_plus1);
 
 	vaddr = pmem_alloc(pCodec->mv_info.mv_info_size,
 				32, &pCodec->mv_info.mv_info_addr);

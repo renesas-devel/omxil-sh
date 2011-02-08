@@ -38,15 +38,15 @@ unsigned int inb_buf_size_calc(int level, int width, int height) {
 	return ALIGN(vbv_size * 4 + mss * 8 + VPU_UNIT(mb_width * (mb_height + 3) * 8 / 4) * 4 * imd_fr_cnt);
 
 }
-unsigned int ir_info_size_calc(int level) {
+unsigned int ir_info_size_calc(int level, int max_slice_cnt) {
 	int vbv_size = maxCPB[level] * 1000 / 8;
-	int max_slice_cnt = 16; //?
 	int hdr_fr_cnt = vbv_size < 5000000 ? MAXFPS + 2 : vbv_size * MAXFPS / 5000000 + 2;
 	return  ALIGN(512 * hdr_fr_cnt * 2 + VPU_UNIT( 992 * max_slice_cnt / 2) * 2 * hdr_fr_cnt  + 3072);
 }
 
-unsigned int mv_info_size_calc(int width, int height, int ref_frame_cnt) {
+unsigned int mv_info_size_calc(int width, int height,
+			       int ref_frame_cnt_plus1) {
 	int mb_width = ((width + 15) / 16) * 16 / 16;
 	int mb_height = ((height + 15) / 16) * 16 / 16;
-	return ALIGN(VPU_UNIT(64 * mb_width * ((mb_height + 3) / 4)) * 4 * (ref_frame_cnt + 1));
+	return ALIGN(VPU_UNIT(64 * mb_width * ((mb_height + 3) / 4)) * 4 * (ref_frame_cnt_plus1));
 }
