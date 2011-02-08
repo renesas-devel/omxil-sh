@@ -46,10 +46,6 @@ long
 decode_init(MCVDEC_CONTEXT_T **context);
 #endif
 int
-decode_prepare(void *context);
-int
-decode_main(void *context, int fd);
-int
 decode_finalize(void *context);
 
 #endif /* __SIMPLE_AVCDEC_H_ */

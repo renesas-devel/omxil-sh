@@ -37,8 +37,6 @@
 #include "shvpu5_avcdec.h"
 #include "shvpu5_avcdec_omx.h"
 
-int ibuf_ready;
-
 static inline void *
 malloc_aligned(size_t size, int align)
 {
@@ -368,40 +366,6 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 		shvpu_avcdec_Private->avCodec = NULL;
 	}
 }
-int
-decode_prepare(void *context)
-{
-	long ret, hdr_ready;
-	MCVDEC_CMN_PICINFO_T *pic_info;
-	
-	/* fill buffers */
-	do {
-		hdr_ready = MCVDEC_ON;
-		logd("----- invoke mcvdec_decode_picture() -----\n");
-		ret = mcvdec_decode_picture(context,
-					    &pic_info,
-					    MCVDEC_MODE_BUFFERING,
-					    &hdr_ready);
-		logd("----- resume from mcvdec_decode_picture() -----\n");
-		logd("hdr_ready = %s\n", (hdr_ready == MCVDEC_ON) ?
-		       "MCVDEC_ON" : "MCVDEC_OFF");
-
-	} while ((ret == MCVDEC_NML_END) &&
-		 ((hdr_ready != MCVDEC_ON) || (ibuf_ready != 1)));
-
-	/* error check */
-	switch (ret) {
-	case MCVDEC_CAUTION:
-		logd("%s: warning\n", __FUNCTION__);
-	case MCVDEC_NML_END:
-		break;
-	default:
-		logd("%s: error %ld\n", __FUNCTION__, ret);
-		return -1;
-	}
-
-	return 0;
-}
 
 static int
 show_error(void *context)
@@ -430,96 +394,6 @@ show_error(void *context)
 	loge("errinfo.ce_err_epx = %lx\n", errinfo.ce_err_epx);
 
 	return ret;
-}
-
-int
-decode_main(void *context, int fd)
-{
-	MCVDEC_CMN_PICINFO_T *pic_info, *pic_infos[2];
-	MCVDEC_FMEM_INFO_T *frame;
-	long reti, reto, hdr_ready;
-	size_t pic_size;
-	void *vaddr;
-	int last_decoded_frame = -1;
-
-	/* fill buffers */
-	do {
-		logd("----- invoke mcvdec_decode_picture() -----\n");
-		reti = mcvdec_decode_picture(context,
-					    &pic_info,
-					    MCVDEC_MODE_MAIN,
-					    &hdr_ready);
-		logd("----- resume from mcvdec_decode_picture() = %d "
-		       "-----\n", reti);
-		switch (reti) {
-		case MCVDEC_CAUTION:
-		case MCVDEC_CONCEALED_1:
-		case MCVDEC_CONCEALED_2:
-			printf("an error(%d) recoverd.\n", reti);
-			show_error(context);
-			break;
-		case MCVDEC_UNSUPPORT:
-		case MCVDEC_ERR_STRM:
-			show_error(context);
-		default:
-			printf("terminating because of an error(%d)\n",
-			       reti);
-			printf("%d decoded frame(s)\n",
-			       last_decoded_frame + 1);
-			close(fd);
-			return reti;
-		case MCVDEC_NO_STRM:
-		case MCVDEC_INPUT_END:
-			printf("nothing to decode (%d)\n", reti);
-		case MCVDEC_NML_END:
-			break;
-		}
-		logd("----- invoke mcvdec_get_output_picture() -----\n");
-		reto = mcvdec_get_output_picture(context,
-						pic_infos, &frame,
-						MCVDEC_OUTMODE_PUSH);
-		logd("----- resume from mcvdec_get_output_picture() = %d "
-		       "-----\n", reto);
-		if (pic_infos[0]) {
-			int i;
-			logd("pic_infos[0]->frame_cnt = %d\n",
-			       pic_infos[0]->frame_cnt);
-			logd("pic_infos[0]->fmem_index = %d\n",
-			       pic_infos[0]->fmem_index);
-			logd("pic_infos[0]->strm_id = %d\n",
-			       pic_infos[0]->strm_id);
-			last_decoded_frame = pic_infos[0]->strm_id;
-			logd("pic_infos[0]->xpic_size = %d\n",
-			       pic_infos[0]->xpic_size);
-			logd("pic_infos[0]->ypic_size = %d\n",
-			       pic_infos[0]->ypic_size);
-			for (i=0; i<4; i++)
-				logd("pic_infos[0]->frame_crop[%d] = %d\n",
-				       i, pic_infos[0]->frame_crop[i]);
-		}
-		if (frame) {
-			logd("frame->Ypic_addr = %lx\n",
-			       frame->Ypic_addr);
-			logd("frame->Cpic_addr = %lx\n",
-			       frame->Cpic_addr);
-		}
-
-		/* output Y/C picture data into a file */
-		if (reto == MCVDEC_NML_END) {
-			pic_size = pic_infos[0]->xpic_size *
-				(pic_infos[0]->ypic_size -
-				 pic_infos[0]->frame_crop[MCVDEC_CROP_BOTTOM]);
-			vaddr = uio_phys_to_virt(frame->Ypic_addr);
-			write(fd, vaddr, pic_size);
-			vaddr = uio_phys_to_virt(frame->Cpic_addr);
-			write(fd, vaddr, pic_size / 2);
-		} else {
-			printf("mcvdec_get_output_picture() = %d\n", reto);
-		}
-
-	} while (reti == MCVDEC_NML_END);
-
-	return 0;
 }
 
 int
