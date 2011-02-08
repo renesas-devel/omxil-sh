@@ -68,7 +68,7 @@ setup_icb(shvpu_meram_t *mdata,
 		pitch_2n = 1;
 	else if (pitch <= 2048)
 		pitch_2n = 2;
-	else if (pitch <= 4096)
+	else /* Only support up to 4k pixel width frames */
 		pitch_2n = 4;
 
 
