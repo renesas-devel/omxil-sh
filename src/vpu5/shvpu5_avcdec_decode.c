@@ -201,7 +201,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		.fmem_notice_mode	= MCVDEC_FMEM_INDEX_ENABLE,
 		.first_hdr_enable	= MCVDEC_OFF,
 		.ec_mode		= MCVDEC_ECMODE_TYPE1,
-		.max_imd_ratio_10	= MCVDEC_IMD_RATIO_40,
+		.max_imd_ratio_10	= 80,
 		.func_get_intrinsic_header	= header_processed_callback,
 		.func_userdata_callback		= notify_userdata,
 		.func_imd_buffering_ready	= notify_buffering,
