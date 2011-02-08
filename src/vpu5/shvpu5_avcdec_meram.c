@@ -29,9 +29,9 @@ meram_close_mem(shvpu_meram_t *mdata)
 	if (!mdata || !mdata->meram)
 		return;
 	if (mdata->decY_icb)
-		meram_release_icb(mdata->meram, mdata->decY_icb);
+		meram_release_icb(mdata, mdata->decY_icb);
 	if (mdata->decC_icb)
-		meram_release_icb(mdata->meram, mdata->decC_icb);
+		meram_release_icb(mdata, mdata->decC_icb);
 	meram_close(mdata->meram);
 }
 unsigned long
