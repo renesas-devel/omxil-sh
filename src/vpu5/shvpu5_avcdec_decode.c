@@ -35,6 +35,7 @@
 #include "mcvdec.h"
 #include "avcdec.h"
 #include "shvpu5_avcdec.h"
+#include "shvpu5_avcdec_bufcalc.h"
 #include "shvpu5_avcdec_omx.h"
 
 static inline void *

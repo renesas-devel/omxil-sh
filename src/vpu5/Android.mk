@@ -41,7 +41,6 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_avcdec_parse.c \
 	shvpu5_avcdec_input.c \
 	shvpu5_common_queue.c \
-	shvpu5_avcdec_bufcalc.c \
 	shvpu5_avcenc_encode.c \
 	shvpu5_avcenc_omx.c \
 	shvpu5_common_driver.c \

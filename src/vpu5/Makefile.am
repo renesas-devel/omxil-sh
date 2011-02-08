@@ -18,7 +18,7 @@ libomxshvpu5avc_la_SOURCES = \
 	shvpu5_avcdec_omx.c shvpu5_avcdec_omx.h \
 	shvpu5_avcdec_parse.c shvpu5_avcdec_decode.c \
 	shvpu5_avcdec_input.c shvpu5_avcdec_output.c \
-	shvpu5_avcdec_notify.c shvpu5_avcdec_bufcalc.c \
+	shvpu5_avcdec_notify.c \
 	shvpu5_common_ipmmu.c shvpu5_common_udfio.c \
 	shvpu5_avcdec.h \
 	shvpu5_avcenc_omx.c shvpu5_avcenc_omx.h \
