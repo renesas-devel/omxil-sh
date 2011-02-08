@@ -59,23 +59,30 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	       required_fmem_cnt, nsampling);
 
 #ifdef IPMMU_ENABLE
-	pitch = xpic_size;
-	for (i = 0; i < 32; i++) {
-		if (pitch <= 1)
-			break;
-		if (pitch & 1)
-			next_power = 1;
-		pitch >>=1;
+	if (shvpu_avcdec_Private->software_readable_output == OMX_TRUE) {
+		fmem_x = (xpic_size + 31) / 32 * 32;
+		align = 32;
+		fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
+		alloc_size = fmemsize * 3 / 2;
+	} else {
+		pitch = xpic_size;
+		for (i = 0; i < 32; i++) {
+			if (pitch <= 1)
+				break;
+			if (pitch & 1)
+				next_power = 1;
+			pitch >>=1;
+		}
+		pitch = (1 << (i + next_power));
+		init_ipmmu(&shvpu_avcdec_Private->ipmmui_data, 0,
+			shvpu_avcdec_Private->uio_start_phys, i + next_power,
+			&align_bits);
+		fmem_x = pitch;
+		align = (1 << align_bits);
+		fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
+		alloc_size = ((fmemsize * 3 / 2) + (align - 1)) & ~(align - 1);
+		alloc_size += align;
 	}
-	pitch = (1 << (i + next_power));
-	init_ipmmu(&shvpu_avcdec_Private->ipmmui_data, 0,
-		shvpu_avcdec_Private->uio_start_phys, i + next_power,
-		&align_bits);
-	fmem_x = pitch;
-	align = (1 << align_bits);
-	fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
-	alloc_size = ((fmemsize * 3 / 2) + (align - 1)) & ~(align - 1);
-	alloc_size += align;
 #else
 	fmem_x = (xpic_size + 31) / 32 * 32;
 	align = 32;
@@ -118,11 +125,15 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		shvpu_avcdec_Private->avCodec->fmem[i].fmem_start = ypic_paddr;
 		shvpu_avcdec_Private->avCodec->fmem[i].fmem_len = alloc_size;
 #ifdef IPMMU_ENABLE
-		/*alignment offset*/
-		ypic_paddr = (ypic_paddr + (align - 1)) & ~(align - 1);
-		/*access via IPMMUI*/
-		ypic_paddr = phys_to_ipmmui(&shvpu_avcdec_Private->ipmmui_data,
-			ypic_paddr);
+		if (!shvpu_avcdec_Private->software_readable_output ==
+				OMX_TRUE) {
+			/*alignment offset*/
+			ypic_paddr = (ypic_paddr + (align - 1)) & ~(align - 1);
+			/*access via IPMMUI*/
+			ypic_paddr = phys_to_ipmmui(
+				&shvpu_avcdec_Private->ipmmui_data,
+				ypic_paddr);
+		}
 #endif
 		cpic_paddr = ypic_paddr + fmemsize;
 		_fmem[i].Ypic_addr = ypic_paddr;

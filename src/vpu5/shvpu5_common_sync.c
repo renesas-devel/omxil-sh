@@ -100,6 +100,10 @@ mciph_uf_ce_restart(void *context, long mode)
 		MCVDEC_CONTEXT_T *dec_context = (MCVDEC_CONTEXT_T *)context;
 		shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 	                (shvpu_avcdec_PrivateType *)dec_context->user_info;
+		if(shvpu_avcdec_Private->software_readable_output == OMX_TRUE) {
+			_uf_vp5_restart(context, mode, VP5_MODULE_CE);
+			return;
+		}
 		meram_write_done(&shvpu_avcdec_Private->meram_data,
 			shvpu_avcdec_Private->meram_data.decY_icb);
 		meram_write_done(&shvpu_avcdec_Private->meram_data,
@@ -129,8 +133,11 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 		int i;
 		shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 	                (shvpu_avcdec_PrivateType *)dec_context->user_info;
-
 		MCVDEC_FMEM_INDEX_T *fmem_index;
+		if(shvpu_avcdec_Private->software_readable_output == OMX_TRUE) {
+			_uf_vp5_start(context, mode, VP5_MODULE_CE);
+			return;
+		}
 		fmem_index = (MCVDEC_FMEM_INDEX_T *)start_info;
 		meram_set_address(&shvpu_avcdec_Private->meram_data,
 			shvpu_avcdec_Private->meram_data.decY_icb,

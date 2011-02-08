@@ -29,10 +29,13 @@
 
 #define OMX_VPU5_CommandMaxOut "OMX.RE.VPU5MaxOutputSetting"
 #define OMX_VPU5_CommandMaxInst "OMX.RE.VPU5MaxInstance"
+#define OMX_VPU5_SoftwareRender "OMX.RE.SoftwareRender"
+
 typedef enum OMX_REVPU5INDEXTYPE {
 	OMX_IndexParamVPUMaxOutputSetting = OMX_IndexVendorStartUnused + 0x200,
 	OMX_IndexParamVPUMaxInstance,
-	OMX_IndexParamQueryIPMMUEnable
+	OMX_IndexParamQueryIPMMUEnable,
+	OMX_IndexParamSoftwareRenderMode,
 } OMX_REVPU5INDEXTYPE;
 
 typedef enum OMX_REVPU5LEVEL {

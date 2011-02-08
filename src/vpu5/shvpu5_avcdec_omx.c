@@ -1315,9 +1315,15 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			(pic_infos[0]->ypic_size -
 			 pic_infos[0]->frame_crop[MCVDEC_CROP_BOTTOM]);
 #ifdef IPMMU_ENABLE
-		real_phys = ipmmui_to_phys(&shvpu_avcdec_Private->ipmmui_data,
-			frame->Ypic_addr,
-			shvpu_avcdec_Private->uio_start_phys);
+		if (shvpu_avcdec_Private->software_readable_output ==
+				OMX_FALSE) {
+			real_phys = ipmmui_to_phys(
+				&shvpu_avcdec_Private->ipmmui_data,
+				frame->Ypic_addr,
+				shvpu_avcdec_Private->uio_start_phys);
+		} else {
+			real_phys = frame->Ypic_addr;
+		}
 #else
 		real_phys = frame->Ypic_addr;
 #endif
@@ -1619,6 +1625,16 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 				return OMX_ErrorBadParameter;
 			}
 		}
+		case OMX_IndexParamSoftwareRenderMode:
+		{
+			shvpu_avcdec_Private->software_readable_output =
+				*(OMX_BOOL *)ComponentParameterStructure;
+			logd("Switching software readable output mode %s\n",
+			     shvpu_avcdec_Private->
+			     software_readable_output == OMX_TRUE ?
+			     "on" : "off");
+			break;
+		}
 		default:
 			/*Call the base component function */
 			return omx_base_component_SetParameter(hComponent,
@@ -1808,6 +1824,12 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 #endif
 			break;
 		}
+		case OMX_IndexParamSoftwareRenderMode:
+		{
+			*(OMX_BOOL *)ComponentParameterStructure =
+				shvpu_avcdec_Private->software_readable_output;
+			break;
+		}
 		default:
 		/*Call the base component function */
 		return omx_base_component_GetParameter(hComponent,
@@ -1830,6 +1852,10 @@ shvpu_avcdec_GetExtensionIndex(OMX_HANDLETYPE hComponent,
 	}
 	if (!strcmp(cParameterName, OMX_VPU5_CommandMaxInst)) {
 		*pIndexType = OMX_IndexParamVPUMaxInstance;
+		return OMX_ErrorNone;
+	}
+	if (!strcmp(cParameterName, OMX_VPU5_SoftwareRender)) {
+		*pIndexType = OMX_IndexParamSoftwareRenderMode;
 		return OMX_ErrorNone;
 	}
 	return OMX_ErrorUnsupportedIndex;
