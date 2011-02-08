@@ -32,10 +32,10 @@
 unsigned int inb_buf_size_calc(int level, int width, int height) {
 	int vbv_size = maxCPB[level] * 1000 / 8;
 	int mss = width*height* 3 / 2 / minCR[level];
-	int width_16 = width  / 16;
-	int height_16 = width / 16;
+	int mb_width = ((width + 15) / 16) * 16 / 16;
+	int mb_height = ((height + 15) / 16) * 16 / 16;
 	int imd_fr_cnt = vbv_size < 5000000 ? MAXFPS + 2 : vbv_size * MAXFPS / 5000000 + 2;
-	return ALIGN(vbv_size * 4 + mss * 8 + VPU_UNIT(width_16 * (height_16 + 3) * 8 / 4) * 4 * imd_fr_cnt);
+	return ALIGN(vbv_size * 4 + mss * 8 + VPU_UNIT(mb_width * (mb_height + 3) * 8 / 4) * 4 * imd_fr_cnt);
 
 }
 unsigned int ir_info_size_calc(int level) {
@@ -46,7 +46,7 @@ unsigned int ir_info_size_calc(int level) {
 }
 
 unsigned int mv_info_size_calc(int width, int height, int ref_frame_cnt) {
-	int mb_width = width /16;
-	int mb_height = height /16;
+	int mb_width = ((width + 15) / 16) * 16 / 16;
+	int mb_height = ((height + 15) / 16) * 16 / 16;
 	return ALIGN(VPU_UNIT(64 * mb_width * ((mb_height + 3) / 4)) * 4 * (ref_frame_cnt + 1));
 }
