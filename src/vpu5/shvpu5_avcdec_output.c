@@ -90,7 +90,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	alloc_size = fmemsize * 3 / 2;
 #endif
 #ifdef MERAM_ENABLE
-	meram_open_mem(&shvpu_avcdec_Private->meram_data);
+	open_meram(&shvpu_avcdec_Private->meram_data);
 	setup_icb(&shvpu_avcdec_Private->meram_data,
 		&shvpu_avcdec_Private->meram_data.decY_icb,
 		fmem_x, (ypic_size + 15) / 16 * 16, 128, 0xD, 1, 21);

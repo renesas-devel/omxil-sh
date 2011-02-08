@@ -104,9 +104,9 @@ mciph_uf_ce_restart(void *context, long mode)
 			_uf_vp5_restart(context, mode, VP5_MODULE_CE);
 			return;
 		}
-		meram_write_done(&shvpu_avcdec_Private->meram_data,
+		finish_meram_write(&shvpu_avcdec_Private->meram_data,
 			shvpu_avcdec_Private->meram_data.decY_icb);
-		meram_write_done(&shvpu_avcdec_Private->meram_data,
+		finish_meram_write(&shvpu_avcdec_Private->meram_data,
 			shvpu_avcdec_Private->meram_data.decC_icb);
 	}
 #endif
@@ -139,18 +139,20 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 			return;
 		}
 		fmem_index = (MCVDEC_FMEM_INDEX_T *)start_info;
-		meram_set_address(&shvpu_avcdec_Private->meram_data,
+		set_meram_address(&shvpu_avcdec_Private->meram_data,
 			shvpu_avcdec_Private->meram_data.decY_icb,
 			*fmem_index->ce_img_addr.decY_addr);
-		meram_set_address(&shvpu_avcdec_Private->meram_data,
+		set_meram_address(&shvpu_avcdec_Private->meram_data,
 			shvpu_avcdec_Private->meram_data.decC_icb,
 			*fmem_index->ce_img_addr.decC_addr);
 		*fmem_index->ce_img_addr.decY_addr =
-			meram_get_icb_address(&shvpu_avcdec_Private->meram_data,
-			shvpu_avcdec_Private->meram_data.decY_icb, 0);
+			meram_get_icb_address(
+				shvpu_avcdec_Private->meram_data.meram,
+				shvpu_avcdec_Private->meram_data.decY_icb, 0);
 		*fmem_index->ce_img_addr.decC_addr =
-			meram_get_icb_address(&shvpu_avcdec_Private->meram_data,
-			shvpu_avcdec_Private->meram_data.decC_icb, 0);
+			meram_get_icb_address(
+				shvpu_avcdec_Private->meram_data.meram,
+				shvpu_avcdec_Private->meram_data.decC_icb, 0);
 
 		if (*fmem_index->ce_img_addr.fmem_x_size[MCVDEC_FMX_DEC] < 1024)
 			*fmem_index->ce_img_addr.fmem_x_size[MCVDEC_FMX_DEC]

@@ -9,8 +9,15 @@
 
 static void *meram_base = NULL;
 static int mem_fd;
+static void
+release_icb(shvpu_meram_t *mdata, ICB *icb) {
+	if (icb && mdata && mdata->meram) {
+		meram_free_icb_memory(mdata->meram, icb);
+		meram_unlock_icb(mdata->meram, icb);
+	}
+}
 int
-meram_open_mem(shvpu_meram_t *mdata)
+open_meram(shvpu_meram_t *mdata)
 {
 	MERAM_REG *reg;
 	unsigned long tmp;
@@ -24,14 +31,14 @@ meram_open_mem(shvpu_meram_t *mdata)
 	return 0;
 }
 void
-meram_close_mem(shvpu_meram_t *mdata)
+close_meram(shvpu_meram_t *mdata)
 {
 	if (!mdata || !mdata->meram)
 		return;
 	if (mdata->decY_icb)
-		meram_release_icb(mdata, mdata->decY_icb);
+		release_icb(mdata, mdata->decY_icb);
 	if (mdata->decC_icb)
-		meram_release_icb(mdata, mdata->decC_icb);
+		release_icb(mdata, mdata->decC_icb);
 	meram_close(mdata->meram);
 }
 unsigned long
@@ -84,13 +91,13 @@ setup_icb(shvpu_meram_t *mdata,
 	return 0;
 }
 void
-meram_set_address(shvpu_meram_t *mdata, ICB *icb, unsigned long address)
+set_meram_address(shvpu_meram_t *mdata, ICB *icb, unsigned long address)
 {
 	if (icb && mdata)
 		meram_write_icb(mdata->meram, icb, MExxSARA, address);
 }
 void
-meram_write_done(shvpu_meram_t *mdata, ICB *icb) {
+finish_meram_write(shvpu_meram_t *mdata, ICB *icb) {
 	unsigned long tmp;
 	if (icb && mdata && mdata->meram) {
 		meram_read_icb(mdata->meram, icb, MExxCTL, &tmp);
@@ -99,18 +106,11 @@ meram_write_done(shvpu_meram_t *mdata, ICB *icb) {
 }
 
 void
-meram_read_done(shvpu_meram_t *mdata, ICB *icb) {
+finish_meram_read(shvpu_meram_t *mdata, ICB *icb) {
 	unsigned long tmp;
 	if (icb && mdata && mdata->meram) {
 		meram_read_icb(mdata->meram, icb, MExxCTL, &tmp);
 		meram_write_icb(mdata->meram, icb, MExxCTL, tmp | 0x10);
-	}
-}
-void
-meram_release_icb(shvpu_meram_t *mdata, ICB *icb) {
-	if (icb && mdata && mdata->meram) {
-		meram_free_icb_memory(mdata->meram, icb);
-		meram_unlock_icb(mdata->meram, icb);
 	}
 }
 #endif
