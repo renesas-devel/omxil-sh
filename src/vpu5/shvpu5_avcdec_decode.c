@@ -254,10 +254,12 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	void *vaddr;
 	unsigned long paddr;
 
-       pCodec->imd_info.imd_buff_size = inb_buf_size_calc(
-                       shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel,
-                       shvpu_avcdec_Private->maxVideoParameters.nWidth,
-                       shvpu_avcdec_Private->maxVideoParameters.nHeight);
+	pCodec->imd_info.imd_buff_size = inb_buf_size_calc(
+		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel,
+		shvpu_avcdec_Private->maxVideoParameters.nWidth,
+		shvpu_avcdec_Private->maxVideoParameters.nHeight);
+	/* VPU may access more 2048 bytes over the buffer.*/
+	pCodec->imd_info.imd_buff_size += 2048; 
 
 	vaddr = pmem_alloc(pCodec->imd_info.imd_buff_size,
 				32, &pCodec->imd_info.imd_buff_addr);
