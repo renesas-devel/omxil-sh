@@ -62,7 +62,7 @@ setup_icb(shvpu_meram_t *mdata,
 	MERAM *meram = mdata->meram;
 
 	md = rdnwr == 0 ? 1 : 2;
-        res = rdnwr == 0 ? 2 : 1;
+	res = rdnwr == 0 ? 2 : 0x20;
 
 	if (pitch <= 1024)
 		pitch_2n = 1;
@@ -84,7 +84,7 @@ setup_icb(shvpu_meram_t *mdata,
 		(pitch -1));
 
 	meram_write_icb(meram, *icb, MExxMNCF, ((res_lines - 1) << 16) |
-		(res << 28) | (0 << 15 ));
+		(res << 24) | (0 << 15));
 
 	meram_write_icb(meram, *icb, MExxBSIZE, pitch | 0x90000000);
 
