@@ -1438,7 +1438,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 	omx_base_video_PortType *inPort;
 	shvpu_codec_t *pCodec;
 	void *pConsumed;
-	OMX_ERRORTYPE err;
+	OMX_ERRORTYPE err = OMX_ErrorNone;
 	long width, height;
 	int ret;
 
