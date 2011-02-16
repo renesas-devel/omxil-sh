@@ -18,8 +18,8 @@ struct buflist {
 	struct buflist *anext;
 	void *buf;
 	uint32_t addr;
-	int alen;
-	int flen;
+	unsigned int alen;
+	unsigned int flen;
 };
 
 struct buflist_head {
