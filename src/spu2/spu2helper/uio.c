@@ -66,7 +66,7 @@ void uio_deinit(struct uio *uio)
 
 int uio_init(struct uio *uio, const char *name)
 {
-	ulong paddr_reg, paddr_pmem;
+	unsigned long paddr_reg, paddr_pmem;
 	size_t size_reg, size_pmem;
 	void *vaddr_reg;
 
