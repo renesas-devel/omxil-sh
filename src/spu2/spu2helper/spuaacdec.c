@@ -18,8 +18,8 @@ struct buflist {
 	struct buflist *anext;
 	void *buf;
 	uint32_t addr;
-	int alen;
-	int flen;
+	unsigned int alen;
+	unsigned int flen;
 };
 
 struct buflist_head {
@@ -281,7 +281,6 @@ buflist_init (void *buf, uint32_t addr, struct buflist **buflist,
 {
 	uint8_t *bufc;
 	struct buflist *p;
-	uint32_t naddr, naddrblk;
 
 	bufc = (uint8_t *)buf;
 	*buflist = NULL;
@@ -292,14 +291,8 @@ buflist_init (void *buf, uint32_t addr, struct buflist **buflist,
 	buf_used->prevnext = &buf_used->next;
 	pthread_mutex_init (&buf_used->lock, NULL);
 	while (totalsize >= blocksize) {
-		naddr = (uint32_t)(addr / BUFALIGNMENT);
-		naddrblk = (uint32_t)((addr + blocksize) / BUFALIGNMENT);
-		if (naddr < naddrblk
-			&& (addr + blocksize) % BUFALIGNMENT) {
-			fprintf(stderr, "Avoided the over 8MB alignment "
-				"of the middleware limit.(addr=%08x)\n",
-				addr);
-		} else {
+		/* skip chunks which lie across BUFALIGNMENT boundary */
+		if (BUFALIGNMENT - (addr % BUFALIGNMENT) >= blocksize) {
 			p = malloc (sizeof *p);
 			if (p == NULL)
 				abort ();
