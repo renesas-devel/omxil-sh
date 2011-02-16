@@ -200,26 +200,11 @@ shvpu_avcenc_Constructor(OMX_COMPONENTTYPE * pComponent,
 OMX_ERRORTYPE
 shvpu_avcenc_Destructor(OMX_COMPONENTTYPE * pComponent)
 {
-	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
-		pComponent->pComponentPrivate;
-	OMX_U32 i;
-
 	omx_base_filter_Destructor(pComponent);
 	noVideoEncInstance--;
 	uio_deinit();
 
 	return OMX_ErrorNone;
-}
-
-static void
-handle_vpu5intr(void *arg)
-{
-	
-
-	logd("----- invoke mciph_vpu5_int_handler() -----\n");
-	mciph_vpu5_int_handler((MCIPH_DRV_INFO_T *)arg);
-	logd("----- resume from mciph_vpu5_int_handler() -----\n");
-	return;
 }
 
 /** It initializates the VPU framework, and opens an VPU videodecoder
@@ -229,8 +214,6 @@ OMX_ERRORTYPE
 shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 {
 	omx_base_video_PortType *inPort;
-	long width, height, bitrate, framerate;
-	MCVENC_CONTEXT_T *pContext;
 	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	int ret, i;
 	void *vaddr;
@@ -300,7 +283,6 @@ static void
 SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private;
-	omx_base_video_PortType *inPort;
 	OMX_VIDEO_PARAM_AVCTYPE *pAvcType;
 
 	shvpu_avcenc_Private = pComponent->pComponentPrivate;;
@@ -407,8 +389,6 @@ handleState_IdletoExecuting(OMX_COMPONENTTYPE * pComponent)
 static inline OMX_ERRORTYPE
 handleState_IdletoLoaded(OMX_COMPONENTTYPE * pComponent)
 {
-	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
-		(shvpu_avcenc_PrivateType *) pComponent->pComponentPrivate;
 	OMX_ERRORTYPE err;
 
 	err = shvpu_avcenc_Deinit(pComponent);
@@ -792,7 +772,6 @@ shvpu_avcenc_GetParameter(OMX_HANDLETYPE hComponent,
 			  OMX_PTR ComponentParameterStructure)
 {
 
-	omx_base_video_PortType *port;
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
 
 	OMX_COMPONENTTYPE *pComponent = hComponent;
@@ -1057,7 +1036,6 @@ handle_buffer_flush(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 		shvpu_avcenc_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 	tsem_t *pInputSem = pInPort->pBufferSem;
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
-	int i;
 
 	pthread_mutex_lock(&shvpu_avcenc_Private->flush_mutex);
 	while (PORT_IS_BEING_FLUSHED(pInPort) ||
@@ -1304,7 +1282,6 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcenc_outbuf_t *pStreamBuffer;
 	size_t nAvailLen, nFilledLen;
 	OMX_U8 *pBuffer;
-	OMX_BOOL isEOS = OMX_FALSE;
 	int i;
 
 	if (shvpu_avcenc_Private->bIsEOSReached) {
@@ -1539,8 +1516,6 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 		shvpu_avcenc_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
  	tsem_t *pInputSem = pInPort->pBufferSem;
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
-	queue_t *pInputQueue = pInPort->pBufferQueue;
-	queue_t *pOutputQueue = pOutPort->pBufferQueue;
 	OMX_BUFFERHEADERTYPE *pOutBuffer = NULL;
 	OMX_BUFFERHEADERTYPE *pInBuffer = NULL;
 	OMX_BOOL isInBufferNeeded = OMX_TRUE,

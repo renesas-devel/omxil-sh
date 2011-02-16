@@ -67,7 +67,7 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
 	omx_base_video_PortType *inPort, *outPort;
 	OMX_U32 i;
-	unsigned int reg, mem;
+	unsigned int reg;
 	size_t memsz;
 
 	/* initialize component private data */
@@ -325,7 +325,6 @@ shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_PrivateType *
 			  shvpu_avcdec_Private)
 {
 	shvpu_driver_t *pDriver = shvpu_avcdec_Private->avCodec->pDriver;
-	int err;
 
 	if (shvpu_avcdec_Private) {
 		uiomux_lock_vpu();
@@ -566,7 +565,6 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
 	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 	buffer_metainfo_t *pBMI;
-	int i;
 
 	pthread_mutex_lock(&shvpu_avcdec_Private->flush_mutex);
 	while (PORT_IS_BEING_FLUSHED(pInPort) ||
@@ -908,19 +906,14 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
  	tsem_t *pInputSem = pInPort->pBufferSem;
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
-	queue_t *pInputQueue = pInPort->pBufferQueue;
-	queue_t *pOutputQueue = pOutPort->pBufferQueue;
 	OMX_BUFFERHEADERTYPE *pOutBuffer = NULL;
 	OMX_BUFFERHEADERTYPE *pInBuffer[2] = { NULL, NULL };
 	OMX_BOOL isInBufferNeeded = OMX_TRUE,
 		isOutBufferNeeded = OMX_TRUE;
 	int inBufExchanged = 0, outBufExchanged = 0;
 	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
-	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
 	queue_t processInBufQueue;
-	pic_t *pPic;
 	nal_t *pNal = NULL;
-	size_t remain = 0;
 	int ret;
 
 	shvpu_avcdec_Private->bellagioThreads->nThreadBufferMngtID =
@@ -965,7 +958,6 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 			if (pNal) {
 				pNal->pBuffer[1] = pInBuffer[0];
 			} else {
-				void *pHead;
 				pNal = calloc(1, sizeof(nal_t));
 				skipFirstPadding(pInBuffer[0]);
 				pNal->pBuffer[0] = pInBuffer[0];
@@ -1105,10 +1097,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	shvpu_codec_t *pCodec;
 	MCVDEC_CONTEXT_T *pCodecContext;
 	OMX_ERRORTYPE err = OMX_ErrorNone;
-	size_t size, len;
-	nal_t *nal;
-	int i, j, off;
-	OMX_U8 *pbuf;
 	long ret, hdr_ready;
 
 	shvpu_avcdec_Private = pComponent->pComponentPrivate;
@@ -1286,7 +1274,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	}
 
 	if ((ret == MCVDEC_NML_END) && pic_infos[0] && frame) {
-		OMX_U8 *pOut = pOutBuffer->pBuffer;
 		void *vaddr;
 		size_t pic_size;
 		int i;
@@ -1810,7 +1797,6 @@ shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 		(shvpu_avcdec_PrivateType *) pComponent->pComponentPrivate;
 	OMX_ERRORTYPE err;
-	OMX_STATETYPE eCurrentState = shvpu_avcdec_Private->state;
 
 	DEBUG(DEB_LEV_FUNCTION_NAME, "In %s\n", __func__);
 
@@ -1906,7 +1892,6 @@ shvpu_avcdec_port_AllocateOutBuffer(
   OMX_U32 nSizeBytes) {
 
   unsigned int i;
-  OMX_ERRORTYPE err;
   OMX_COMPONENTTYPE* pComponent = pPort->standCompContainer;
   shvpu_avcdec_PrivateType* shvpu_avcdec_Private =
 		pComponent->pComponentPrivate;

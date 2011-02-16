@@ -52,7 +52,6 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 	queue_t *pSIQueue = pCodec->pSIQueue;
 	si_element_t *si;
-	MCVDEC_STRM_INFO_T *pStrmInfo;
 	int i;
 
 	if (error_info->dec_status != 0)

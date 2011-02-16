@@ -144,21 +144,8 @@ long header_processed_callback( MCVDEC_CONTEXT_T *context,
 long
 decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 {
-	extern const MCIPH_API_T mciph_hg_api_tbl;
 	extern const MCVDEC_API_T avcdec_api_tbl;
-	static const MCIPH_VPU5_INIT_T _vpu5_init_def = {
-		.vpu_base_address		= 0xfe900000,
-		.vpu_image_endian		= MCIPH_LIT,
-		.vpu_stream_endian		= MCIPH_LIT,
-		.vpu_firmware_endian		= MCIPH_LIT,
-		.vpu_interrupt_enable		= MCIPH_ON,
-		.vpu_clock_supply_control	= MCIPH_CLK_CTRL,
-		.vpu_constrained_mode		= MCIPH_OFF,
-		.vpu_address_mode		= MCIPH_ADDR_32BIT,
-		.vpu_reset_mode			= MCIPH_RESET_SOFT,
-	};
 	shvpu_codec_t *pCodec;
-	static shvpu_codec_t pCodec_bak;
 	MCVDEC_CONTEXT_T *pContext;
 	long ret;
 

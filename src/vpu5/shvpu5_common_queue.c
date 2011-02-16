@@ -39,8 +39,6 @@
  */
 int shvpu_queue_init(queue_t* queue) {
 	int i;
-	qelem_t* newelem;
-	qelem_t* current;
 	i = pthread_mutex_init(&queue->mutex, NULL);
 	if (i!=0) {
 		return -1;

@@ -136,7 +136,6 @@ encode_init(shvpu_codec_t *pCodec)
 {
 	MCVENC_CONTEXT_T *pContext;
 	long ret;
-	extern const MCIPH_API_T mciph_hg_api_tbl;
 	extern const MCVENC_API_T avcenc_api_tbl;
 	MCVENC_CMN_PROPERTY_T *pCmnProp = &pCodec->cmnProp;
         AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
@@ -182,7 +181,7 @@ encode_init(shvpu_codec_t *pCodec)
 	static MCVENC_LDEC_INFO_T ldec_info;
 	static MCVENC_IR_INFO_T ir_info;
 	static MCVENC_MV_INFO_T mv_info;
-	size_t a, b, mem_x, mem_y, mb_width, mb_height, mv_info_size;
+	size_t a, b, mb_width, mb_height, mv_info_size;
 	int i;
 
 	a = 4 * pCmnProp->bitrate / 8;

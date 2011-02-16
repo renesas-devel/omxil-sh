@@ -257,7 +257,6 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 	queue_t *pNalQueue = shvpu_avcdec_Private->pNalQueue;
 	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
 	nal_t *pNal[2] = { NULL, NULL };
-	pic_t *pPic;
 	void *pHead, *pStart, *pStartSub;
 	size_t nRemainSize, nSizeSub;
 	OMX_BOOL splitBuffer, hasSlice;
@@ -346,7 +345,6 @@ void free_remaining_pictures(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
 	queue_t *pNalQueue = shvpu_avcdec_Private->pNalQueue;
 	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
-	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 	pic_t *pPic;
 	nal_t *nal;
 

@@ -75,7 +75,7 @@ mcvenc_uf_strm_available(MCVENC_CONTEXT_T *context,
 {
 	shvpu_codec_t *pCodec = (shvpu_codec_t *)context->user_info;
 	shvpu_avcenc_outbuf_t *pStreamBuffer;
-	int ret, i;
+	int i;
 
 	logd("%s(%d,%d) invoked.\n", __FUNCTION__,
 	     vlc_pic_info ? vlc_pic_info->capt_frm_id : -1,
