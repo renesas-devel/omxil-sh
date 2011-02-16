@@ -30,6 +30,8 @@
 #include "mcvdec.h"
 #include "shvpu5_avcdec.h"
 #include "shvpu5_avcdec_omx.h"
+#include "shvpu5_common_queue.h"
+#include "shvpu5_common_log.h"
 
 #define MAX_NALS        8192
 
@@ -321,8 +323,9 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
  * release any streams that are still being held by the
  * VPU. Only likely if playback has been forcefully terminated
    before the EOS is received.*/
-
-void free_remaining_streams(queue_t *pSIQueue) {
+void
+free_remaining_streams(queue_t *pSIQueue)
+{
 	si_element_t *si;
 	int i;
 	for (i=shvpu_getquenelem(pSIQueue); i>0; i--) {

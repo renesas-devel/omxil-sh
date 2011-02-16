@@ -37,6 +37,9 @@
 #include "shvpu5_avcdec.h"
 #include "shvpu5_avcdec_bufcalc.h"
 #include "shvpu5_avcdec_omx.h"
+#include "shvpu5_common_queue.h"
+#include "shvpu5_common_uio.h"
+#include "shvpu5_common_log.h"
 
 static inline void *
 malloc_aligned(size_t size, int align)

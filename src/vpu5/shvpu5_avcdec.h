@@ -27,25 +27,14 @@
 #ifndef __SIMPLE_AVCDEC_H_
 #define __SIMPLE_AVCDEC_H_
 #include "mcvdec.h"
+#include "queue.h"
+#include <OMX_Types.h>
+#include <OMX_Core.h>
+#include <OMX_Component.h>
 
-int logd(const char *format, ...);
-int loge(const char *format, ...);
-
-void *
-pmem_alloc(size_t size, int align, unsigned long *paddr);
 void
-pmem_free(void *vaddr, size_t size);
+free_remaining_streams(queue_t *pSIQueue);
 
-unsigned long
-uio_virt_to_phys(void *context, long mode, unsigned long addr);
-void *
-uio_phys_to_virt(unsigned long paddr);
-
-#if 0
-long
-decode_init(MCVDEC_CONTEXT_T **context);
-#endif
 int
 decode_finalize(void *context);
-
 #endif /* __SIMPLE_AVCDEC_H_ */

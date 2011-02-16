@@ -30,6 +30,8 @@
 #include <OMX_Core.h>
 #include "mcvdec.h"
 #include "shvpu5_avcdec_omx.h"
+#include "shvpu5_common_queue.h"
+#include "shvpu5_common_log.h"
 
 #ifndef HAVE_ANDROID_OS
 typedef unsigned int	uintptr_t;

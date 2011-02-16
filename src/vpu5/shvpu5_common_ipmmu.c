@@ -1,8 +1,11 @@
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/mman.h>
 #include <stdlib.h>
+#include "shvpu5_common_log.h"
 
 #define IPMMUI_BASE 0xFE951000
 #define IPMMUI_LEN 0x100

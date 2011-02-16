@@ -30,6 +30,8 @@
 #include "mcvdec.h"
 #include "shvpu5_avcdec.h"
 #include "shvpu5_avcdec_omx.h"
+#include "shvpu5_common_uio.h"
+#include "shvpu5_common_log.h"
 
 long
 mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,

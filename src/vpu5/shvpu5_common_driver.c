@@ -28,9 +28,13 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
 #include "mciph.h"
 #include "mciph_hg.h"
 #include "shvpu5_driver.h"
+#include "shvpu5_common_uio.h"
+#include "shvpu5_common_log.h"
 
 static shvpu_driver_t *pDriver;
 static pthread_mutex_t initMutex = PTHREAD_MUTEX_INITIALIZER;

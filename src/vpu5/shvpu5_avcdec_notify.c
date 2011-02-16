@@ -29,6 +29,7 @@
 #include "mcvdec.h"
 #include "shvpu5_avcdec.h"
 #include "shvpu5_avcdec_omx.h"
+#include "shvpu5_common_log.h"
 
 long
 notify_buffering(MCVDEC_CONTEXT_T *context, long status)

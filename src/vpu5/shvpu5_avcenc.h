@@ -33,6 +33,7 @@
 #include "uiomux/uiomux.h"
 #include "avcenc.h"
 #include "shvpu5_driver.h"
+#include "shvpu5_common_uio.h"
 
 #define SHVPU_AVCENC_OUTBUF_SIZE (1280 * 720)
 #define SHVPU_AVCENC_OUTBUF_NUM 3
@@ -65,16 +66,6 @@ typedef struct {
 int logd(const char *format, ...);
 int loge(const char *format, ...);
 
-void *
-pmem_alloc(size_t size, int align, unsigned long *paddr);
-void
-pmem_free(void *vaddr, size_t size);
-
-unsigned long
-uio_virt_to_phys(void *context, long mode, unsigned long addr);
-void *
-uio_phys_to_virt(unsigned long paddr);
-
 shvpu_codec_t *
 encode_new();
 long
@@ -101,4 +92,12 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 int
 encode_endcode(void *context, unsigned char *pBuffer, size_t nBufferLen);
 
+int
+encode_setqmatrix(MCVENC_CONTEXT_T *pContext);
+
+void
+encode_deinit(shvpu_codec_t *pCodec);
+
+int
+encode_finalize(void *context);
 #endif /* __SIMPLE_AVCENC_H_ */

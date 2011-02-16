@@ -33,8 +33,10 @@
 #include <string.h>
 #include "mciph.h"
 #include "mciph_hg.h"
-#include "shvpu5_avcenc.h"
+#include "mcvenc.h"
 #include "avcenc.h"
+#include "shvpu5_avcenc.h"
+#include "shvpu5_common_log.h"
 
 static inline void *
 malloc_aligned(size_t size, int align)

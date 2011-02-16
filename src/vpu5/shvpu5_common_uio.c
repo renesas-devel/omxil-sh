@@ -27,12 +27,10 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <pthread.h>
 #include "uiomux/uiomux.h"
 #include "shvpu5_common_uio.h"
+#include "shvpu5_common_log.h"
 #include "mciph.h"
-#include "shvpu5_avcdec.h"
-#include "tsemaphore.h"
 #include <sys/file.h>
 
 static UIOMux *uiomux = NULL;

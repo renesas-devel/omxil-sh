@@ -29,6 +29,7 @@
 #include <bellagio/omx_base_video_port.h>
 #include "shvpu5_avcenc_omx.h"
 #include "shvpu5_avcenc.h"
+#include "shvpu5_common_log.h"
 #include <OMX_Video.h>
 
 /** Maximum Number of Video Component Instance*/

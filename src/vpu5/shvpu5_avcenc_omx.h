@@ -38,6 +38,9 @@
 #include <string.h>
 #include <bellagio/omx_base_filter.h>
 #include "shvpu5_avcenc.h"
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/syscall.h>
 
 #define VIDEO_ENC_BASE_NAME "OMX.re.video_encoder"
 #define VIDEO_ENC_H264_NAME "OMX.re.video_encoder.avc"

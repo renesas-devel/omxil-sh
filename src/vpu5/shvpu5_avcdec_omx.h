@@ -41,6 +41,7 @@
 #include "mcvdec.h"
 #include "avcdec.h"
 #include "shvpu5_driver.h"
+#include "shvpu5_common_uio.h"
 
 /* Specific include files */
 #include <vpu5/OMX_VPU5Ext.h>
@@ -233,4 +234,23 @@ shvpu_avcdec_SendCommand(
   OMX_COMMANDTYPE Cmd,
   OMX_U32 nParam,
   OMX_PTR pCmdData);
+
+/*The following functions are not directly OMX related, but
+ *take structures defined in this file as arguments.
+ *They are placed here temporarily, but should be refactored
+ *into shvpu5_avcdec.h when time permits*/
+void
+skipFirstPadding(OMX_BUFFERHEADERTYPE *pInBuffer);
+
+nal_t *
+parseBuffer(OMX_COMPONENTTYPE * pComponent,
+	    nal_t *pPrevNal,
+	    OMX_BOOL * pIsInBufferNeeded);
+long
+decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);
+
+void
+decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);
+
+void free_remaining_pictures(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);
 #endif

@@ -28,6 +28,7 @@
 #include <stdlib.h>
 #include "mcvenc.h"
 #include "shvpu5_avcenc.h"
+#include "shvpu5_common_log.h"
 
 long
 mcvenc_uf_set_strm_addr(MCVENC_CONTEXT_T *context,

@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#include "shvpu5_common_log.h"
 
 #ifdef HAVE_ANDROID_OS
 #include <utils/Log.h>

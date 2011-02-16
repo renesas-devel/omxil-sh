@@ -29,9 +29,7 @@
 #include <stdlib.h>
 #include <sys/types.h>
 #include <pthread.h>
-#include "mcvdec.h"
-#include "shvpu5_avcdec.h"
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_common_log.h"
 
 static pthread_cond_t cond_vp5[2] = {
 	PTHREAD_COND_INITIALIZER,

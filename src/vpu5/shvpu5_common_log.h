@@ -1,5 +1,5 @@
 /**
-   src/vpu5/shvpu5_driver.h
+   src/vpu5/shvpu5_common_log.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
@@ -24,33 +24,10 @@
    02110-1301 USA
 
 */
-#ifndef __SHVPU5_DRIVER_H_
-#define __SHVPU5_DRIVER_H_
-#include <pthread.h>
-#include <bellagio/tsemaphore.h>
-#include "mciph.h"
-#include "uiomux/uiomux.h"
+#ifndef __SHVPU5_COMMON_LOG_H_
+#define __SHVPU5_COMMON_LOG_H_
 
-typedef struct {
-	MCIPH_DRV_INFO_T*	pDrvInfo;
-	/** @param mode for VPU5HG video decoder */
-	MCIPH_WORK_INFO_T	wbufVpu5;
-	MCIPH_VPU5_INIT_T	vpu5Init;
-	UIOMux*			uiomux;
-	pthread_t		intrHandler;
-	int			frameId;
-	int			lastOutput;
-	unsigned char		isEndInput;
-	tsem_t			uioSem;
-	int			isExit;
-} shvpu_driver_t;
+int logd(const char *format, ...);
+int loge(const char *format, ...);
 
-int
-shvpu_driver_deinit(shvpu_driver_t *pHandle);
-
-long
-shvpu_driver_init(shvpu_driver_t **ppDriver);
-
-unsigned long
-shvpu5_load_firmware(char *filename, int *size);
-#endif /* __SHVPU5_DRIVER_H_ */
+#endif /* __SHVPU5_COMMON_LOG_H_ */
