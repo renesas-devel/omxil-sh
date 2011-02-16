@@ -65,6 +65,10 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
 		alloc_size = fmemsize * 3 / 2;
 	} else {
+		unsigned long pitch;
+		int next_power = 0;
+		int align_bits;
+
 		pitch = xpic_size;
 		for (i = 0; i < 32; i++) {
 			if (pitch <= 1)
