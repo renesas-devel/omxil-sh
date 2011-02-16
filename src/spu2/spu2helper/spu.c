@@ -59,6 +59,7 @@ _set_event (struct spu2_dsp *_this)
 static long
 _wait_event (struct spu2_dsp *_this, unsigned long timeout)
 {
+#ifndef ANDROID
 	struct timespec to;
 	struct timeval tv;
 	time_t time_s = 0;
@@ -78,6 +79,11 @@ _wait_event (struct spu2_dsp *_this, unsigned long timeout)
 	} else {
 		return -1;
 	}
+#else
+	/* FIXME:
+	   Android does not implement pthread_mutex_timedlock(). */
+	return pthread_mutex_lock(&_this->sem);
+#endif
 }
 
 static void
