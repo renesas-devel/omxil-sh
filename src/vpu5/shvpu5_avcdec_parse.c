@@ -37,28 +37,6 @@
 typedef unsigned int	uintptr_t;
 #endif
 
-/* stream end code table indicated by stream type */
-static unsigned char end_code_table[8][16] = {
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-	{ 0x00,0x00,0x01,0x0B },        /* H.264  */
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-};
-static unsigned char end_code_table_no_start_code[8][16] = {
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-	{ 0x0B },                                       /* H.264  */
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-	{ 0x00 },                                       /* reserved */
-};
-
 static inline unsigned char *
 extract_avcnal(unsigned char *buf0, size_t len0, unsigned char *buf1, size_t len1)
 {
@@ -191,7 +169,7 @@ skipFirstPadding(OMX_BUFFERHEADERTYPE *pInBuffer)
 	size_t nPadding;
 
 	pStart = pInBuffer->pBuffer + pInBuffer->nOffset;
-	pHead = extract_avcnal(pStart, pInBuffer->nFilledLen,
+	pHead = extract_avcnal((unsigned char *)pStart, pInBuffer->nFilledLen,
 			       NULL, 0);
 	if (pHead) {
 		nPadding = (OMX_U32)pHead - (OMX_U32)pStart;
@@ -287,7 +265,7 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 			pStartSub = NULL;
 			nSizeSub = 0;
 		}
-		pHead = extract_avcnal(pStart + 3, nRemainSize - 3,
+		pHead = extract_avcnal((unsigned char *)pStart + 3, nRemainSize - 3,
 				       pStartSub, nSizeSub);
 		if (pHead == NULL) {
 			if (pStartSub) {

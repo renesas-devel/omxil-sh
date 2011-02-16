@@ -52,5 +52,5 @@ long
 shvpu_driver_init(shvpu_driver_t **ppDriver);
 
 unsigned long
-shvpu5_load_firmware(char *filename, int *size);
+shvpu5_load_firmware(char *filename, size_t *size);
 #endif /* __SHVPU5_DRIVER_H_ */

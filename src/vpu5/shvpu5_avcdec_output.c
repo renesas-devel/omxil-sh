@@ -49,7 +49,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	long fmem_x;
 	int i;
 	void *ypic_vaddr;
-	unsigned int ypic_paddr, cpic_paddr;
+	unsigned long ypic_paddr, cpic_paddr;
 	unsigned long align, alloc_size;
         shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
                 (shvpu_avcdec_PrivateType *)context->user_info;

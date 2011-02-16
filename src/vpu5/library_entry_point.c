@@ -117,7 +117,7 @@ static OMX_ERRORTYPE add_component(
   */
 int omx_component_library_Setup(stLoaderComponentType **stLoader)
 {
-  int i;
+  unsigned int i;
 
   DEBUG(DEB_LEV_FUNCTION_NAME, "In %s \n",__func__);
 

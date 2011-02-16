@@ -32,6 +32,7 @@
 #include "shvpu5_common_log.h"
 #include <OMX_Video.h>
 #define _GNU_SOURCE
+#include <stdint.h>
 #include <unistd.h>
 #include <sys/syscall.h>
 
@@ -60,6 +61,8 @@ static OMX_PARAM_REVPU5MAXINSTANCE maxVPUInstances = {
 	.nInstances = 1
 };
 
+static void*
+shvpu_avcdec_BufferMgmtFunction (void* param);
 static void
 SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent);
 
@@ -72,7 +75,7 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
 	omx_base_video_PortType *inPort, *outPort;
 	OMX_U32 i;
-	unsigned int reg;
+	unsigned long reg;
 	size_t memsz;
 
 	/* initialize component private data */
@@ -1185,7 +1188,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			(omx_base_video_PortType *)
 			shvpu_avcdec_Private->
 			ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
-		long xpic, ypic;
+		unsigned long xpic, ypic;
 		xpic = shvpu_avcdec_Private->avPicInfo->xpic_size -
 			shvpu_avcdec_Private->avPicInfo->
 			frame_crop[MCVDEC_CROP_LEFT] -
@@ -1243,12 +1246,13 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	if (pCodec->codecMode == MCVDEC_MODE_BUFFERING) {
 		if (hdr_ready == MCVDEC_ON) {
 			pCodec->enoughHeaders = OMX_TRUE;
-			if (pCodec->enoughPreprocess)
+			if (pCodec->enoughPreprocess) {
 				if (shvpu_avcdec_Private->enable_sync) {
 					pCodec->codecMode = MCVDEC_MODE_SYNC;
 				} else {
 					pCodec->codecMode = MCVDEC_MODE_MAIN;
 				}
+			}
 		}
 		return;
 	}
@@ -1316,14 +1320,17 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			     pic_size / 2 * 3, pOutBuffer->nAllocLen);
 			pic_size = pOutBuffer->nAllocLen / 3 * 2;
 		}
-		pOutBuffer->nOffset = vaddr - shvpu_avcdec_Private->uio_start;
-		if (pOutBuffer->nOffset < 0)
+		if ((unsigned long) vaddr < (unsigned long)
+				shvpu_avcdec_Private->uio_start)
 			pOutBuffer->nOffset = 0;
+		else
+			pOutBuffer->nOffset = ((uint8_t *)vaddr)
+				- (uint8_t *)shvpu_avcdec_Private->uio_start;
 
 		pOutBuffer->nFilledLen += pic_size + pic_size / 2;
-		pOutBuffer->pPlatformPrivate =
-			shvpu_avcdec_Private->uio_start_phys +
-			pOutBuffer->nOffset;
+		pOutBuffer->pPlatformPrivate = (void *)
+			(shvpu_avcdec_Private->uio_start_phys +
+			pOutBuffer->nOffset);
 
 		/* receive an appropriate metadata */
 		if (pBMIQueue->nelem > 0) {
@@ -1554,45 +1561,54 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		}
 		break;
 	}
-	case OMX_IndexParamVPUMaxOutputSetting:
-	{
-		OMX_PARAM_REVPU5MAXPARAM *pMaxVals;
-		if (shvpu_avcdec_Private->state != OMX_StateLoaded)
-			return OMX_ErrorIncorrectStateOperation;
-		pMaxVals = ComponentParameterStructure;
-		if ((eError =
-			checkHeader(pMaxVals,
-			sizeof(OMX_PARAM_REVPU5MAXPARAM)) != OMX_ErrorNone)) {
-			break;
-		}
-		memcpy (&shvpu_avcdec_Private->maxVideoParameters, pMaxVals,
-			sizeof(OMX_PARAM_REVPU5MAXPARAM));
-		break;
-	}
-	case OMX_IndexParamVPUMaxInstance:
-	{
-		OMX_PARAM_REVPU5MAXINSTANCE *pMaxInst;
-		if (shvpu_avcdec_Private->state != OMX_StateLoaded)
-			return OMX_ErrorIncorrectStateOperation;
-		pMaxInst = ComponentParameterStructure;
-		if ((eError =
-			checkHeader(pMaxInst,
-			sizeof(OMX_PARAM_REVPU5MAXINSTANCE)) != OMX_ErrorNone))
+	default:
+		switch ((OMX_REVPU5INDEXTYPE)nParamIndex) {
+		case OMX_IndexParamVPUMaxOutputSetting:
+		{
+			OMX_PARAM_REVPU5MAXPARAM *pMaxVals;
+			if (shvpu_avcdec_Private->state != OMX_StateLoaded)
+				return OMX_ErrorIncorrectStateOperation;
+			pMaxVals = ComponentParameterStructure;
+			eError = checkHeader(pMaxVals,
+					     sizeof
+					     (OMX_PARAM_REVPU5MAXPARAM));
+			if (eError != OMX_ErrorNone)
 				break;
-		if (pMaxInst->nInstances <= MAX_COMPONENT_VIDEODEC) {
-			if (pMaxInst->nInstances > 1)
-				shvpu_avcdec_Private->enable_sync = OMX_TRUE;
-			memcpy (&maxVPUInstances,
-				pMaxInst, sizeof(OMX_PARAM_REVPU5MAXINSTANCE));
+
+			memcpy (&shvpu_avcdec_Private->maxVideoParameters,
+				pMaxVals,
+				sizeof(OMX_PARAM_REVPU5MAXPARAM));
 			break;
-		} else {
-			return OMX_ErrorBadParameter;
 		}
-	}
-	default:		/*Call the base component function */
-		return omx_base_component_SetParameter(hComponent,
-						       nParamIndex,
-						       ComponentParameterStructure);
+		case OMX_IndexParamVPUMaxInstance:
+		{
+			OMX_PARAM_REVPU5MAXINSTANCE *pMaxInst;
+			if (shvpu_avcdec_Private->state != OMX_StateLoaded)
+				return OMX_ErrorIncorrectStateOperation;
+			pMaxInst = ComponentParameterStructure;
+			eError = checkHeader(pMaxInst,
+					     sizeof
+					     (OMX_PARAM_REVPU5MAXINSTANCE));
+			if (eError != OMX_ErrorNone)
+				break;
+			if (pMaxInst->nInstances <= MAX_COMPONENT_VIDEODEC) {
+				if (pMaxInst->nInstances > 1)
+					shvpu_avcdec_Private->
+						enable_sync = OMX_TRUE;
+				memcpy (&maxVPUInstances,
+					pMaxInst,
+					sizeof(OMX_PARAM_REVPU5MAXINSTANCE));
+				break;
+			} else {
+				return OMX_ErrorBadParameter;
+			}
+		}
+		default:
+			/*Call the base component function */
+			return omx_base_component_SetParameter(hComponent,
+							       nParamIndex,
+							       ComponentParameterStructure);
+		}
 	}
 	return eError;
 }
@@ -1729,51 +1745,59 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		}
 		break;
 	}
-	case OMX_IndexParamVPUMaxOutputSetting:
-	{
-		OMX_PARAM_REVPU5MAXPARAM *pMaxVals;
-		pMaxVals = ComponentParameterStructure;
-		if ((eError =
-			checkHeader(pMaxVals,
-			sizeof(OMX_PARAM_REVPU5MAXPARAM)) != OMX_ErrorNone))
-			break;
+	default:
+		switch ((OMX_REVPU5INDEXTYPE)nParamIndex) {
+		case OMX_IndexParamVPUMaxOutputSetting:
+		{
+			OMX_PARAM_REVPU5MAXPARAM *pMaxVals;
+			pMaxVals = ComponentParameterStructure;
+			eError = checkHeader(pMaxVals,
+					     sizeof
+					     (OMX_PARAM_REVPU5MAXPARAM));
+			if (eError != OMX_ErrorNone)
+				break;
 
-		memcpy (pMaxVals,&shvpu_avcdec_Private->maxVideoParameters,
-			sizeof(OMX_PARAM_REVPU5MAXPARAM));
-		break;
-	}
-	case OMX_IndexParamVPUMaxInstance:
-	{
-		OMX_PARAM_REVPU5MAXINSTANCE *pMaxInst;
-		pMaxInst = ComponentParameterStructure;
-		if ((eError =
-			checkHeader(pMaxInst,
-			sizeof(OMX_PARAM_REVPU5MAXINSTANCE)) != OMX_ErrorNone))
+			memcpy (pMaxVals,
+				&shvpu_avcdec_Private->maxVideoParameters,
+				sizeof(OMX_PARAM_REVPU5MAXPARAM));
 			break;
+		}
+		case OMX_IndexParamVPUMaxInstance:
+		{
+			OMX_PARAM_REVPU5MAXINSTANCE *pMaxInst;
+			pMaxInst = ComponentParameterStructure;
+			eError = checkHeader(pMaxInst,
+					     sizeof
+					     (OMX_PARAM_REVPU5MAXINSTANCE));
+			if (eError != OMX_ErrorNone)
+				break;
 
-		memcpy (pMaxInst, &maxVPUInstances,
-			sizeof(OMX_PARAM_REVPU5MAXINSTANCE));
-		break;
-	}
-	case OMX_IndexParamQueryIPMMUEnable:
-	{
-		OMX_PARAM_REVPU5IPMMUSTATUS *pIpmmuEnable;
-		pIpmmuEnable = ComponentParameterStructure;
-		if ((eError =
-			checkHeader(pIpmmuEnable,
-			sizeof(OMX_PARAM_REVPU5IPMMUSTATUS)) != OMX_ErrorNone))
+			memcpy (pMaxInst, &maxVPUInstances,
+				sizeof(OMX_PARAM_REVPU5MAXINSTANCE));
 			break;
+		}
+		case OMX_IndexParamQueryIPMMUEnable:
+		{
+			OMX_PARAM_REVPU5IPMMUSTATUS *pIpmmuEnable;
+			pIpmmuEnable = ComponentParameterStructure;
+			eError = checkHeader(pIpmmuEnable,
+					     sizeof
+					     (OMX_PARAM_REVPU5IPMMUSTATUS));
+			if (eError != OMX_ErrorNone)
+				break;
 #ifdef IPMMU_ENABLE
-		pIpmmuEnable->bIpmmuEnable = OMX_TRUE;
+			pIpmmuEnable->bIpmmuEnable = OMX_TRUE;
 #else
-		pIpmmuEnable->bIpmmuEnable = OMX_FALSE;
+			pIpmmuEnable->bIpmmuEnable = OMX_FALSE;
 #endif
-		break;
-	}
-	default:		/*Call the base component function */
+			break;
+		}
+		default:
+		/*Call the base component function */
 		return omx_base_component_GetParameter(hComponent,
 						       nParamIndex,
 						       ComponentParameterStructure);
+		}
 	}
 	return eError;
 }
@@ -1931,7 +1955,7 @@ shvpu_avcdec_port_AllocateOutBuffer(
       pPort->pInternalBufferStorage[i]->nAllocLen =
 		shvpu_avcdec_Private->uio_size;
       pPort->pInternalBufferStorage[i]->pPlatformPrivate =
-		shvpu_avcdec_Private->uio_start_phys;
+		(void *)shvpu_avcdec_Private->uio_start_phys;
       pPort->pInternalBufferStorage[i]->pAppPrivate = pAppPrivate;
       *pBuffer = pPort->pInternalBufferStorage[i];
       pPort->bBufferStateAllocated[i] = BUFFER_ALLOCATED;

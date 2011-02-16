@@ -79,7 +79,7 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 }
 
 static size_t
-trim_trailing_zero(caddr_t addr, size_t size)
+trim_trailing_zero(unsigned char *addr, size_t size)
 {
 	while ((size > 0) &&
 	       (addr[size - 1] == 0x00U))
@@ -284,7 +284,7 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 	*pFrameCount += 1;
 
 	for (j=0; j<input_strm->strm_cnt; j++) {
-		caddr_t addr;
+		unsigned char *addr;
 		addr = input_strm->strm_info[j].strm_buff_addr;
 		logd("BEFORE: strm_buff_size = %d\n",
 		     input_strm->strm_info[j].strm_buff_size);

@@ -187,7 +187,7 @@ shvpu_avcenc_Constructor(OMX_COMPONENTTYPE * pComponent,
 	}
 
 	/* initialize a vpu uio */
-	unsigned int reg, mem;
+	unsigned long reg, mem;
 	size_t memsz;
 	uio_init("VPU", &reg, &mem, &memsz);
 	loge("reg = %x, mem = %x, memsz = %d\n",
@@ -1296,14 +1296,15 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 
 	/* put the stream header if this is the first output */
 	if (shvpu_avcenc_Private->isFirstBuffer == OMX_TRUE) {
-		nFilledLen = encode_header(shvpu_avcenc_Private->
+		int filledLen = encode_header(shvpu_avcenc_Private->
 					   avCodec->pContext,
 					   pOutBuffer->pBuffer,
 					   nAvailLen);
-		if (nFilledLen < 0) {
+		if (filledLen < 0) {
 			loge("header failed\n");
 			return;
 		}
+		nFilledLen = (size_t) filledLen;
 		nAvailLen -= nFilledLen;
 		pBuffer += nFilledLen;
 		pOutBuffer->nFilledLen += nFilledLen;
@@ -1440,7 +1441,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 	shvpu_codec_t *pCodec;
 	void *pConsumed;
 	OMX_ERRORTYPE err = OMX_ErrorNone;
-	long width, height;
+	unsigned long width, height;
 	int ret;
 
 	shvpu_avcenc_Private = pComponent->pComponentPrivate;

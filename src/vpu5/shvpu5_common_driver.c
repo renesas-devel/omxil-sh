@@ -46,7 +46,7 @@ malloc_aligned(size_t size, int align)
 	return malloc(size);
 }
 
-static void
+static void *
 handle_shvpu5_interrupt(void *arg)
 {
 	MCIPH_DRV_INFO_T *pDrvInfo = arg;
@@ -55,7 +55,7 @@ handle_shvpu5_interrupt(void *arg)
 	mciph_vpu5_int_handler(pDrvInfo);
 	logd("----- resume from mciph_vpu5_int_handler() -----\n");
 
-	return;
+	return NULL;
 }
 
 int
@@ -147,7 +147,7 @@ init_failed:
 }
 
 unsigned long
-shvpu5_load_firmware(char *filename, int *size)
+shvpu5_load_firmware(char *filename, size_t *size)
 {
 	void *vaddr;
 	unsigned char *p;

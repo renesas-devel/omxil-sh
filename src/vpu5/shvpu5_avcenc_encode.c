@@ -444,7 +444,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 
 	/* SPS */
 	head.buff_size = 384;
-	if (nBufferLen < head.buff_size)
+	if (nBufferLen < (size_t) head.buff_size)
 		return -1;
 	head.buff_addr = pBuffer;
 	ret1 = avcenc_put_SPS(context, &head);
@@ -457,7 +457,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 
 	/* PPS */
 	head.buff_size = 64;
-	if (nBufferLen < head.buff_size)
+	if (nBufferLen < (size_t) head.buff_size)
 		return -1;
 	head.buff_addr = pBuffer;
 	ret2 = avcenc_put_PPS(context, &head);
@@ -472,7 +472,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 int
 encode_setqmatrix(MCVENC_CONTEXT_T *pContext)
 {
-	const AVCENC_QMAT_T qmat = {
+	AVCENC_QMAT_T qmat = {
 		.seq_scaling_matrix_present_flag = AVCENC_ON,
 		.seq_scaling_list_present_flag = {
 			AVCENC_OFF, AVCENC_OFF,
@@ -505,7 +505,7 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	capt_info.fmem[0].Ypic_addr =
 		uio_virt_to_phys(pContext, MCIPH_ENC,
 				 (unsigned long)pBuffer);
-	if (capt_info.fmem[0].Ypic_addr == NULL)
+	if (capt_info.fmem[0].Ypic_addr == 0)
 		return -1;
 	memWidth = ((nWidth + 15) / 16) * 16;
 	memHeight = ((nHeight + 15) / 16) * 16;
@@ -548,7 +548,7 @@ encode_endcode(void *context, unsigned char *pBuffer, size_t nBufferLen)
 
 	/* EOSeq */
 	end.buff_size = 5;
-	if (nBufferLen < end.buff_size)
+	if (nBufferLen < (size_t) end.buff_size)
 		return -1;
 	end.buff_addr = pBuffer;
 	ret1 = avcenc_put_end_code(context, AVCENC_OUT_END_OF_SEQ, &end);
@@ -561,7 +561,7 @@ encode_endcode(void *context, unsigned char *pBuffer, size_t nBufferLen)
 
 	/* EOStr */
 	end.buff_size = 5;
-	if (nBufferLen < end.buff_size)
+	if (nBufferLen < (size_t) end.buff_size)
 		return -1;
 	end.buff_addr = pBuffer;
 	ret2 = avcenc_put_end_code(context, AVCENC_OUT_END_OF_STRM, &end);

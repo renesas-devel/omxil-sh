@@ -27,6 +27,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
 #include "uiomux/uiomux.h"
 #include "shvpu5_common_uio.h"
 #include "shvpu5_common_log.h"
@@ -36,7 +37,7 @@
 static UIOMux *uiomux = NULL;
 
 static pthread_mutex_t uiomux_mutex = PTHREAD_MUTEX_INITIALIZER;
-static ref_cnt = 0;
+static int ref_cnt = 0;
 int
 uio_interrupt_clear()
 {
@@ -139,7 +140,7 @@ uio_create_int_handle(pthread_t *thid,
 			     (void *)args);
         priority = sched_get_priority_max(SCHED_RR);
 	sparam.sched_priority = priority;
-	if (ret = pthread_setschedparam(*thid, SCHED_RR, &sparam)) {
+	if ((ret = pthread_setschedparam(*thid, SCHED_RR, &sparam))) {
 		loge("WARN: the uio interrupt handler "
 		     "may be preempted.");
 	}
@@ -238,7 +239,7 @@ long
 vpu5_mmio_read(unsigned long src_addr,
 			unsigned long reg_table, long size)
 {
-	void *src_vaddr;
+	uint8_t *src_vaddr;
 	int count = size;
 	unsigned int val;
 
@@ -277,7 +278,7 @@ long
 vpu5_mmio_write(unsigned long dst_addr,
 			 unsigned long reg_table, long size)
 {
-	void *dst_vaddr;
+	uint8_t *dst_vaddr;
 	int count = size;
 	unsigned int val;
 

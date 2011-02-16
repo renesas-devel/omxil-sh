@@ -181,9 +181,6 @@ OMX_ERRORTYPE shvpu_avcdec_Init(OMX_COMPONENTTYPE *openmaxStandComp);
 OMX_ERRORTYPE shvpu_avcdec_Deinit(OMX_COMPONENTTYPE *openmaxStandComp);
 OMX_ERRORTYPE shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE*,internalRequestMessageType*);
 
-static void*
-shvpu_avcdec_BufferMgmtFunction (void* param);
-
 void shvpu_avcdec_DecodePicture(
 	OMX_COMPONENTTYPE *pComponent,
 	OMX_BUFFERHEADERTYPE* outputbuffer);

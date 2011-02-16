@@ -43,12 +43,12 @@ notify_buffering(MCVDEC_CONTEXT_T *context, long status)
 	pCodec->enoughPreprocess = OMX_TRUE;
 	pthread_cond_broadcast(&pCodec->cond_buffering);
 	pthread_mutex_unlock(&pCodec->mutex_buffering);
-	if (pCodec->enoughHeaders)
+	if (pCodec->enoughHeaders) {
 		if (shvpu_avcdec_Private->enable_sync)
 			pCodec->codecMode = MCVDEC_MODE_SYNC;
 		else
 			pCodec->codecMode = MCVDEC_MODE_MAIN;
-
+	}
 	return MCVDEC_NML_END;
 }
 
