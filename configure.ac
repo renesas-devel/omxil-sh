@@ -254,6 +254,7 @@ AM_CONDITIONAL(USE_IPMMU,
       [test "$ac_enable_ipmmu" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"])
 
 if test "$ac_enable_ipmmu" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"; then
+	PKG_CHECK_MODULES([MERAM], [meram])
 	VPU_SUPPORT="${VPU_SUPPORT} + IPMMU"
 fi
 AC_ARG_ENABLE(meram,
