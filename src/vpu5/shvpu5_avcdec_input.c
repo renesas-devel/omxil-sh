@@ -236,11 +236,7 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 	pBuf += 0x200;
 	for (i = 0; i < pPic->n_nals; i++) {
 		nal = pPic->pNal[i];
-		if ((pBMI == NULL) &&
-		    ((nal->pBuffer[0]->hMarkTargetComponent != NULL) ||
-		     (nal->pBuffer[0]->pMarkData != NULL) ||
-		     (nal->pBuffer[0]->nTimeStamp != 0) ||
-		     (nal->pBuffer[0]->nFlags != 0))) {
+		if (pBMI == NULL) {
 			logd("store buffer metadata\n");
 			pBMI = save_omx_buffer_metainfo(nal->pBuffer[0]);
 		}
