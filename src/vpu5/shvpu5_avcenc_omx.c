@@ -300,8 +300,6 @@ SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 	pAvcType = &shvpu_avcenc_Private->avcType;
 	pAvcType->nPortIndex = 0;
 	pAvcType->nSliceHeaderSpacing = 0;
-	pAvcType->bUseHadamard = OMX_FALSE;
-	pAvcType->nRefFrames = 2;
 	pAvcType->nPFrames = 0;
 	pAvcType->nBFrames = 0;
 	pAvcType->bUseHadamard = OMX_FALSE;
