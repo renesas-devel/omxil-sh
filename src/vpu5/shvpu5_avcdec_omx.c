@@ -50,7 +50,7 @@ static OMX_U32 noVideoDecInstance = 0;
 #define DEFAULT_VIDEO_OUTPUT_BUF_SIZE					\
 	(DEFAULT_WIDTH * DEFAULT_HEIGHT * 3 / 2)	// YUV subQCIF
 
-#define INPUT_BUFFER_COUNT 4
+#define INPUT_BUFFER_COUNT 8
 #define INPUT_BUFFER_SIZE (1024 * 1024)
 /** The Constructor of the video decoder component
  * @param pComponent the component handle to be constructed
@@ -1135,6 +1135,14 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	logd("----- resume from mcvdec_decode_picture() = %d -----\n", ret);
 	logd("hdr_ready = %s\n", (hdr_ready == MCVDEC_ON) ?
 	     "MCVDEC_ON" : "MCVDEC_OFF");
+	if ((pCodec->codecMode == MCVDEC_MODE_BUFFERING) &&
+	    (pCodec->enoughPreprocess == OMX_FALSE) &&
+	    ((pCodec->bufferingCount - pCodec->releaseBufCount) > 5)) {
+		loge("count = %d, vlc_status = %ld",
+		     pCodec->bufferingCount - pCodec->releaseBufCount,
+		     mciph_vlc_status(pCodec->pDriver->pDrvInfo));
+		while (mciph_vlc_status(pCodec->pDriver->pDrvInfo) != 0);
+	}
 
 	switch (ret) {
 	case MCVDEC_CAUTION:
@@ -1162,10 +1170,26 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		}
 		break;
 	case MCVDEC_RESOURCE_LACK:
+		loge("MCVDEC_RESOURCE_LACK: hdr_ready = %d, enoughPreprocess = %d, "
+		     "bufferingCount = %d, vlc_status = %ld",
+		     hdr_ready, pCodec->enoughPreprocess,
+		     pCodec->bufferingCount - pCodec->releaseBufCount,
+		     mciph_vlc_status(pCodec->pDriver->pDrvInfo));
 		if (pCodec->codecMode == MCVDEC_MODE_BUFFERING) {
-			wait_vlc_buffering(pCodec);
-			break;
+			if ((hdr_ready != MCVDEC_ON) && !pCodec->enoughPreprocess &&
+			    ((pCodec->bufferingCount - pCodec->releaseBufCount) == 144) &&
+			    (mciph_vlc_status(pCodec->pDriver->pDrvInfo) == 0)) {
+				loge("URGENT: The stagefright has been terminated!!");
+				exit(1);
+			}
+			if ((hdr_ready == MCVDEC_ON) && !pCodec->enoughPreprocess) {
+				loge("wait for filling the intermediate buffer enough");
+				wait_vlc_buffering(pCodec);
+			}
+			loge("switching mode from BUFFERING to MAIN");
+			pCodec->codecMode = MCVDEC_MODE_MAIN;
 		}
+		break;
 	case MCVDEC_NO_FMEM_TO_WRITE:
 		logd("Warning: all frame memory slots for output "
 		     "have been occupied.\n");
@@ -1629,6 +1653,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		{
 			shvpu_avcdec_Private->software_readable_output =
 				*(OMX_BOOL *)ComponentParameterStructure;
+			shvpu_avcdec_Private->enable_sync = OMX_TRUE;
 			logd("Switching software readable output mode %s\n",
 			     shvpu_avcdec_Private->
 			     software_readable_output == OMX_TRUE ?

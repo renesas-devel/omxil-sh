@@ -103,6 +103,7 @@ typedef struct {
 	MCVDEC_MV_INFO_T	mv_info;
 	int			frameCount;
 	int			bufferingCount;
+	int			releaseBufCount;
 	/** @param queue for stream info data */
 	queue_t*		pSIQueue;
 	queue_t*		pBMIQueue;

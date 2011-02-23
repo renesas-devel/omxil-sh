@@ -75,6 +75,7 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 		free(si);
 	}
 
+	pCodec->releaseBufCount++;
 	return MCVDEC_NML_END;
 }
 
