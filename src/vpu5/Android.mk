@@ -29,7 +29,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		external/bellagio/src \
 		external/bellagio/include \
 		external/libuiomux/include \
-		$(LOCAL_PATH)/../vpu5_mid/include \
+		hardware/renesas/shmiddle/vpu_mid/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
@@ -46,7 +46,7 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_common_driver.c \
 	shvpu5_common_ipmmu.c
 
-LOCAL_LDFLAGS = -L$(LOCAL_PATH)/../vpu5_mid/lib \
+LOCAL_LDFLAGS = -Lhardware/renesas/shmiddle/vpu_mid/lib \
 	-lvpu5decavc \
 	-lvpu5deccmn \
 	-lvpu5encavc \
@@ -70,7 +70,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		external/bellagio/src \
 		external/bellagio/include \
 		external/libuiomux/include \
-		$(LOCAL_PATH)/../vpu5_mid/include \
+		hardware/renesas/shmiddle/vpu_mid/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
@@ -94,7 +94,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		external/bellagio/src \
 		external/bellagio/include \
 		external/libuiomux/include \
-		$(LOCAL_PATH)/../vpu5_mid/include \
+		hardware/renesas/shmiddle/vpu_mid/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
@@ -120,7 +120,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		external/bellagio/src \
 		external/bellagio/include \
 		external/libuiomux/include \
-		$(LOCAL_PATH)/../vpu5_mid/include \
+		hardware/renesas/shmiddle/vpu_mid/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
@@ -147,7 +147,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		external/bellagio/src \
 		external/bellagio/include \
 		external/libuiomux/include \
-		$(LOCAL_PATH)/../vpu5_mid/include \
+		hardware/renesas/shmiddle/vpu_mid/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
