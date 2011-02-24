@@ -1272,6 +1272,30 @@ handleEventMark(OMX_COMPONENTTYPE *pComponent,
 }
 
 static inline void
+generateHeader(OMX_COMPONENTTYPE * pComponent,
+	       OMX_BUFFERHEADERTYPE *pOutBuffer)
+{
+	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
+		pComponent->pComponentPrivate;
+	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	size_t nFilledLen;
+
+	/* put the stream header if this is the first output */
+	nFilledLen = encode_header(shvpu_avcenc_Private->avCodec->pContext,
+				   pOutBuffer->pBuffer,
+				   pOutBuffer->nAllocLen);
+	if (nFilledLen < 0) {
+		loge("header failed\n");
+		return;
+	}
+	pOutBuffer->nFilledLen += nFilledLen;
+	logd("%d bytes header output\n", nFilledLen);
+
+	shvpu_avcenc_Private->isFirstBuffer = OMX_FALSE;
+	return;
+}
+
+static inline void
 fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 	      OMX_BUFFERHEADERTYPE *pOutBuffer)
 {
@@ -1290,25 +1314,7 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 	}
 
 	nAvailLen = pOutBuffer->nAllocLen - pOutBuffer->nFilledLen;
-	pBuffer = pOutBuffer->pBuffer;
-
-	/* put the stream header if this is the first output */
-	if (shvpu_avcenc_Private->isFirstBuffer == OMX_TRUE) {
-		int filledLen = encode_header(shvpu_avcenc_Private->
-					   avCodec->pContext,
-					   pOutBuffer->pBuffer,
-					   nAvailLen);
-		if (filledLen < 0) {
-			loge("header failed\n");
-			return;
-		}
-		nFilledLen = (size_t) filledLen;
-		nAvailLen -= nFilledLen;
-		pBuffer += nFilledLen;
-		pOutBuffer->nFilledLen += nFilledLen;
-		shvpu_avcenc_Private->isFirstBuffer = OMX_FALSE;
-		logd("%d bytes header output\n", nFilledLen);
-	}
+	pBuffer = pOutBuffer->pBuffer + pOutBuffer->nFilledLen;
 
 	/* check the VPU's output buffers and
 	   copy the output stream data if available */
@@ -1579,6 +1585,8 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 		/* do encoding if a pair of
 		   input and output buffers are ensured */
 		if (shvpu_avcenc_Private->state == OMX_StateExecuting) {
+			if (shvpu_avcenc_Private->isFirstBuffer)
+				generateHeader(pComponent, pOutBuffer);
 			if (pInBuffer)
 				encodePicture(pComponent, pInBuffer,
 					      &processInBufQueue);
