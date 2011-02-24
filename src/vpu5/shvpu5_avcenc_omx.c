@@ -1387,11 +1387,13 @@ checkFillDone(OMX_COMPONENTTYPE * pComponent,
 			 /* The state has been changed
 			    in message->messageParam2 */
 			 NULL);
+	} else {
+		*pIsOutBufferNeeded = OMX_TRUE;
 	}
+
 	pOutPort->ReturnBufferFunction(pOutPort, *ppOutBuffer);
 	(*pOutBufExchanged)--;
 	*ppOutBuffer = NULL;
-	*pIsOutBufferNeeded = OMX_TRUE;
 }
 
 static inline void
@@ -1556,8 +1558,7 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 		if (ret < 0)
 			break;
 
-		if ((isInBufferNeeded == OMX_TRUE) &&
-		    (pInputSem->semval > 0)) {
+		if (isInBufferNeeded == OMX_TRUE) {
 			getInBuffer(shvpu_avcenc_Private,
 				    &pInBuffer,
 				    &inBufExchanged, &processInBufQueue);
@@ -1569,8 +1570,7 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 			handleEventMark(pComponent, pInBuffer);
 
 		/* get an output buffer */
-		if ((isOutBufferNeeded == OMX_TRUE) &&
-		    (pOutputSem->semval > 0))
+		if (isOutBufferNeeded == OMX_TRUE)
 			isOutBufferNeeded =
 				takeOutBuffer(shvpu_avcenc_Private,
 					      &pOutBuffer,
@@ -1589,7 +1589,8 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 					      &isOutBufferNeeded);
 			}
 		} else if (!(PORT_IS_BEING_FLUSHED(pInPort) ||
-			     PORT_IS_BEING_FLUSHED(pOutPort))) {
+			     PORT_IS_BEING_FLUSHED(pOutPort)) &&
+			   (pInBuffer || pOutBuffer)) {
 			DEBUG(DEB_LEV_ERR,
 			      "In %s Received Buffer in non-"
 			      "Executing State(%x)\n",
