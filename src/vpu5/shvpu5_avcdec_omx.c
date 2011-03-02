@@ -1185,9 +1185,8 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			shvpu_avcdec_Private->state = OMX_StateInvalid;
 	}
 
-	/* port status */
-	if (shvpu_avcdec_Private->avPicInfo &&
-	    (ret == MCVDEC_NML_END)) {
+	if ((err == OMX_ErrorNone) && shvpu_avcdec_Private->avPicInfo) {
+		/* update port status */
 		omx_base_video_PortType *inPort =
 			(omx_base_video_PortType *)
 			shvpu_avcdec_Private->
