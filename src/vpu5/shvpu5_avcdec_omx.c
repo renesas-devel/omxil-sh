@@ -1062,23 +1062,23 @@ show_error(void *context)
 
 	ret = mcvdec_get_error_info(context, &errinfo);
 
-	loge("mcvdec_get_error_info() = %d\n", ret);
-	loge("errinfo.dec_status = %ld\n", errinfo.dec_status);
-	loge("errinfo.refs_status = %ld\n", errinfo.refs_status);
-	loge("errinfo.hdr_err_erc = %ld\n", errinfo.hdr_err_erc);
-	loge("errinfo.hdr_err_elvl = %ld\n", errinfo.hdr_err_elvl);
-	loge("errinfo.hdr_err_strm_idx = %ld\n", errinfo.hdr_err_strm_idx);
-	loge("errinfo.hdr_err_strm_ofs = %ld\n", errinfo.hdr_err_strm_ofs);
-	loge("errinfo.vlc_err_esrc = %lx\n", errinfo.vlc_err_esrc);
-	loge("errinfo.vlc_err_elvl = %lx\n", errinfo.vlc_err_elvl);
-	loge("errinfo.vlc_err_sn = %lx\n", errinfo.vlc_err_sn);
-	loge("errinfo.vlc_err_mbh = %lx\n", errinfo.vlc_err_mbh);
-	loge("errinfo.vlc_err_mbv = %lx\n", errinfo.vlc_err_mbv);
-	loge("errinfo.vlc_err_erc = %lx\n", errinfo.vlc_err_erc);
-	loge("errinfo.vlc_err_sbcv = %lx\n", errinfo.vlc_err_sbcv);
-	loge("errinfo.ce_err_erc = %lx\n", errinfo.ce_err_erc);
-	loge("errinfo.ce_err_epy = %lx\n", errinfo.ce_err_epy);
-	loge("errinfo.ce_err_epx = %lx\n", errinfo.ce_err_epx);
+	logd("mcvdec_get_error_info() = %d\n", ret);
+	logd("errinfo.dec_status = %ld\n", errinfo.dec_status);
+	logd("errinfo.refs_status = %ld\n", errinfo.refs_status);
+	logd("errinfo.hdr_err_erc = %ld\n", errinfo.hdr_err_erc);
+	logd("errinfo.hdr_err_elvl = %ld\n", errinfo.hdr_err_elvl);
+	logd("errinfo.hdr_err_strm_idx = %ld\n", errinfo.hdr_err_strm_idx);
+	logd("errinfo.hdr_err_strm_ofs = %ld\n", errinfo.hdr_err_strm_ofs);
+	logd("errinfo.vlc_err_esrc = %lx\n", errinfo.vlc_err_esrc);
+	logd("errinfo.vlc_err_elvl = %lx\n", errinfo.vlc_err_elvl);
+	logd("errinfo.vlc_err_sn = %lx\n", errinfo.vlc_err_sn);
+	logd("errinfo.vlc_err_mbh = %lx\n", errinfo.vlc_err_mbh);
+	logd("errinfo.vlc_err_mbv = %lx\n", errinfo.vlc_err_mbv);
+	logd("errinfo.vlc_err_erc = %lx\n", errinfo.vlc_err_erc);
+	logd("errinfo.vlc_err_sbcv = %lx\n", errinfo.vlc_err_sbcv);
+	logd("errinfo.ce_err_erc = %lx\n", errinfo.ce_err_erc);
+	logd("errinfo.ce_err_epy = %lx\n", errinfo.ce_err_epy);
+	logd("errinfo.ce_err_epx = %lx\n", errinfo.ce_err_epx);
 
 	return ret;
 }
@@ -1140,7 +1140,9 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	case MCVDEC_CAUTION:
 	case MCVDEC_CONCEALED_1:
 	case MCVDEC_CONCEALED_2:
-		loge("an error(%d) recoverd.\n", ret);
+		loge("Warning: a recoverable error (%d) "
+		     "for frame-%d\n", ret,
+		     shvpu_avcdec_Private->avPicInfo->strm_id);
 		show_error(pCodecContext);
 		break;
 	case MCVDEC_UNSUPPORT:
