@@ -1337,15 +1337,24 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 
 		/* receive an appropriate metadata */
 		if (pBMIQueue->nelem > 0) {
-			pBMI = shvpu_dequeue(pBMIQueue);
-			if (pBMI->id == pic_infos[0]->strm_id) {
-				pOutBuffer->nTimeStamp = pBMI->nTimeStamp;
-				pOutBuffer->nFlags = pBMI->nFlags;
-			} else {
-				loge("FATAL: got incorrect BMI (%d != %d)\n",
-				     pBMI->id, pic_infos[0]->strm_id);
+			while ((pBMI = shvpu_peek(pBMIQueue)) != NULL) {
+				if (pBMI->id > pic_infos[0]->strm_id)
+					break;
+
+				pBMI = shvpu_dequeue(pBMIQueue);
+				if (pBMI->id == pic_infos[0]->strm_id) {
+					pOutBuffer->nTimeStamp =
+						pBMI->nTimeStamp;
+					pOutBuffer->nFlags =
+						pBMI->nFlags;
+					free(pBMI);
+					break;
+				}
+				loge("Warning: timestamp and flags for "
+				     "frame-%d were dropped.\n",
+				     pBMI->id);
+				free(pBMI);
 			}
-			free(pBMI);
 		}
 		pCodec->bufferingCount--;
 	} else {
