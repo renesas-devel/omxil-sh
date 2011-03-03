@@ -160,6 +160,13 @@ shvpu_avcenc_Constructor(OMX_COMPONENTTYPE * pComponent,
 	 */
 	shvpu_avcenc_Private->avcodecReady = OMX_FALSE;
 
+	/* initializing the queue for buffer metadata */
+	shvpu_avcenc_Private->pBMIQueue =
+		(queue_t *)calloc(1, sizeof(queue_t));
+	if (shvpu_avcenc_Private->pBMIQueue == (queue_t *)NULL)
+			return OMX_ErrorInsufficientResources;
+	shvpu_queue_init(shvpu_avcenc_Private->pBMIQueue);
+
 	/** initializing the codec context etc that was done earlier
 	    by vpulibinit function */
 	shvpu_avcenc_Private->BufferMgmtFunction =
@@ -1296,6 +1303,56 @@ generateHeader(OMX_COMPONENTTYPE * pComponent,
 }
 
 static inline void
+saveBufferMetadata(queue_t *pBMIQueue, int id,
+		   OMX_BUFFERHEADERTYPE *pInBuffer)
+{
+	buffer_metainfo_t *pBMI;
+
+	pBMI = calloc(1, sizeof(buffer_metainfo_t));
+	if (pBMI == NULL) {
+		loge("calloc for buffer_metainfo failed.\n");
+		return;
+	}
+	pBMI->id = id;
+	pBMI->hMarkTargetComponent = pInBuffer->hMarkTargetComponent;
+	pInBuffer->hMarkTargetComponent = NULL;
+	pBMI->pMarkData = pInBuffer->pMarkData;
+	pInBuffer->pMarkData = NULL;
+	pBMI->nTimeStamp = pInBuffer->nTimeStamp;
+	pInBuffer->nTimeStamp = 0;
+	pBMI->nFlags = pInBuffer->nFlags;
+	pInBuffer->nFlags = 0;
+	shvpu_queue(pBMIQueue, pBMI);
+
+	return;
+}
+
+static inline void
+applyBufferMetadata(queue_t *pBMIQueue, int id,
+		    OMX_BUFFERHEADERTYPE *pOutBuffer)
+{
+	buffer_metainfo_t *pBMI;
+
+	while ((pBMI = (buffer_metainfo_t *)shvpu_peek(pBMIQueue)) != NULL) {
+		if (pBMI->id > id)
+			break;
+
+		pBMI = (buffer_metainfo_t *)shvpu_dequeue(pBMIQueue);
+		if (pBMI->id == id) {
+			pOutBuffer->nTimeStamp = pBMI->nTimeStamp;
+			pOutBuffer->nFlags = pBMI->nFlags;
+			free(pBMI);
+			break;
+		}
+		loge("Warning: timestamp and flags for "
+		     "frame-%d were dropped.\n", pBMI->id);
+		free(pBMI);
+	}
+
+	return;
+}
+
+static inline void
 fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 	      OMX_BUFFERHEADERTYPE *pOutBuffer)
 {
@@ -1325,7 +1382,7 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 		if ((pStreamBuffer->status == SHVPU_BUFFER_STATUS_FILL) &&
 		    ((pCodec->pDriver->lastOutput + 1) ==
 		     pStreamBuffer->frameId)) {
-			/* copy */
+			/* copy stream data */
 			nFilledLen = pStreamBuffer->bufferInfo.strm_size;
 			logd("%d bytes data output\n", nFilledLen);
 			if (nAvailLen < nFilledLen) {
@@ -1340,6 +1397,10 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 			pOutBuffer->nFilledLen += nFilledLen;
 			pStreamBuffer->status =	SHVPU_BUFFER_STATUS_READY;
 			pCodec->pDriver->lastOutput = pStreamBuffer->frameId;
+			/* copy metadata */
+			applyBufferMetadata(shvpu_avcenc_Private->pBMIQueue,
+					    pStreamBuffer->frameId,
+					    pOutBuffer);
 		}
 	}
 
@@ -1505,6 +1566,10 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 			 err,            // Error code
 			 0, NULL);
         }
+
+	/* save buffer metadata (timestamp, flags, etc.) */
+	saveBufferMetadata(shvpu_avcenc_Private->pBMIQueue,
+			   pCodec->pDriver->frameId, pInBuffer);
 
 	return;
 }

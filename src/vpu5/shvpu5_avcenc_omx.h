@@ -48,6 +48,14 @@
 
 #define AVC_PROFILE_COUNT 3
 
+typedef	struct {
+	long			id;
+	OMX_HANDLETYPE		hMarkTargetComponent;
+	OMX_PTR			pMarkData;
+	OMX_TICKS		nTimeStamp;
+	OMX_U32			nFlags;
+} buffer_metainfo_t;
+
 /** Video Encoder component private structure.
   */
 DERIVEDCLASS(shvpu_avcenc_PrivateType, omx_base_filter_PrivateType)
@@ -64,6 +72,9 @@ DERIVEDCLASS(shvpu_avcenc_PrivateType, omx_base_filter_PrivateType)
 	/** @param isNewBuffer Field that			\
 	    indicate a new buffer has arrived */		\
 	OMX_S32 isNewBuffer;					\
+	/** @param pBMIQueue Field that 			\
+	    pointer to a queue for buffer metadata */		\
+	queue_t *pBMIQueue;					\
 	/** @param avcType
 	    current AVCSettings from OMX_Set/GetParameter*/	\
 	OMX_VIDEO_PARAM_AVCTYPE avcType;
