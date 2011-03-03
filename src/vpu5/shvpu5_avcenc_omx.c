@@ -1423,6 +1423,10 @@ checkEmptyDone(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 			continue;
 		}
 
+		/* FIXME: It should be confirmed who should
+		   reset the nOffset value, component or client. */
+		pBuffer->nOffset = 0;
+
 		pInPort->ReturnBufferFunction(pInPort, pBuffer);
 		(*pInBufExchanged)--;
 

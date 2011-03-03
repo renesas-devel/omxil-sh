@@ -888,6 +888,10 @@ checkEmptyDone(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 			continue;
 		}
 
+		/* FIXME: It should be confirmed who should
+		   reset the nOffset value, component or client. */
+		pInBuffer->nOffset = 0;
+
 		logd("send EmptyBufferDone(%p,%08x)\n",
 		     pInBuffer, pInBuffer->nFlags);
 		pInPort->ReturnBufferFunction(pInPort, pInBuffer);
