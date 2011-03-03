@@ -60,6 +60,15 @@ int shvpu_queue(queue_t* queue, void* data);
  */
 void* shvpu_dequeue(queue_t* queue);
 
+/** Peek an element from the given queue descriptor
+ *
+ * @param queue the queue descriptor from which to peek the element
+ *
+ * @return the element that has not been dequeued. If the queue is empty
+ *  a NULL value is returned
+ */
+void* shvpu_peek(queue_t* queue);
+
 /** Returns the number of elements held in the queue
  *
  * @param queue the requested queue

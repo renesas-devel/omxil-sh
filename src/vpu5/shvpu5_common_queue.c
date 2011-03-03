@@ -132,6 +132,29 @@ void* shvpu_dequeue(queue_t* queue) {
 	return data;
 }
 
+/** Peek the head element from the given queue descriptor
+ *
+ * @param queue the queue descriptor from which to peek the element
+ *
+ * @return the element that has not been dequeued. If the queue is empty
+ *  a NULL value is returned
+ */
+void* shvpu_peek(queue_t* queue) {
+	qelem_t* qelem;
+	void* data;
+
+	pthread_mutex_lock(&queue->mutex);
+	if (queue->nelem == 0) {
+		pthread_mutex_unlock(&queue->mutex);
+		return NULL;
+	}
+	qelem = queue->first;
+	data = qelem->data;
+	pthread_mutex_unlock(&queue->mutex);
+
+	return data;
+}
+
 /** Returns the number of elements hold in the queue
  *
  * @param queue the requested queue
