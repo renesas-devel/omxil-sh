@@ -1165,9 +1165,9 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			break;
 		}
 	case MCVDEC_NO_FMEM_TO_WRITE:
-		/* FIXME */
-		if (pCodec->codecMode == MCVDEC_MODE_SYNC)
-			break;
+		logd("Warning: all frame memory slots for output "
+		     "have been occupied.\n");
+		break;
 	case MCVDEC_ERR_FMEM:
 		err = OMX_ErrorInsufficientResources;
 		break;
