@@ -37,7 +37,7 @@ long
 mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			   long xpic_size,
 			   long ypic_size,
-			   long requrired_fmem_cnt,
+			   long required_fmem_cnt,
 			   long nsampling,
 			   long *fmem_cnt,
 			   long fmem_x_size[],
@@ -56,7 +56,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 
 	logd("%s(%d, %d, %d, %d) invoked.\n",
 	       __FUNCTION__, xpic_size, ypic_size,
-	       requrired_fmem_cnt, nsampling);
+	       required_fmem_cnt, nsampling);
 
 #ifdef IPMMU_ENABLE
 	pitch = xpic_size;
@@ -82,17 +82,26 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	alloc_size = fmemsize * 3 / 2;
 #endif
 
+	/*
+	   if the SYNC mode, the required_fmem_cnt value may not
+	   be enough because of few (buffered) stream information.
+	   A simple heuristic solution is one extra buffer chunk
+	   prepared.
+	*/
+	if (shvpu_avcdec_Private->avCodec->codecMode == MCVDEC_MODE_SYNC)
+		required_fmem_cnt += 1;
+
 	shvpu_avcdec_Private->avCodec->fmem = (shvpu_fmem_data *)
-		calloc (requrired_fmem_cnt, sizeof(shvpu_fmem_data));
+		calloc (required_fmem_cnt, sizeof(shvpu_fmem_data));
 
 	_fmem = *fmem = (MCVDEC_FMEM_INFO_T *)
-		calloc(requrired_fmem_cnt, sizeof(MCVDEC_FMEM_INFO_T));
-	shvpu_avcdec_Private->avCodec->fmem_size = requrired_fmem_cnt;
+		calloc(required_fmem_cnt, sizeof(MCVDEC_FMEM_INFO_T));
+	shvpu_avcdec_Private->avCodec->fmem_size = required_fmem_cnt;
 	if (*fmem == NULL || shvpu_avcdec_Private->avCodec->fmem == NULL)
 		return MCVDEC_FMEM_SKIP_BY_USER;
 
 
-	for (i=0; i<requrired_fmem_cnt; i++) {
+	for (i=0; i<required_fmem_cnt; i++) {
 		ypic_vaddr = pmem_alloc(alloc_size, align, &ypic_paddr);
 		if (ypic_vaddr == NULL)
 			break;
