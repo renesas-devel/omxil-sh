@@ -598,7 +598,7 @@ once_again:
 		outbuf_end = 0;
 		pthread_mutex_unlock (&transfer_lock);
 		if (inbuf_added == 0)
-			goto ret;
+			goto unlock_ret;
 		if ((err = middleware_open ()) < 0)
 			goto ret;
 		pcm_input_end_cb (0);

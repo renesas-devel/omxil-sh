@@ -775,7 +775,7 @@ once_again:
 		outbuf_end = 0;
 		pthread_mutex_unlock (&transfer_lock);
 		if (inbuf_added == 0)
-			goto ret;
+			goto unlock_ret;
 		if ((err = middleware_open ()) < 0)
 			goto ret;
 		if ((err = RSACPDS_SetDecOpt(paac, 0)) < RSACPDS_RTN_GOOD) {
