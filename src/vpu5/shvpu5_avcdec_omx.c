@@ -1340,11 +1340,11 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		/* receive an appropriate metadata */
 		if (pBMIQueue->nelem > 0) {
 			while ((pBMI = shvpu_peek(pBMIQueue)) != NULL) {
-				if (pBMI->id > pic_infos[0]->strm_id)
+				if (pBMI->id > pic_infos[0]->pic_order_cnt)
 					break;
 
 				pBMI = shvpu_dequeue(pBMIQueue);
-				if (pBMI->id == pic_infos[0]->strm_id) {
+				if (pBMI->id == pic_infos[0]->pic_order_cnt) {
 					pOutBuffer->nTimeStamp =
 						pBMI->nTimeStamp;
 					pOutBuffer->nFlags =
