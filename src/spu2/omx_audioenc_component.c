@@ -392,11 +392,15 @@ void omx_audioenc_component_SetInternalParameters(OMX_COMPONENTTYPE *openmaxStan
     setHeader(&omx_audioenc_component_Private->pAudioAac,sizeof(OMX_AUDIO_PARAM_AACPROFILETYPE));
     omx_audioenc_component_Private->pAudioAac.nPortIndex = 1;
     omx_audioenc_component_Private->pAudioAac.nChannels = 2;
-    omx_audioenc_component_Private->pAudioAac.nBitRate = 128000;
+    omx_audioenc_component_Private->pAudioAac.nBitRate = 64000;
     omx_audioenc_component_Private->pAudioAac.nSampleRate = 44100;
     omx_audioenc_component_Private->pAudioAac.nAudioBandWidth = 0; //encoder decides the needed bandwidth
     omx_audioenc_component_Private->pAudioAac.eChannelMode = OMX_AUDIO_ChannelModeStereo;
     omx_audioenc_component_Private->pAudioAac.nFrameLength = 0; //encoder decides the framelength
+    omx_audioenc_component_Private->pAudioAac.eAACStreamFormat =
+	    OMX_AUDIO_AACStreamFormatMP2ADTS;
+    omx_audioenc_component_Private->pAudioAac.eAACProfile =
+	    OMX_AUDIO_AACObjectLC;
 
     pPort->sAudioParam.nIndex = OMX_IndexParamAudioAac;
     pPort->sAudioParam.eEncoding = OMX_AUDIO_CodingAAC;
@@ -415,6 +419,8 @@ OMX_ERRORTYPE omx_audioenc_component_Init(OMX_COMPONENTTYPE *openmaxStandComp)
   omx_audioenc_component_PrivateType* omx_audioenc_component_Private = openmaxStandComp->pComponentPrivate;
   OMX_ERRORTYPE err = OMX_ErrorNone;
   OMX_U32 nBufferSize;
+  struct spu_aac_encode_setfmt_data SetfmtData;
+  OMX_AUDIO_PARAM_AACPROFILETYPE tmp;
 
   if (spu_aac_encode_init () < 0)
 	  return OMX_ErrorInsufficientResources;
@@ -428,6 +434,13 @@ OMX_ERRORTYPE omx_audioenc_component_Init(OMX_COMPONENTTYPE *openmaxStandComp)
   omx_audioenc_component_Private->positionInOutBuf = 0;
   omx_audioenc_component_Private->isNewBuffer=1;
   omx_audioenc_component_Private->isFirstBuffer = 1;
+  
+  setHeader (&tmp, sizeof tmp);
+  tmp.nPortIndex = 1;
+  omx_audioenc_component_GetParameter ((OMX_HANDLETYPE)openmaxStandComp,
+				       OMX_IndexParamAudioAac, &tmp);
+  omx_audioenc_component_SetParameter ((OMX_HANDLETYPE)openmaxStandComp,
+				       OMX_IndexParamAudioAac, &tmp);
 
   return err;
 
