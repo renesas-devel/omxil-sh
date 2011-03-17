@@ -9,7 +9,7 @@
 #include "RSACPDS_API.h"
 
 #define AACSIZE 1536
-#define PCMSIZE 2048
+#define PCMSIZE 4096
 #define BUFALIGNMENT 0x800000
 #define ERR(msg) fprintf (stderr, "spuaacdec: %s\n", msg)
 

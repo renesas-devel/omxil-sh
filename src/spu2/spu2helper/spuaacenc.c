@@ -9,7 +9,7 @@
 #include "RAACES_API.h"
 
 #define AACSIZE 1536
-#define PCMSIZE 2048
+#define PCMSIZE 4096
 #define BUFALIGNMENT 0x800000
 #define ERR(msg) fprintf (stderr, "spuaacenc: %s\n", msg)
 
@@ -269,10 +269,10 @@ init3 (void)
 	pcmbuf += dsp0_size / 4;
 	pcmaddr = (short *)(dsp0_addr + dsp0_size / 2);
 
-	buflist_init (aacbuf, (uint32_t)aacaddr, &inbuflist, &inbuf_free,
-		      &inbuf_used, AACSIZE, dsp0_size / 2);
-	buflist_init (pcmbuf, (uint32_t)pcmaddr, &outbuflist, &outbuf_free,
-		      &outbuf_used, PCMSIZE, dsp0_size / 2);
+	buflist_init (pcmbuf, (uint32_t)pcmaddr, &inbuflist, &inbuf_free,
+		      &inbuf_used, PCMSIZE, dsp0_size / 2);
+	buflist_init (aacbuf, (uint32_t)aacaddr, &outbuflist, &outbuf_free,
+		      &outbuf_used, AACSIZE, dsp0_size / 2);
 	inbuf_current = NULL;
 	outbuf_current = NULL;
 	inbuf_copying = NULL;
