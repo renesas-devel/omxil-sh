@@ -46,7 +46,7 @@ static OMX_U32 noVideoEncInstance = 0;
 #define DEFAULT_VIDEO_OUTPUT_BUF_SIZE	(1024 * 1024)	// 1MiB
 
 #define INPUT_BUFFER_COUNT 2
-#define INPUT_PICTURE_COLOR_FMT		OMX_COLOR_FormatYUV420Planar
+#define INPUT_PICTURE_COLOR_FMT		OMX_COLOR_FormatYUV420SemiPlanar
 
 //#undef DEBUG_LEVEL
 //#define DEBUG_LEVEL DEB_ALL_MESS
@@ -484,6 +484,7 @@ UpdateFrameSize(OMX_COMPONENTTYPE *pComponent) {
 
 	switch(inPort->sPortParam.format.video.eColorFormat) {
 	case OMX_COLOR_FormatYUV420Planar:
+	case OMX_COLOR_FormatYUV420SemiPlanar:
 		inPort->sPortParam.nBufferSize =
 			inPort->sPortParam.format.video.nFrameWidth *
 			inPort->sPortParam.format.video.nFrameHeight *
