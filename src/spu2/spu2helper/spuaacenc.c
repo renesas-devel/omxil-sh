@@ -649,8 +649,7 @@ once_again:
 	if (need_output != 0)
 		stream_output_end_cb (0, 0);
 	if (state_encode == 0 && state_encode_really_end == 0) {
-		/* Encoding all frames.(2nd param nframe is zero) */
-		if ((err = RAACES_Encode (paac2, 0)) < RAACES_R_GOOD) {
+		if ((err = RAACES_Encode (paac2, 1)) < RAACES_R_GOOD) {
 			ERR ("RAACES_Encode error");
 			if (paac2->statusCode < 0) {
 				err = paac2->statusCode;
