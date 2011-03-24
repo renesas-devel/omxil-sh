@@ -38,6 +38,18 @@ struct state_info {
 	int encode_really_end;
 };
 
+struct datalist {
+	struct datalist *next, *prev;
+	void *data;
+	int datalen;
+	int len;
+};
+
+struct datalist_head {
+	struct datalist *head, *tail;
+	pthread_mutex_t lock;
+};
+
 static short *pcmbuf, *pcmaddr;
 static unsigned char *aacbuf, *aacaddr;
 static pthread_mutex_t transfer_lock, transfer_done;
@@ -54,6 +66,91 @@ static int inbuf_end, outbuf_end;
 static RAACES_AACInfo aacinfo;
 static int callbk_err = 0;
 static long encode_end_status;
+static struct datalist_head indata, outdata, delaydata;
+
+static void
+datalist_init (struct datalist_head *d)
+{
+	pthread_mutex_init (&d->lock, NULL);
+	d->head = NULL;
+	d->tail = NULL;
+}
+
+static void
+datalist_add (struct datalist_head *d, void *data, int datalen, int addlen)
+{
+	pthread_mutex_lock (&d->lock);
+	if (d->tail != NULL) {
+		if (d->tail->datalen == datalen) {
+			if (datalen == 0)
+				goto add;
+			if (memcmp (d->tail->data, data, datalen) == 0)
+				goto add;
+		}
+		d->tail->next = malloc (sizeof *d->tail->next);
+		d->tail->next->next = NULL;
+		d->tail->next->prev = d->tail;
+		d->tail = d->tail->next;
+		goto listinit;
+	add:
+		d->tail->len += addlen;
+	} else {
+		d->tail = malloc (sizeof *d->tail);
+		d->head = d->tail;
+		d->tail->next = NULL;
+		d->tail->prev = NULL;
+	listinit:
+		d->tail->data = NULL;
+		d->tail->datalen = datalen;
+		d->tail->len = addlen;
+		if (datalen != 0) {
+			d->tail->data = malloc (datalen);
+			memcpy (d->tail->data, data, datalen);
+		}
+	}
+	pthread_mutex_unlock (&d->lock);
+}
+
+static void
+datalist_sub (struct datalist_head *d, void **data, int *datalen, int sublen)
+{
+	struct datalist *p;
+
+	pthread_mutex_lock (&d->lock);
+	p = d->head;
+	if (p != NULL) {
+		if (datalen != NULL) {
+			*data = NULL;
+			*datalen = p->datalen;
+			if (p->datalen != 0) {
+				*data = malloc (p->datalen);
+				memcpy (*data, p->data, p->datalen);
+			}
+		}
+	} else {
+		ERR ("No datalist exists!");
+	}
+	while (sublen > 0 && p != NULL) {
+		if (p->len > sublen) {
+			p->len -= sublen;
+			sublen = 0;
+			break;
+		}
+		sublen -= p->len;
+		if (d->head == d->tail) {
+			d->head = NULL;
+			d->tail = NULL;
+		} else {
+			d->head = p->next;
+			d->head->prev = NULL;
+		}
+		if (p->datalen != 0)
+			free (p->data);
+		free (p);
+		p = d->head;
+	}
+	pthread_mutex_unlock (&d->lock);
+}
 
 static int
 buflist_add (struct buflist_head *buf, struct buflist *p)
@@ -179,6 +276,28 @@ static void
 encode_end_cb (RAACES_AAC *aac, long result, unsigned long pcnt,
 	       unsigned long bcnt, unsigned long nframe)
 {
+	void *data;
+	int datalen;
+	int inputlen;
+
+	if (pcnt != 0) {
+		if (aacinfo.channelMode == 1) /* stereo */
+			inputlen = pcnt * 2 * 2;
+		else
+			inputlen = pcnt * 2;
+		datalist_sub (&indata, &data, &datalen, inputlen);
+		if (state.first_block != 0)
+			datalist_add (&delaydata, data, datalen, 1);
+		datalist_add (&delaydata, data, datalen, 1);
+		if (datalen != 0)
+			free (data);
+	}
+	if (bcnt != 0) {
+		datalist_sub (&delaydata, &data, &datalen, 1);
+		datalist_add (&outdata, data, datalen, bcnt);
+		if (datalen != 0)
+			free (data);
+	}
 	encode_end_status = paac2->statusCode;
 	pthread_mutex_lock (&transfer_lock);
 	state.encode_end = 1;
@@ -296,6 +415,10 @@ init3 (void)
 	inbuf_copying = NULL;
 	outbuf_copying = NULL;
 
+	datalist_init (&indata);
+	datalist_init (&outdata);
+	datalist_init (&delaydata);
+
 	aacinfo.channelMode = 1;
 	aacinfo.sampleRate = 44100;
 	aacinfo.bitRate = 64000;
@@ -368,11 +491,15 @@ encoder_close (int encoding)
 }
 
 static int
-copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
+copy_output_buffer (void **destbuf, void *destend, int *pneed_output,
+		    void **data, int *datalen)
 {
 	uint8_t *_dstbuf;
 	int _dstlen, copylen;
+	int first = 1;
 
+	*data = NULL;
+	*datalen = 0;
 	_dstbuf = (uint8_t *)*destbuf;
 	_dstlen = (uint8_t *)destend - _dstbuf;
 	if (outbuf_copying == NULL) {
@@ -396,6 +523,12 @@ copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
 		_dstbuf += copylen;
 		_dstlen -= copylen;
 		outbuf_copied += copylen;
+		if (first != 0) {
+			datalist_sub (&outdata, data, datalen, copylen);
+			first = 0;
+		} else {
+			datalist_sub (&outdata, NULL, NULL, copylen);
+		}
 	}
 	if (*destbuf == (void *)_dstbuf && *destbuf != destend)
 		return 0;
@@ -437,7 +570,7 @@ handle_last_input_buffer (int *pneed_input, int *pinbuf_added)
 
 static int
 copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
-		   int *pinbuf_added)
+		   int *pinbuf_added, void *data, int datalen)
 {
 	uint8_t *_srcbuf;
 	int _srclen, copylen;
@@ -471,6 +604,7 @@ copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
 		_srcbuf += copylen;
 		_srclen -= copylen;
 		inbuf_copied += copylen;
+		datalist_add (&indata, data, datalen, copylen);
 	}
 	if (*srcbuf == (void *)_srcbuf && *srcbuf != srcend)
 		return 0;
@@ -584,7 +718,8 @@ spu_aac_encode_setfmt (struct spu_aac_encode_setfmt_data *format)
 }
 
 long
-spu_aac_encode (void **destbuf, void *destend, void **srcbuf, void *srcend)
+spu_aac_encode (void **destbuf, void *destend, void **srcbuf, void *srcend,
+		void *dataout, void *datain, int datalen)
 {
 	int need_input, need_output;
 	int inbuf_added;
@@ -593,6 +728,8 @@ spu_aac_encode (void **destbuf, void *destend, void **srcbuf, void *srcend)
 	int state_encode_end, state_encode_really_end;
 	int incopy, outcopy;
 	long err = RAACES_R_GOOD;
+	void *_dataout;
+	int _dataoutlen;
 
 once_again:
 	need_input = 0;
@@ -610,8 +747,16 @@ once_again:
 	transfer_flag = 1;
 	pthread_mutex_unlock (&transfer_lock);
 
-	outcopy = copy_output_buffer (destbuf, destend, &need_output);
-	incopy = copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
+	outcopy = copy_output_buffer (destbuf, destend, &need_output,
+				      &_dataout, &_dataoutlen);
+	incopy = copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added,
+				    datain, datalen);
+	if (_dataoutlen != 0) {
+		if (_dataoutlen > datalen)
+			_dataoutlen = datalen;
+		memcpy (dataout, _dataout, _dataoutlen);
+		free (_dataout);
+	}
 
 	if (state.open == 0) {
 		state_encode = 0;
@@ -701,6 +846,12 @@ ret:
 			buflist_add (&outbuf_free, outbuf_copying);
 		outbuf_copying = buflist_pop (&outbuf_used);
 	} while (outbuf_copying != NULL);
+	while (indata.head != NULL)
+		datalist_sub (&indata, NULL, NULL, indata.head->len);
+	while (outdata.head != NULL)
+		datalist_sub (&outdata, NULL, NULL, outdata.head->len);
+	while (delaydata.head != NULL)
+		datalist_sub (&delaydata, NULL, NULL, delaydata.head->len);
 unlock_ret:
 	pthread_mutex_lock (&transfer_lock);
 	if (transfer_flag == 0) {

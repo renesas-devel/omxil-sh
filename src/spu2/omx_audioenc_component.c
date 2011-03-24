@@ -490,14 +490,14 @@ void omx_audioenc_component_BufferMgmtCallback(OMX_COMPONENTTYPE *openmaxStandCo
   inbufend = pInputBuffer->pBuffer + pInputBuffer->nOffset
 	  + pInputBuffer->nFilledLen;
   if ((pInputBuffer->nFlags & OMX_BUFFERFLAG_EOS) == OMX_BUFFERFLAG_EOS) {
-    if ((ret = spu_aac_encode (&outbuf, outbufend, NULL, NULL)) < 0) {
+    if ((ret = spu_aac_encode (&outbuf, outbufend, NULL, NULL, &pOutputBuffer->nTimeStamp, &pInputBuffer->nTimeStamp, sizeof pOutputBuffer->nTimeStamp)) < 0) {
       fprintf (stderr, "Encode error\n");
       message.messageType = OMX_CommandStateSet;
       message.messageParam = OMX_StateInvalid;
       omx_audioenc_component_Private->messageHandler(openmaxStandComp, &message);
     }
   } else {
-    if ((ret = spu_aac_encode (&outbuf, outbufend, &inbuf, inbufend)) < 0) {
+    if ((ret = spu_aac_encode (&outbuf, outbufend, &inbuf, inbufend, &pOutputBuffer->nTimeStamp, &pInputBuffer->nTimeStamp, sizeof pOutputBuffer->nTimeStamp)) < 0) {
       fprintf (stderr, "Encode error\n");
       message.messageType = OMX_CommandStateSet;
       message.messageParam = OMX_StateInvalid;

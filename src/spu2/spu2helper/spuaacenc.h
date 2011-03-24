@@ -19,7 +19,7 @@ struct spu_aac_encode_setfmt_data {
 };
 
 long spu_aac_encode (void **destbuf, void *destend, void **srcbuf,
-		    void *srcend);
+		     void *srcend, void *dataout, void *datain, int datalen);
 long spu_aac_encode_stop (void);
 int spu_aac_encode_init (void);
 long  spu_aac_encode_deinit (void);
