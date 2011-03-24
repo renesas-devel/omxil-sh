@@ -32,6 +32,10 @@ struct state_info {
 	/* variables set/cleared by main thread: */
 	int init;
 	int open;
+	int first_block;
+	/* variables cleared by main thread and set by interrupt thread: */
+	int encode_end;
+	int encode_really_end;
 };
 
 static short *pcmbuf, *pcmaddr;
@@ -49,6 +53,7 @@ static int inbuf_copied, outbuf_copied;
 static int inbuf_end, outbuf_end;
 static RAACES_AACInfo aacinfo;
 static int callbk_err = 0;
+static long encode_end_status;
 
 static int
 buflist_add (struct buflist_head *buf, struct buflist *p)
@@ -174,6 +179,19 @@ static void
 encode_end_cb (RAACES_AAC *aac, long result, unsigned long pcnt,
 	       unsigned long bcnt, unsigned long nframe)
 {
+	encode_end_status = paac2->statusCode;
+	pthread_mutex_lock (&transfer_lock);
+	state.encode_end = 1;
+	if (result == -1 &&
+	    (encode_end_status == RAACES_C_END_OF_FILE ||
+	     encode_end_status == RAACES_C_BEFORE_END_OF_FILE ||
+	     encode_end_status == RAACES_C_LACK_FRAME))
+		state.encode_really_end = 1;
+	if (transfer_flag != 0) {
+		transfer_flag = 0;
+		pthread_mutex_unlock (&transfer_done);
+	}
+	pthread_mutex_unlock (&transfer_lock);
 }
 
 static void
@@ -571,6 +589,8 @@ spu_aac_encode (void **destbuf, void *destend, void **srcbuf, void *srcend)
 	int need_input, need_output;
 	int inbuf_added;
 	int endflag;
+	int state_encode;
+	int state_encode_end, state_encode_really_end;
 	int incopy, outcopy;
 	long err = RAACES_R_GOOD;
 
@@ -585,6 +605,8 @@ once_again:
 	}
 	pthread_mutex_lock (&transfer_lock);
 	endflag = outbuf_end;
+	state_encode_end = state.encode_end;
+	state_encode_really_end = state.encode_really_end;
 	transfer_flag = 1;
 	pthread_mutex_unlock (&transfer_lock);
 
@@ -592,6 +614,11 @@ once_again:
 	incopy = copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
 
 	if (state.open == 0) {
+		state_encode = 0;
+		state.encode_end = 0;
+		state.encode_really_end = 0;
+		state_encode_end = 0;
+		state_encode_really_end = 0;
 		callbk_err = 0;
 		inbuf_end = 0;
 		pthread_mutex_lock (&transfer_lock);
@@ -601,8 +628,27 @@ once_again:
 			goto unlock_ret;
 		if ((err = middleware_open ()) < 0)
 			goto ret;
+		state.first_block = 1;
+		state.open = 1;
+		need_input = 1;
+		need_output = 1;
+	} else {
+		state_encode = 1;
+		if (state_encode_really_end != 0)
+			state_encode = 0;
+	}
+	if (state_encode_end != 0) {
+		state_encode = 0;
+		state.encode_end = 0;
+		if (state.first_block != 0) {
+			state.first_block = 0;
+		}
+	}
+	if (need_input != 0)
 		pcm_input_end_cb (0);
+	if (need_output != 0)
 		stream_output_end_cb (0, 0);
+	if (state_encode == 0 && state_encode_really_end == 0) {
 		/* Encoding all frames.(2nd param nframe is zero) */
 		if ((err = RAACES_Encode (paac2, 0)) < RAACES_R_GOOD) {
 			ERR ("RAACES_Encode error");
@@ -613,16 +659,13 @@ once_again:
 			}
 			goto close_and_ret;
 		}
-		state.open = 1;
-	} else {
-		if (need_input != 0)
-			pcm_input_end_cb (0);
-		if (need_output != 0)
-			stream_output_end_cb (0, 0);
+		state_encode = 1;
 	}
 	if (inbuf_end == 2 && endflag != 0 && outbuf_copying == NULL &&
 	    buflist_poll (&outbuf_used) == NULL) {
-		if (paac2->statusCode != 0)
+		if (encode_end_status != RAACES_C_END_OF_FILE &&
+		    encode_end_status != RAACES_C_BEFORE_END_OF_FILE &&
+		    encode_end_status != RAACES_C_LACK_FRAME)
 			ERR ("strange statusCode; ignored");
 		err = encoder_close (0);
 		state.open = 0;
@@ -638,7 +681,7 @@ once_again:
 	}
 	goto unlock_ret;
 close_and_ret:
-	encoder_close (0);
+	encoder_close (state_encode);
 	state.open = 0;
 ret:
 	if (inbuf_copying != NULL) {
