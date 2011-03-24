@@ -77,11 +77,12 @@ datalist_init (struct datalist_head *d)
 }
 
 static void
-datalist_add (struct datalist_head *d, void *data, int datalen, int addlen)
+datalist_add (struct datalist_head *d, void *data, int datalen, int addlen,
+	      int extend)
 {
 	pthread_mutex_lock (&d->lock);
 	if (d->tail != NULL) {
-		if (d->tail->datalen == datalen) {
+		if (extend != 0 && d->tail->datalen == datalen) {
 			if (datalen == 0)
 				goto add;
 			if (memcmp (d->tail->data, data, datalen) == 0)
@@ -150,6 +151,18 @@ datalist_sub (struct datalist_head *d, void **data, int *datalen, int sublen)
 		p = d->head;
 	}
 	pthread_mutex_unlock (&d->lock);
+}
+
+static int
+datalist_headlen (struct datalist_head *d)
+{
+	int len = 0;
+
+	pthread_mutex_lock (&d->lock);
+	if (d->head != NULL)
+		len = d->head->len;
+	pthread_mutex_unlock (&d->lock);
+	return len;
 }
 
 static int
@@ -279,7 +292,12 @@ encode_end_cb (RAACES_AAC *aac, long result, unsigned long pcnt,
 	void *data;
 	int datalen;
 	int inputlen;
+	int extend;
 
+	if (aacinfo.outputFormat == 2) /* if the output format is raw */
+		extend = 0;
+	else
+		extend = 1;
 	if (pcnt != 0) {
 		if (aacinfo.channelMode == 1) /* stereo */
 			inputlen = pcnt * 2 * 2;
@@ -287,14 +305,14 @@ encode_end_cb (RAACES_AAC *aac, long result, unsigned long pcnt,
 			inputlen = pcnt * 2;
 		datalist_sub (&indata, &data, &datalen, inputlen);
 		if (state.first_block != 0)
-			datalist_add (&delaydata, data, datalen, 1);
-		datalist_add (&delaydata, data, datalen, 1);
+			datalist_add (&delaydata, data, datalen, 1, 1);
+		datalist_add (&delaydata, data, datalen, 1, 1);
 		if (datalen != 0)
 			free (data);
 	}
 	if (bcnt != 0) {
 		datalist_sub (&delaydata, &data, &datalen, 1);
-		datalist_add (&outdata, data, datalen, bcnt);
+		datalist_add (&outdata, data, datalen, bcnt, extend);
 		if (datalen != 0)
 			free (data);
 	}
@@ -497,6 +515,7 @@ copy_output_buffer (void **destbuf, void *destend, int *pneed_output,
 	uint8_t *_dstbuf;
 	int _dstlen, copylen;
 	int first = 1;
+	int firstdatalen = 0;
 
 	*data = NULL;
 	*datalen = 0;
@@ -518,6 +537,23 @@ copy_output_buffer (void **destbuf, void *destend, int *pneed_output,
 			break;
 		if (copylen > _dstlen)
 			copylen = _dstlen;
+		if (aacinfo.outputFormat == 2) { /* if output format is raw */
+			firstdatalen = datalist_headlen (&outdata);
+			/* In case of copylen < firstdatalen: the next
+			   buffer must have the remain data, or the
+			   output would be separated. This code simply
+			   stops copying if the next buffer is not
+			   available. The length of the next buffer is
+			   not checked, but it should be enough
+			   because AACSIZE is maximum frame size. */
+			if (copylen < firstdatalen &&
+			    buflist_poll (&outbuf_used) == NULL)
+				break;
+			if (firstdatalen == 0)
+				ERR ("firstdatalen is zero!");
+			else if (copylen > firstdatalen)
+				copylen = firstdatalen;
+		}
 		memcpy (_dstbuf, (uint8_t *)outbuf_copying->buf +
 			outbuf_copied, copylen);
 		_dstbuf += copylen;
@@ -529,6 +565,8 @@ copy_output_buffer (void **destbuf, void *destend, int *pneed_output,
 		} else {
 			datalist_sub (&outdata, NULL, NULL, copylen);
 		}
+		if (copylen == firstdatalen)
+			break;
 	}
 	if (*destbuf == (void *)_dstbuf && *destbuf != destend)
 		return 0;
@@ -604,7 +642,7 @@ copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
 		_srcbuf += copylen;
 		_srclen -= copylen;
 		inbuf_copied += copylen;
-		datalist_add (&indata, data, datalen, copylen);
+		datalist_add (&indata, data, datalen, copylen, 1);
 	}
 	if (*srcbuf == (void *)_srcbuf && *srcbuf != srcend)
 		return 0;
@@ -846,12 +884,12 @@ ret:
 			buflist_add (&outbuf_free, outbuf_copying);
 		outbuf_copying = buflist_pop (&outbuf_used);
 	} while (outbuf_copying != NULL);
-	while (indata.head != NULL)
-		datalist_sub (&indata, NULL, NULL, indata.head->len);
-	while (outdata.head != NULL)
-		datalist_sub (&outdata, NULL, NULL, outdata.head->len);
-	while (delaydata.head != NULL)
-		datalist_sub (&delaydata, NULL, NULL, delaydata.head->len);
+	while ((_dataoutlen = datalist_headlen (&indata)) != 0)
+		datalist_sub (&indata, NULL, NULL, _dataoutlen);
+	while ((_dataoutlen = datalist_headlen (&outdata)) != 0)
+		datalist_sub (&outdata, NULL, NULL, _dataoutlen);
+	while ((_dataoutlen = datalist_headlen (&delaydata)) != 0)
+		datalist_sub (&delaydata, NULL, NULL, _dataoutlen);
 unlock_ret:
 	pthread_mutex_lock (&transfer_lock);
 	if (transfer_flag == 0) {
