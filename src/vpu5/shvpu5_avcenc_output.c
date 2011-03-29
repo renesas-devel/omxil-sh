@@ -107,6 +107,12 @@ mcvenc_uf_strm_available(MCVENC_CONTEXT_T *context,
 				SHVPU_BUFFER_STATUS_FILL;
 			pStreamBuffer->frameId =
 				vlc_pic_info->strm_frm_id;
+			if (vlc_pic_info->vlc_pic_type == MCVENC_I_PIC)
+				pStreamBuffer->picType = SHVPU_PICTURE_TYPE_I;
+			else if (vlc_pic_info->vlc_pic_type == MCVENC_B_PIC)
+				pStreamBuffer->picType = SHVPU_PICTURE_TYPE_B;
+			else if (vlc_pic_info->vlc_pic_type == MCVENC_P_PIC)
+				pStreamBuffer->picType = SHVPU_PICTURE_TYPE_P;
 			break;
 		}
 	}

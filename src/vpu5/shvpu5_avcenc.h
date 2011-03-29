@@ -45,10 +45,18 @@ typedef enum {
 	SHVPU_BUFFER_STATUS_FILL
 } shvpu_buffer_status_t;
 
+typedef enum {
+	SHVPU_PICTURE_TYPE_UNKNOWN = 0,
+	SHVPU_PICTURE_TYPE_I,
+	SHVPU_PICTURE_TYPE_P,
+	SHVPU_PICTURE_TYPE_B
+} shvpu_picture_type_t;
+
 typedef struct {
 	MCVENC_STRM_BUFF_INFO_T bufferInfo;
 	shvpu_buffer_status_t	status;
 	int			frameId;
+	shvpu_picture_type_t	picType;
 } shvpu_avcenc_outbuf_t;
 
 typedef struct {
