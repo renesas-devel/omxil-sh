@@ -77,7 +77,10 @@ DERIVEDCLASS(shvpu_avcenc_PrivateType, omx_base_filter_PrivateType)
 	queue_t *pBMIQueue;					\
 	/** @param avcType
 	    current AVCSettings from OMX_Set/GetParameter*/	\
-	OMX_VIDEO_PARAM_AVCTYPE avcType;
+	OMX_VIDEO_PARAM_AVCTYPE avcType;			\
+	/** @param bitrateType
+	    current AVCSettings from OMX_Set/GetParameter*/	\
+	OMX_VIDEO_PARAM_BITRATETYPE bitrateType;
 ENDCLASS(shvpu_avcenc_PrivateType)
 
 /* Component private entry points enclaration */

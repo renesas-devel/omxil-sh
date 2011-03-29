@@ -293,6 +293,7 @@ SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private;
 	OMX_VIDEO_PARAM_AVCTYPE *pAvcType;
+	OMX_VIDEO_PARAM_BITRATETYPE *pBRType;
 
 	shvpu_avcenc_Private = pComponent->pComponentPrivate;;
 
@@ -332,6 +333,12 @@ SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 	pAvcType->bDirectSpatialTemporal = OMX_FALSE;
 	pAvcType->nCabacInitIdc = 0;
 	pAvcType->eLoopFilterMode = OMX_VIDEO_AVCLoopFilterDisable;
+
+	setHeader(&shvpu_avcenc_Private->bitrateType,
+		  sizeof(OMX_VIDEO_PARAM_BITRATETYPE));
+	pBRType = &shvpu_avcenc_Private->bitrateType;
+	pBRType->eControlRate = OMX_Video_ControlRateConstant;
+	pBRType->nTargetBitrate = 0;
 }
 
 /** The Initialization function of the video encoder
@@ -702,6 +709,12 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 		}
 		eError = shvpu_avcenc_SetBitrateParameters(
 			shvpu_avcenc_Private->avCodec, pBRType);
+		if (eError == OMX_ErrorNone) {
+			shvpu_avcenc_Private->bitrateType.eControlRate =
+				pBRType->eControlRate;
+			shvpu_avcenc_Private->bitrateType.nTargetBitrate =
+				pBRType->nTargetBitrate;
+		}
 		break;
 	}
 	case OMX_IndexParamStandardComponentRole:
@@ -866,6 +879,16 @@ shvpu_avcenc_GetParameter(OMX_HANDLETYPE hComponent,
 		}
 		memcpy(pVideoAvc, &shvpu_avcenc_Private->avcType,
 		       sizeof(OMX_VIDEO_PARAM_AVCTYPE));
+		break;
+	}
+	case OMX_IndexParamVideoBitrate:
+	{
+		OMX_VIDEO_PARAM_BITRATETYPE *pBRType;
+		pBRType = ComponentParameterStructure;
+		pBRType->eControlRate =
+			shvpu_avcenc_Private->bitrateType.eControlRate;
+		pBRType->nTargetBitrate =
+			shvpu_avcenc_Private->bitrateType.nTargetBitrate;
 		break;
 	}
 	default:		/*Call the base component function */
