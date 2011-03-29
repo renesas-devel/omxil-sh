@@ -1482,6 +1482,8 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 			applyBufferMetadata(shvpu_avcenc_Private->pBMIQueue,
 					    pStreamBuffer->frameId,
 					    pOutBuffer);
+			pOutBuffer->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
+			break;
 		}
 	}
 
