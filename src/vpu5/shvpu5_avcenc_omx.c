@@ -891,6 +891,14 @@ shvpu_avcenc_GetParameter(OMX_HANDLETYPE hComponent,
 			shvpu_avcenc_Private->bitrateType.nTargetBitrate;
 		break;
 	}
+	case OMX_IndexParamVideoProfileLevelQuerySupported:
+	{
+		OMX_VIDEO_PARAM_PROFILELEVELTYPE *pProfType;
+		pProfType = ComponentParameterStructure;
+		pProfType->eProfile = shvpu_avcenc_Private->avcType.eProfile;
+		pProfType->eLevel = shvpu_avcenc_Private->avcType.eProfile;
+		break;
+	}
 	default:		/*Call the base component function */
 		eError = omx_base_component_GetParameter
 			(hComponent, nParamIndex,
