@@ -151,6 +151,7 @@ shvpu_avcenc_Constructor(OMX_COMPONENTTYPE * pComponent,
 		shvpu_avcenc_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 	outPort->sPortParam.nBufferSize = DEFAULT_VIDEO_OUTPUT_BUF_SIZE;
 	outPort->sPortParam.format.video.xFramerate = 0;
+	outPort->sVideoParam.eCompressionFormat = OMX_VIDEO_CodingAVC;
 
 	SetInternalVideoParameters(pComponent);
 
