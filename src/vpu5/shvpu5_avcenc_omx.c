@@ -808,7 +808,7 @@ shvpu_avcenc_GetParameter(OMX_HANDLETYPE hComponent,
 	{
 		OMX_VIDEO_PARAM_AVCTYPE *pVideoAvc;
 		pVideoAvc = ComponentParameterStructure;
-		if (pVideoAvc->nPortIndex != 0) {
+		if (pVideoAvc->nPortIndex > 1) {
 			return OMX_ErrorBadPortIndex;
 		}
 		if ((eError =
