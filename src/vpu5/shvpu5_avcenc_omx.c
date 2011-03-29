@@ -731,6 +731,29 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 		SetInternalVideoParameters(pComponent);
 		break;
 	}
+	case OMX_IndexParamVideoPortFormat:
+	{
+		OMX_VIDEO_PARAM_PORTFORMATTYPE *pVideoPortFormat;
+		pVideoPortFormat = ComponentParameterStructure;
+		portIndex = pVideoPortFormat->nPortIndex;
+		/* Check Structure Header and verify component state */
+		eError = omx_base_component_ParameterSanityCheck
+			(hComponent, portIndex, pVideoPortFormat,
+			 sizeof(OMX_VIDEO_PARAM_PORTFORMATTYPE));
+		if (eError != OMX_ErrorNone) {
+			DEBUG(DEB_LEV_ERR,
+			      "In %s Parameter Check Error=%x\n",
+			      __func__, eError);
+			break;
+		}
+		if (portIndex > 1)
+			return OMX_ErrorBadPortIndex;
+		port = (omx_base_video_PortType *)
+			shvpu_avcenc_Private->ports[portIndex];
+		memcpy(&port->sVideoParam, pVideoPortFormat,
+		       sizeof(OMX_VIDEO_PARAM_PORTFORMATTYPE));
+		break;
+	}
 	case OMX_IndexParamVideoAvc:
 	{
 		OMX_VIDEO_PARAM_AVCTYPE *pAvcType;
@@ -802,6 +825,30 @@ shvpu_avcenc_GetParameter(OMX_HANDLETYPE hComponent,
 			break;
 		}
 		strcpy((char *)pComponentRole->cRole, VIDEO_ENC_H264_ROLE);
+		break;
+	}
+	case OMX_IndexParamVideoPortFormat:
+	{
+		OMX_VIDEO_PARAM_PORTFORMATTYPE *pVideoPortFormat;
+		omx_base_video_PortType *port;
+
+		pVideoPortFormat = ComponentParameterStructure;
+		if ((eError =
+		     checkHeader(ComponentParameterStructure,
+				 sizeof
+				 (OMX_VIDEO_PARAM_PORTFORMATTYPE))) !=
+		    OMX_ErrorNone) {
+			break;
+		}
+		if (pVideoPortFormat->nPortIndex > 1)
+			return OMX_ErrorBadPortIndex;
+		if (pVideoPortFormat->nIndex > 0)
+			return OMX_ErrorNoMore;
+		port = (omx_base_video_PortType *)
+			shvpu_avcenc_Private->ports
+			[pVideoPortFormat->nPortIndex];
+		memcpy(pVideoPortFormat, &port->sVideoParam,
+		       sizeof(OMX_VIDEO_PARAM_PORTFORMATTYPE));
 		break;
 	}
 	case OMX_IndexParamVideoAvc:
