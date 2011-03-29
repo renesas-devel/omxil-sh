@@ -1377,6 +1377,7 @@ generateHeader(OMX_COMPONENTTYPE * pComponent,
 	}
 	pOutBuffer->nFilledLen += nFilledLen;
 	logd("%d bytes header output\n", nFilledLen);
+	pOutBuffer->nFlags |= OMX_BUFFERFLAG_CODECCONFIG;
 
 	shvpu_avcenc_Private->isFirstBuffer = OMX_FALSE;
 	return;
@@ -1734,16 +1735,18 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 		/* do encoding if a pair of
 		   input and output buffers are ensured */
 		if (shvpu_avcenc_Private->state == OMX_StateExecuting) {
-			if (shvpu_avcenc_Private->isFirstBuffer)
+			if (shvpu_avcenc_Private->isFirstBuffer) {
 				generateHeader(pComponent, pOutBuffer);
-			if (pInBuffer)
-				encodePicture(pComponent, pInBuffer,
-					      &processInBufQueue);
-			if (pOutBuffer) {
-				fillOutBuffer(pComponent, pOutBuffer);
-				checkFillDone(pComponent, &pOutBuffer,
-					      &outBufExchanged,
-					      &isOutBufferNeeded);
+			} else {
+				if (pInBuffer)
+					encodePicture(pComponent, pInBuffer,
+						      &processInBufQueue);
+				if (pOutBuffer) {
+					fillOutBuffer(pComponent, pOutBuffer);
+					checkFillDone(pComponent, &pOutBuffer,
+						      &outBufExchanged,
+						      &isOutBufferNeeded);
+				}
 			}
 		} else if (!(PORT_IS_BEING_FLUSHED(pInPort) ||
 			     PORT_IS_BEING_FLUSHED(pOutPort)) &&
