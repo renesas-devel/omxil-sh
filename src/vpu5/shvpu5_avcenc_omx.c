@@ -1483,6 +1483,12 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 					    pStreamBuffer->frameId,
 					    pOutBuffer);
 			pOutBuffer->nFlags |= OMX_BUFFERFLAG_ENDOFFRAME;
+			/* the OMX_BUFFERFLAG_SYNCFRAME flag informs
+			   that the outout is an IDR frame */
+			if (pStreamBuffer->picType == SHVPU_PICTURE_TYPE_I) {
+				pOutBuffer->nFlags |=
+						OMX_BUFFERFLAG_SYNCFRAME;
+			}
 			break;
 		}
 	}
