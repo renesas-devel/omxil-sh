@@ -1401,7 +1401,7 @@ saveBufferMetadata(queue_t *pBMIQueue, int id,
 	pInBuffer->pMarkData = NULL;
 	pBMI->nTimeStamp = pInBuffer->nTimeStamp;
 	pInBuffer->nTimeStamp = 0;
-	pBMI->nFlags = pInBuffer->nFlags;
+	pBMI->nFlags = pInBuffer->nFlags & OMX_BUFFERFLAG_STARTTIME;
 	pInBuffer->nFlags = 0;
 	shvpu_queue(pBMIQueue, pBMI);
 

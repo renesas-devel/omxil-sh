@@ -157,7 +157,8 @@ save_omx_buffer_metainfo(OMX_BUFFERHEADERTYPE *pBuffer)
 	pBMI->nTimeStamp = pBuffer->nTimeStamp;
 	pBuffer->nTimeStamp = 0;
 	logd("%s: nTimeStamp = %d\n", __FUNCTION__, pBMI->nTimeStamp);
-	pBMI->nFlags = pBuffer->nFlags;
+	pBMI->nFlags = pBuffer->nFlags &
+		(OMX_BUFFERFLAG_STARTTIME | OMX_BUFFERFLAG_DECODEONLY);
 	pBuffer->nFlags = 0;
 	logd("%s: nFlags = %08x\n", __FUNCTION__, pBMI->nFlags);
 
