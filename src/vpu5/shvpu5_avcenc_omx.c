@@ -1722,7 +1722,8 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 		if (ret < 0)
 			break;
 
-		if (isInBufferNeeded == OMX_TRUE) {
+		if ((isInBufferNeeded == OMX_TRUE) &&
+		    (pInputSem->semval > 0)) {
 			getInBuffer(shvpu_avcenc_Private,
 				    &pInBuffer,
 				    &inBufExchanged, &processInBufQueue);
