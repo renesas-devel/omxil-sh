@@ -256,7 +256,7 @@ shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
 		vaddr = pmem_alloc(SHVPU_AVCENC_OUTBUF_SIZE, 256, NULL);
 		if (vaddr == NULL) {
-			printf("%s: pmem_alloc failed\n", __FUNCTION__);
+			loge("%s: pmem_alloc failed\n", __FUNCTION__);
 			return OMX_ErrorInsufficientResources;
 		}
 		pCodec->streamBuffer[i].bufferInfo.buff_addr = vaddr;
@@ -1504,7 +1504,7 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 			pBuffer += nFilledLen;
 			pOutBuffer->nFilledLen += nFilledLen;
 		} else {
-			printf("cannot put end code!\n");
+			loge("inserting the end code failed.");
 		}
 
 		/* finalize the encoder */

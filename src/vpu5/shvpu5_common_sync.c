@@ -62,7 +62,7 @@ _uf_vp5_sleep(void *context, long mode, int module)
 
 	pthread_mutex_lock(&mutex_vp5[module]);
 	if (status_vp5[module][mode] == 0) {
-		printf("MODULE(%d) not running!\n", module);
+		logd("MODULE(%d) not running!\n", module);
 		pthread_mutex_unlock(&mutex_vp5[module]);
 		return;
 	}

@@ -53,7 +53,7 @@ mcvenc_uf_set_strm_addr(MCVENC_CONTEXT_T *context,
 			break;
 	}
 	if (i>=SHVPU_AVCENC_OUTBUF_NUM) {
-		printf("%s: no buffer available\n", __FUNCTION__);
+		loge("%s: no buffer available\n", __FUNCTION__);
 		return MCVENC_VLC_CANCEL;
 	}
 

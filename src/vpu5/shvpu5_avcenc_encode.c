@@ -485,7 +485,7 @@ encode_setqmatrix(MCVENC_CONTEXT_T *pContext)
 
 	ret = avcenc_set_Q_matrix(pContext, &qmat);
 	if (ret < 0)
-		printf("avcenc_set_Q_matrix() = %d\n", ret);
+		loge("avcenc_set_Q_matrix() = %d\n", ret);
 
 	return ret;
 }
@@ -524,8 +524,7 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	       "-----\n", ret);
 	switch (ret) {
 	default:
-		printf("terminating because of an error(%d)\n",
-		       ret);
+		loge("terminating because of an error(%d)\n", ret);
 		break;
 	case MCVENC_SKIP_PIC:
 		logd("[SKIP]");
