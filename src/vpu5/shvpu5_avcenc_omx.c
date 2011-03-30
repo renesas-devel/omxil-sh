@@ -1365,7 +1365,7 @@ generateHeader(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
 		pComponent->pComponentPrivate;
 	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
-	size_t nFilledLen;
+	int nFilledLen;
 
 	/* put the stream header if this is the first output */
 	nFilledLen = encode_header(shvpu_avcenc_Private->avCodec->pContext,
