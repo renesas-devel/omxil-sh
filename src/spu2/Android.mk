@@ -19,13 +19,12 @@ LOCAL_PRELINK_MODULE := false
 
 LOCAL_SHARED_LIBRARIES := liblog  \
 			libcutils \
-			libbellcore \
+			libomxil-bellagio \
 			libuiomux
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
-		hardware/renesas/shmiddle/spu_mid/include \
-		external/bellagio/src \
-		external/bellagio/include \
+		hardware/renesas/shmobile/prebuilt/include \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		external/libuiomux/include
 
 LOCAL_SRC_FILES := \
@@ -39,7 +38,7 @@ LOCAL_SRC_FILES := \
 
 # LOCAL_WHOLE_STATIC_LIBRARIES := 
 
-LOCAL_LDFLAGS = -Lhardware/renesas/shmiddle/spu_mid/lib \
+LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/lib \
 	-lshspuaacdec
 
 LOCAL_MODULE_TAGS := optional

@@ -22,14 +22,14 @@ LOCAL_PRELINK_MODULE := false
 
 LOCAL_SHARED_LIBRARIES := liblog  \
 			libcutils \
-			libbellcore \
+			libomxil-bellagio \
 			libvpu5uio
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
-		external/bellagio/src \
-		external/bellagio/include \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
-		hardware/renesas/shmiddle/vpu_mid/include \
+		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
@@ -46,7 +46,7 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_common_driver.c \
 	shvpu5_common_ipmmu.c
 
-LOCAL_LDFLAGS = -Lhardware/renesas/shmiddle/vpu_mid/lib \
+LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/lib \
 	-lvpu5decavc \
 	-lvpu5deccmn \
 	-lvpu5encavc \
@@ -64,13 +64,14 @@ LOCAL_PRELINK_MODULE := false
 
 LOCAL_SHARED_LIBRARIES := liblog  \
 			libcutils \
+			libomxil-bellagio \
 			libuiomux
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
-		external/bellagio/src \
-		external/bellagio/include \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
-		hardware/renesas/shmiddle/vpu_mid/include \
+		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
@@ -87,14 +88,14 @@ LOCAL_PRELINK_MODULE := false
 
 LOCAL_SHARED_LIBRARIES := liblog  \
 			libcutils \
-			libbellcore \
+			libomxil-bellagio \
 			libvpu5uio
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
-		external/bellagio/src \
-		external/bellagio/include \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
-		hardware/renesas/shmiddle/vpu_mid/include \
+		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
@@ -113,14 +114,14 @@ LOCAL_PRELINK_MODULE := false
 LOCAL_SHARED_LIBRARIES := liblog  \
 			libcutils \
 			libuiomux \
-			libbellcore \
+			libomxil-bellagio \
 			libvpu5uio
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
-		external/bellagio/src \
-		external/bellagio/include \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
-		hardware/renesas/shmiddle/vpu_mid/include \
+		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
@@ -140,14 +141,14 @@ LOCAL_PRELINK_MODULE := false
 LOCAL_SHARED_LIBRARIES := liblog  \
 			libcutils \
 			libuiomux \
-			libbellcore \
+			libomxil-bellagio \
 			libvpu5uio
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
-		external/bellagio/src \
-		external/bellagio/include \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
+		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
-		hardware/renesas/shmiddle/vpu_mid/include \
+		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include
 
 LOCAL_SRC_FILES := 	\
