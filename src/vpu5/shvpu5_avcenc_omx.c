@@ -1111,7 +1111,7 @@ handle_buffer_flush(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 		    OMX_BOOL *pIsInBufferNeeded,
 		    OMX_BOOL *pIsOutBufferNeeded,
 		    int *pInBufExchanged, int *pOutBufExchanged,
-		    OMX_BUFFERHEADERTYPE **ppInBuffer,
+		    queue_t *pProcessInBufQueue,
 		    OMX_BUFFERHEADERTYPE **ppOutBuffer)
 {
 	omx_base_PortType *pInPort =
@@ -1147,10 +1147,14 @@ handle_buffer_flush(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 			      "output buffer\n");
 		}
 
-		if (*ppInBuffer && PORT_IS_BEING_FLUSHED(pInPort)) {
-			pInPort->ReturnBufferFunction(pInPort, *ppInBuffer);
-			*ppInBuffer = NULL;
-			(*pInBufExchanged)--;
+		if (PORT_IS_BEING_FLUSHED(pInPort)) {
+			OMX_BUFFERHEADERTYPE *pInBuffer;
+			while (pProcessInBufQueue->nelem > 0) {
+				pInBuffer = dequeue(pProcessInBufQueue);
+				pInPort->ReturnBufferFunction(pInPort,
+							      pInBuffer);
+				(*pInBufExchanged)--;
+			}
 			*pIsInBufferNeeded = OMX_TRUE;
 			DEBUG(DEB_LEV_FULL_SEQ,
 			      "Ports are flushing,so returning "
@@ -1713,7 +1717,7 @@ shvpu_avcenc_BufferMgmtFunction(void *param)
 				    &isInBufferNeeded,
 				    &isOutBufferNeeded,
 				    &inBufExchanged, &outBufExchanged,
-				    &pInBuffer, &pOutBuffer);
+				    &processInBufQueue, &pOutBuffer);
 
 		/*No buffer to process. So wait here */
 		ret = waitBuffers(shvpu_avcenc_Private,
