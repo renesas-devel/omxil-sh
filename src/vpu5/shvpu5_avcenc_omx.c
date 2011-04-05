@@ -894,9 +894,24 @@ shvpu_avcenc_GetParameter(OMX_HANDLETYPE hComponent,
 	case OMX_IndexParamVideoProfileLevelQuerySupported:
 	{
 		OMX_VIDEO_PARAM_PROFILELEVELTYPE *pProfType;
+		const struct {
+			OMX_U32 eProfile;
+			OMX_U32 eLevel;
+		} shvpu5ProfileLevelMax[3] = {
+			{ OMX_VIDEO_AVCProfileBaseline,
+			  OMX_VIDEO_AVCLevel3 },
+			{ OMX_VIDEO_AVCProfileMain,
+			  OMX_VIDEO_AVCLevel41 },
+			{ OMX_VIDEO_AVCProfileHigh,
+			  OMX_VIDEO_AVCLevel41 }
+		};
 		pProfType = ComponentParameterStructure;
-		pProfType->eProfile = shvpu_avcenc_Private->avcType.eProfile;
-		pProfType->eLevel = shvpu_avcenc_Private->avcType.eProfile;
+		if (pProfType->nProfileIndex > 2)
+			return OMX_ErrorNoMore;
+		pProfType->eProfile = shvpu5ProfileLevelMax
+			[pProfType->nProfileIndex].eProfile;
+		pProfType->eLevel = shvpu5ProfileLevelMax
+			[pProfType->nProfileIndex].eLevel;
 		break;
 	}
 	default:		/*Call the base component function */
