@@ -314,7 +314,7 @@ SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 	pAvcType->bUseHadamard = OMX_FALSE;
 	pAvcType->nRefFrames = 2;
 	pAvcType->eProfile = OMX_VIDEO_AVCProfileBaseline;
-	pAvcType->eLevel = OMX_VIDEO_AVCLevel1;
+	pAvcType->eLevel = OMX_VIDEO_AVCLevel3;
 	pAvcType->nAllowedPictureTypes = 0;
 	pAvcType->bFrameMBsOnly = OMX_FALSE;
 	pAvcType->nRefIdx10ActiveMinus1 = 0;
