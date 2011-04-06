@@ -56,7 +56,7 @@ LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/lib \
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libshvpu5avc
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/avc_dec/\" -DANDROID
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -105,7 +105,7 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udf
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/avc_dec/\" -DANDROID
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -132,7 +132,7 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfdec
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/avc_dec/\" -DANDROID
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
 
 include $(CLEAR_VARS)
@@ -157,5 +157,5 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfenc
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/avc_dec/\" -DANDROID
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
 include $(BUILD_SHARED_LIBRARY)
