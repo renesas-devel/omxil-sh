@@ -1118,7 +1118,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	pCodecContext = shvpu_avcdec_Private->avCodecContext;
 
 	if (shvpu_avcdec_Private->bIsEOSReached &&
-	    (pCodec->bufferingCount == 0)) {
+	    (pCodec->bufferingCount <= 0)) {
 		logd("finalize\n");
 		shvpu_avcdec_Private->bIsEOSReached = OMX_FALSE;
 		pOutBuffer->nFlags |= OMX_BUFFERFLAG_EOS;
