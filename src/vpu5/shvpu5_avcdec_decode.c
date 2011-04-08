@@ -293,10 +293,13 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	logd("----- resume from mcvdec_set_play_mode() -----\n");
 
 	pCodec->frameCount = pCodec->bufferingCount = 0;
-	if (shvpu_avcdec_Private->enable_sync)
+	if (shvpu_avcdec_Private->enable_sync) {
 		pCodec->codecMode = MCVDEC_MODE_SYNC;
-	else
+		pCodec->outMode = MCVDEC_OUTMODE_PULL;
+	} else {
 		pCodec->codecMode = MCVDEC_MODE_BUFFERING;
+		pCodec->outMode = MCVDEC_OUTMODE_PUSH;
+	}
 	pCodec->pSIQueue = calloc(1, sizeof(queue_t));
 	shvpu_queue_init(pCodec->pSIQueue);
 	pCodec->pBMIQueue = calloc(1, sizeof(queue_t));

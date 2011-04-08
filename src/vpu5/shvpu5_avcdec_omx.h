@@ -91,6 +91,7 @@ typedef struct {
 
 	/** @param mode for VPU5HG video decoder */
 	long 			codecMode;
+	long 			outMode;
 	AVCDEC_PARAMS_T		avcdec_params;
 	MCVDEC_WORK_INFO_T	wbuf_dec;
 	MCVDEC_FIRMWARE_INFO_T	fw;

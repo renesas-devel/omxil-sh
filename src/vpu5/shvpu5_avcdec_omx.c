@@ -1254,6 +1254,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			if (pCodec->enoughPreprocess) {
 				if (shvpu_avcdec_Private->enable_sync) {
 					pCodec->codecMode = MCVDEC_MODE_SYNC;
+					pCodec->outMode = MCVDEC_OUTMODE_PULL;
 				} else {
 					pCodec->codecMode = MCVDEC_MODE_MAIN;
 				}
@@ -1266,7 +1267,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	logd("pCodec->bufferingCount = %d\n", pCodec->bufferingCount);
 	ret = mcvdec_get_output_picture(pCodecContext,
 					pic_infos, &frame,
-					MCVDEC_OUTMODE_PUSH);
+					pCodec->outMode);
 	logd("----- resume from mcvdec_get_output_picture() = %d "
 	     "-----\n", ret);
 	switch (ret) {
