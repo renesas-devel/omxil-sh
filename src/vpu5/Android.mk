@@ -59,14 +59,14 @@ LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmw
 
 ifeq ($(VPU_DECODE_WITH_IPMMU), true)
 	LOCAL_SHARED_LIBRARIES += libmeram
-	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c
 	LOCAL_CFLAGS += -DIPMMU_ENABLE
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
 	LOCAL_SHARED_LIBRARIES += libmeram
-	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
 	LOCAL_CFLAGS += -DMERAM_ENABLE
 endif
@@ -97,12 +97,12 @@ LOCAL_MODULE := libvpu5uio
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DANDROID
 
 ifeq ($(VPU_DECODE_WITH_IPMMU), true)
-	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_CFLAGS += -DIPMMU_ENABLE
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
-	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_CFLAGS += -DMERAM_ENABLE
 endif
 include $(BUILD_SHARED_LIBRARY)
@@ -132,12 +132,12 @@ LOCAL_MODULE := libvpu5udf
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
 
 ifeq ($(VPU_DECODE_WITH_IPMMU), true)
-	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_CFLAGS += -DIPMMU_ENABLE
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
-	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_CFLAGS += -DMERAM_ENABLE
@@ -172,14 +172,14 @@ LOCAL_MODULE := libvpu5udfdec
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID
 
 ifeq ($(VPU_DECODE_WITH_IPMMU), true)
-	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c
 	LOCAL_CFLAGS += -DIPMMU_ENABLE
 	LOCAL_SHARED_LIBRARIES += libmeram
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
-	LOCAL_C_INCLUDES += external/libmeram/include
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_CFLAGS += -DMERAM_ENABLE
