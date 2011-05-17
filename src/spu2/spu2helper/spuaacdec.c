@@ -819,6 +819,9 @@ once_again:
 		if (err < 0)
 			goto close_and_ret;
 		nblk = 0;
+		if (format_type == SPU_AAC_DECODE_SETFMT_TYPE_RAW_AAC ||
+		    format_type == SPU_AAC_DECODE_SETFMT_TYPE_RAW_AACPLUS)
+			nblk = 1;
 		if (state.first_block != 0)
 			nblk = 1;
 		if (RSACPDS_Decode (paac, nblk) < RSACPDS_RTN_GOOD) {
