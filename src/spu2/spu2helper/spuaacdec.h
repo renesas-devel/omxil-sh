@@ -16,7 +16,8 @@ struct spu_aac_decode_fmt {
 };
 
 long spu_aac_decode (void **destbuf, void *destend, void **srcbuf,
-		     void *srcend, struct spu_aac_decode_fmt *format);
+		     void *srcend, struct spu_aac_decode_fmt *format,
+		     void *dataout, void *datain, int datalen);
 long spu_aac_decode_stop (void);
 int spu_aac_decode_init (void);
 long spu_aac_decode_deinit (void);
