@@ -363,7 +363,7 @@ decode_end_cb (RSACPDS_AAC *aac, long ret, unsigned long bcnt,
 	if (bcnt != 0) {
 		datalist_sub (&indata, &data, &datalen, bcnt);
 		datalist_add (&delaydata, data, datalen, 1);
-		fprintf (stderr, "input %d n %lu c %d b %ld\n", bcnt, n, _format_current.channel, end_block_size);
+		/* fprintf (stderr, "input %d n %lu c %d b %ld\n", bcnt, n, _format_current.channel, end_block_size); */
 		if (datalen != 0)
 			free (data);
 	}
@@ -373,7 +373,7 @@ decode_end_cb (RSACPDS_AAC *aac, long ret, unsigned long bcnt,
 		datalist_add (&outdata, data, datalen, outputlen);
 		if (datalen != 0)
 			free (data);
-		fprintf (stderr, "output %d\n", outputlen);
+		/* fprintf (stderr, "output %d\n", outputlen); */
 	}
 	pthread_mutex_lock (&transfer_lock);
 	if (outputlen != 0) {
@@ -1008,7 +1008,7 @@ once_again:
 		err = -1;
 		goto close_and_ret;
 	}
-	if ((inbuf_end == 2 || incopy == 0) && outcopy == 0) {
+	if ((inbuf_end != 0 || incopy == 0) && outcopy == 0) {
 		pthread_mutex_lock (&transfer_done);
 		goto once_again;
 	}
