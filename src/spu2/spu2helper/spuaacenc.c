@@ -857,7 +857,7 @@ once_again:
 		err = -1;
 		goto close_and_ret;
 	}
-	if ((inbuf_end == 2 || incopy == 0) && outcopy == 0) {
+	if ((inbuf_end != 0 || incopy == 0) && outcopy == 0) {
 		pthread_mutex_lock (&transfer_done);
 		goto once_again;
 	}
