@@ -476,6 +476,8 @@ init2 (void)
 
 	spu_get_workarea (&dsp0_addr, &dsp0_size, &dsp0_io);
 
+	dsp0_size = (32 << 10);
+
 	paac = NULL;
 	aacbuf = (unsigned char *)dsp0_io;
 	aacaddr = (unsigned char *)dsp0_addr;
