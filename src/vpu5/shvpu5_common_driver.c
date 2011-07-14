@@ -31,10 +31,16 @@
 #include <unistd.h>
 #include <string.h>
 #include "mciph.h"
-#include "mciph_hg.h"
 #include "shvpu5_driver.h"
 #include "shvpu5_common_uio.h"
 #include "shvpu5_common_log.h"
+#if defined(VPU_VERSION_5)
+#include "mciph_hg.h"
+#elif defined(VPU_VERSION_5HA)
+#include "mciph_ip0_cmn.h"
+#include "mciph_ip0_dec.h"
+#include "mciph_ip0_avcdec.h"
+#endif
 
 static shvpu_driver_t *pDriver;
 static pthread_mutex_t initMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -100,7 +106,11 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 	memset((void *)pDriver, 0, sizeof(shvpu_driver_t));
 
 	/*** initialize vpu ***/
+#if defined(VPU_VERSION_5HA)
+	pDriver->wbufVpu5.work_size = MCIPH_IP0_WORKAREA_SIZE;
+#elif defined(VPU_VERSION_5)
 	pDriver->wbufVpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
+#endif
 	pDriver->wbufVpu5.work_area_addr =
 		malloc_aligned(pDriver->wbufVpu5.work_size, 4);
 	logd("work_area_addr = %p\n", pDriver->wbufVpu5.work_area_addr);
@@ -119,9 +129,21 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 	pDriver->vpu5Init.vpu_constrained_mode		= MCIPH_OFF;
 	pDriver->vpu5Init.vpu_address_mode		= MCIPH_ADDR_32BIT;
 	pDriver->vpu5Init.vpu_reset_mode			= MCIPH_RESET_SOFT;
+#if defined(VPU_VERSION_5HA)
+	pDriver->vpu5Init.vpu_version			= MCIPH_NA;
+	pDriver->vpu5Init.vpu_ext_init			= &(pDriver->ip0Init);
+
+	pDriver->ip0Init.dec_tbl[2] = &mciph_ip0_avcdec_api_tbl;
+
+	pDriver->apiTbl.cmn_api_tbl 	= &mciph_ip0_cmn_api_tbl;
+	pDriver->apiTbl.enc_api_tbl 	= NULL;
+	pDriver->apiTbl.dec_api_tbl 	= &mciph_ip0_dec_api_tbl;
+#elif defined(VPU_VERSION_5)
+	memcpy(&(pDriver->apiTbl), &mciph_hg_api_tbl, sizeof(mciph_hg_api_tbl));
+#endif
 	logd("----- invoke mciph_vpu5Init() -----\n");
 	ret = mciph_vpu5_init(&(pDriver->wbufVpu5),
-			      (MCIPH_API_T *)&mciph_hg_api_tbl,
+			      &(pDriver->apiTbl),
 			      &(pDriver->vpu5Init),
 			      &(pDriver->pDrvInfo));
 	logd("----- resume from mciph_vpu5_init() -----\n");

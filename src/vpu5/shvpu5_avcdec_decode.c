@@ -31,7 +31,12 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include "mciph.h"
-#include "mciph_hg.h"
+#if defined(VPU_VERSION_5)
+#include "mciph.h"
+#elif defined(VPU_VERSION_5HA)
+#include "mciph_ip0_cmn.h"
+#include "mciph_ip0_dec.h"
+#endif
 #include "mcvdec.h"
 #include "avcdec.h"
 #include "shvpu5_avcdec.h"
@@ -150,6 +155,8 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	extern const MCVDEC_API_T avcdec_api_tbl;
 	shvpu_codec_t *pCodec;
 	MCVDEC_CONTEXT_T *pContext;
+	unsigned long ce_firmware_addr;
+	int num_views;
 	long ret;
 
 	/*** allocate memory ***/
@@ -167,7 +174,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	static const AVCDEC_PARAMS_T _avcdec_params_def = {
 		.supple_info_enable = MCVDEC_ON,
 		.max_num_ref_frames_plus1 = 17,
-		.slice_buffer_size = 0x8800, /* 128 * 17 * 16 */
+		.slice_buffer_size = 0x9000, /* 132 * 17 * 16 * (num_view = 1)*/
 		.user_dpb_size = 0,
 		.constrained_mode_disable = MCVDEC_OFF,
 		.eprev_del_enable = MCVDEC_ON,
@@ -176,6 +183,12 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		.forced_VclHrdBpPresentFlag = MCVDEC_OFF,
 		.forced_NalHrdBpPresentFlag = MCVDEC_OFF,
 		.forced_CpbDpbDelaysPresentFlag = MCVDEC_OFF,
+#if defined(VPU_VERSION_5HA)
+		.intra_pred_conceal_mode = MCVDEC_INTRA_CONCEAL_DC,
+		.need_search_sc = MCVDEC_NA,
+		.mv_info_mode = MCVDEC_ALL_OUTPUT,
+		.post_filter_mode = MCVDEC_NA,
+#endif
 	};
 	extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
 	extern long notify_buffering(MCVDEC_CONTEXT_T *, long);
@@ -194,11 +207,18 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		.func_userdata_callback		= notify_userdata,
 		.func_imd_buffering_ready	= notify_buffering,
 		.virt_to_phys_func		= uio_virt_to_phys,
+#if defined(VPU_VERSION_5HA)
+		.ce_config		= MCVDEC_2CE,
+		.num_views		= 1,
+#endif
 	};
 	static const MCVDEC_WORK_INFO_T _wbuf_dec_def = {
+#if defined(VPU_VERSION_5)
 		.work_area_size = 0xea000,  /* 104 + 832KiB */
+#elif defined(VPU_VERSION_5HA)
+		.work_area_size = 0x190000,  /* 2048 + 915KiB + 630KiB */
+#endif
 	};
-	size_t fwsize;
 
 	pCodec->avcdec_params = _avcdec_params_def;
 	pCodec->avcdec_params.slice_buffer_addr =
@@ -212,16 +232,27 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		malloc_aligned(pCodec->wbuf_dec.work_area_size, 4);
 	logd("work_area_addr = %p\n",
 	     pCodec->wbuf_dec.work_area_addr);
-	pCodec->fw.ce_firmware_addr =
+	ce_firmware_addr =
 		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/p264d_h.bin",
-				     &fwsize);
-	logd("ce_firmware_addr = %lx\n", pCodec->fw.ce_firmware_addr);
+			&pCodec->fw_size.ce_firmware_size);
+
+	logd("ce_firmware_addr = %lx\n", ce_firmware_addr);
 	pCodec->fw.vlc_firmware_addr =
 		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/s264d.bin",
-				     &fwsize);
+			&pCodec->fw_size.vlc_firmware_size);
 	logd("vlc_firmware_addr = %lx\n",
 	     pCodec->fw.vlc_firmware_addr);
+
 	pCodec->cprop = _cprop_def;
+
+#if defined(VPU_VERSION_5)
+	pCodec->fw.ce_firmware_addr = ce_firmware_addr;
+	num_views = 1;
+#elif defined(VPU_VERSION_5HA)
+	pCodec->fw.ce_firmware_addr[0] = ce_firmware_addr;
+	num_views = pCodec->cprop.num_views;
+#endif
+
 	pCodec->cprop.codec_params = &pCodec->avcdec_params;
 	/* Initilize intrinsic header callbacks*/
 	memset(shvpu_avcdec_Private->intrinsic, 0, sizeof (void *) *
@@ -246,7 +277,8 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	pCodec->imd_info.imd_buff_size = inb_buf_size_calc(
 		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel,
 		shvpu_avcdec_Private->maxVideoParameters.nWidth,
-		shvpu_avcdec_Private->maxVideoParameters.nHeight);
+		shvpu_avcdec_Private->maxVideoParameters.nHeight,
+		num_views);
 	/* VPU may access more 2048 bytes over the buffer.*/
 	pCodec->imd_info.imd_buff_size += 2048; 
 
@@ -260,7 +292,8 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 
         pCodec->ir_info.ir_info_size = ir_info_size_calc(
 		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel,
-		pCodec->cprop.max_slice_cnt);
+		pCodec->cprop.max_slice_cnt,
+		num_views);
 
 	pCodec->ir_info.ir_info_addr = (unsigned long)
 		pmem_alloc(pCodec->ir_info.ir_info_size, 32, &paddr);
@@ -271,7 +304,8 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
         pCodec->mv_info.mv_info_size = mv_info_size_calc(
                        shvpu_avcdec_Private->maxVideoParameters.nWidth,
                        shvpu_avcdec_Private->maxVideoParameters.nHeight,
-                       pCodec->avcdec_params.max_num_ref_frames_plus1);
+                       pCodec->avcdec_params.max_num_ref_frames_plus1,
+		       num_views);
 
 	vaddr = pmem_alloc(pCodec->mv_info.mv_info_size,
 				32, &pCodec->mv_info.mv_info_addr);
@@ -342,8 +376,13 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 			pCodec->ir_info.ir_info_size);
 		phys_pmem_free(pCodec->imd_info.imd_buff_addr,
 			pCodec->imd_info.imd_buff_size);
+#if defined(VPU_VERSION_5)
 		phys_pmem_free(pCodec->fw.ce_firmware_addr,
 			pCodec->fw_size.ce_firmware_size);
+#elif defined(VPU_VERSION_5HA)
+		phys_pmem_free(pCodec->fw.ce_firmware_addr[0],
+			pCodec->fw_size.ce_firmware_size);
+#endif
 		phys_pmem_free(pCodec->fw.vlc_firmware_addr,
 			pCodec->fw_size.vlc_firmware_size);
 
