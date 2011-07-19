@@ -202,6 +202,11 @@ OMX_ERRORTYPE shvpu_avcdec_SetParameter(
 	OMX_INDEXTYPE nParamIndex,
 	OMX_PTR ComponentParameterStructure);
 
+OMX_ERRORTYPE shvpu_avcdec_GetConfig(
+	OMX_HANDLETYPE hComponent,
+	OMX_INDEXTYPE nIndex,
+	OMX_PTR pComponentConfigStructure);
+
 OMX_ERRORTYPE shvpu_avcdec_ComponentRoleEnum(
 	OMX_HANDLETYPE hComponent,
 	OMX_U8 *cRole,

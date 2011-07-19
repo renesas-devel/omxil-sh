@@ -225,6 +225,7 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcdec_Private->destructor = shvpu_avcdec_Destructor;
 	pComponent->SetParameter = shvpu_avcdec_SetParameter;
 	pComponent->GetParameter = shvpu_avcdec_GetParameter;
+	pComponent->GetConfig = shvpu_avcdec_GetConfig;
 	pComponent->ComponentRoleEnum = shvpu_avcdec_ComponentRoleEnum;
 	pComponent->GetExtensionIndex = shvpu_avcdec_GetExtensionIndex;
 	pComponent->SendCommand = shvpu_avcdec_SendCommand;
@@ -1870,6 +1871,17 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		}
 	}
 	return eError;
+}
+
+/** GetConfig
+  * Right now we don't support any configuration, so return
+  * OMX_ErrBadParameter for any request that we get
+  */
+OMX_ERRORTYPE
+shvpu_avcdec_GetConfig(OMX_HANDLETYPE hComponent,
+		       OMX_INDEXTYPE nIndex,
+		       OMX_PTR pComponentConfigStructure)  {
+	return OMX_ErrorBadParameter;
 }
 
 OMX_ERRORTYPE
