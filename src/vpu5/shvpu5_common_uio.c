@@ -33,9 +33,24 @@
 #include "shvpu5_common_log.h"
 #include "mciph.h"
 #include <sys/file.h>
+#include <sys/mman.h>
+
+#define IPMMUI_MEMSIZE (1048576 * 64 - 4095)
+
+struct ipmmui_list {
+	struct ipmmui_list *next;
+	char *vaddr;
+	unsigned long paddr;
+	size_t size;
+};
 
 static UIOMux *uiomux = NULL;
 
+static struct ipmmui_list *ipmmui_alloc;
+static char *ipmmui_vaddr;
+static unsigned long ipmmui_paddr;
+static size_t ipmmui_size;
+static pthread_mutex_t ipmmui_mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_mutex_t uiomux_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int ref_cnt = 0;
 int
@@ -52,29 +67,155 @@ uio_interrupt_clear()
 	return 0;
 }
 
+static int
+paddr_hit(struct ipmmui_list *p, unsigned long tpaddr, size_t size)
+{
+	if (tpaddr < p->paddr)
+		return (size > p->paddr - tpaddr);
+	else
+		return (p->size > tpaddr - p->paddr);
+}
+
+static int
+vaddr_hit(struct ipmmui_list *p, char *tvaddr, size_t size)
+{
+	if (tvaddr - p->vaddr < 0)
+		return (size > p->vaddr - tvaddr);
+	else
+		return (p->size > tvaddr - p->vaddr);
+}
+
+static void *
+tryalloc(void *tvaddr, unsigned long _tpaddr, int align, size_t size,
+	 unsigned long *paddr)
+{
+	struct ipmmui_list *p;
+	unsigned long tpaddr;
+
+	tpaddr = _tpaddr;
+	tpaddr += align - 1;
+	tpaddr -= tpaddr % align;
+	tvaddr += tpaddr - _tpaddr;
+	if ((tpaddr - ipmmui_paddr) + size > ipmmui_size)
+		return NULL;
+	for (p = ipmmui_alloc; p; p = p->next) {
+		if (paddr_hit(p, tpaddr, size))
+			return NULL;
+	}
+	p = malloc (sizeof *p);
+	p->vaddr = tvaddr;
+	p->paddr = tpaddr;
+	p->size = size;
+	p->next = ipmmui_alloc;
+	ipmmui_alloc = p;
+	if (paddr)
+		*paddr = tpaddr;
+	return tvaddr;
+}
+
 void *
 pmem_alloc(size_t size, int align, unsigned long *paddr)
 {
+	struct ipmmui_list *p;
 	void *vaddr;
 
-	vaddr = uiomux_malloc(uiomux, UIOMUX_SH_VPU, size, align);
-	if (vaddr && paddr)
-		*paddr = uiomux_virt_to_phys(uiomux, UIOMUX_SH_VPU, vaddr);
-
+	if (size <= 0 || align <= 0)
+		return NULL;
+	vaddr = NULL;
+	pthread_mutex_lock(&ipmmui_mutex);
+	vaddr = tryalloc(ipmmui_vaddr, ipmmui_paddr, align, size, paddr);
+	if (!vaddr) {
+		for (p = ipmmui_alloc; p; p = p->next) {
+			vaddr = tryalloc(p->vaddr + p->size, p->paddr +
+					 p->size, align, size, paddr);
+			if (vaddr)
+				break;
+		}
+	}
+	pthread_mutex_unlock(&ipmmui_mutex);
 	return vaddr;
 }
 
 void
-pmem_free(void *vaddr, size_t size)
+pmem_free(void *_vaddr, size_t size)
 {
-	return uiomux_free(uiomux, UIOMUX_SH_VPU, vaddr, size);
+	struct ipmmui_list **p, **q, *a;
+	char *vaddr;
+	int s;
+
+	vaddr = _vaddr;
+	pthread_mutex_lock(&ipmmui_mutex);
+	for (p = &ipmmui_alloc; (q = &(*p)->next), *p; p = q) {
+		if (vaddr_hit(*p, vaddr, size)) {
+			s = vaddr - (*p)->vaddr;
+			if (s > 0) {
+				a = malloc (sizeof *a);
+				if (!a) /* error */
+					return;
+				a->vaddr = (*p)->vaddr;
+				a->paddr = (*p)->paddr;
+				a->size = s;
+				a->next = ipmmui_alloc;
+				ipmmui_alloc = a;
+			}
+			s = ((*p)->vaddr + size) - (vaddr + size);
+			if (s > 0) {
+				a = malloc (sizeof *a);
+				if (!a) /* error */
+					return;
+				a->vaddr = (*p)->vaddr + (*p)->size - s;
+				a->paddr = (*p)->paddr + (*p)->size - s;
+				a->size = s;
+				a->next = ipmmui_alloc;
+				ipmmui_alloc = a;
+			}
+			a = *p;
+			*p = *q;
+			q = p;
+			free (a);
+		}
+	}
+	pthread_mutex_unlock(&ipmmui_mutex);
 }
 
 void
 phys_pmem_free(unsigned long paddr, size_t size)
 {
-	return uiomux_free(uiomux, UIOMUX_SH_VPU,
-		uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, paddr), size);
+	struct ipmmui_list **p, **q, *a;
+	int s;
+
+	pthread_mutex_lock(&ipmmui_mutex);
+	for (p = &ipmmui_alloc; (q = &(*p)->next), *p; p = q) {
+		if (paddr_hit(*p, paddr, size)) {
+			if (paddr > (*p)->paddr) {
+				s = paddr - (*p)->paddr;
+				a = malloc (sizeof *a);
+				if (!a) /* error */
+					return;
+				a->vaddr = (*p)->vaddr;
+				a->paddr = (*p)->paddr;
+				a->size = s;
+				a->next = ipmmui_alloc;
+				ipmmui_alloc = a;
+			}
+			if ((*p)->paddr + size > paddr + size) {
+				s = ((*p)->paddr + size) - (paddr + size);
+				a = malloc (sizeof *a);
+				if (!a) /* error */
+					return;
+				a->vaddr = (*p)->vaddr + (*p)->size - s;
+				a->paddr = (*p)->paddr + (*p)->size - s;
+				a->size = s;
+				a->next = ipmmui_alloc;
+				ipmmui_alloc = a;
+			}
+			a = *p;
+			*p = *q;
+			q = p;
+			free (a);
+		}
+	}
+	pthread_mutex_unlock(&ipmmui_mutex);
 }
 static void *
 uio_int_handler(void *arg)
@@ -156,25 +297,73 @@ uio_init(char *name, unsigned long *paddr_reg,
 	 unsigned long *paddr_pmem, size_t *size_pmem)
 {
 	uiomux_resource_t uiores;
+	FILE *fp;
+	int mapsize, mapaddr, fd, i;
+
+	ipmmui_vaddr = NULL;
+	fp = fopen("/sys/kernel/ipmmui/vpu5/map", "w");
+	if (!fp)
+		goto ipmmui_error;
+	if (fprintf(fp, "0,0") <= 0)
+		goto ipmmui_error;
+	fflush(fp);
+	fd = open("/dev/ipmmui", O_RDWR);
+	if (fd < 0)
+		goto ipmmui_error;
+	ipmmui_vaddr = mmap(NULL, IPMMUI_MEMSIZE, PROT_READ | PROT_WRITE,
+			    MAP_PRIVATE, fd, 0);
+	close(fd);
+	if (ipmmui_vaddr == MAP_FAILED) {
+		ipmmui_vaddr = NULL;
+		goto ipmmui_error;
+	}
+	if (fprintf(fp, "%p,%d", ipmmui_vaddr, IPMMUI_MEMSIZE) <= 0)
+		goto ipmmui_error;
+	fclose(fp);
+	fp = fopen("/sys/kernel/ipmmui/vpu5/mapsize", "r");
+	if (!fp || getc(fp) != '0' || getc(fp) != 'x' ||
+	    fscanf(fp, "%x", &mapsize) != 1 || mapsize < IPMMUI_MEMSIZE)
+		goto ipmmui_error;
+	fclose(fp);
+	fp = fopen("/sys/kernel/ipmmui/vpu5/mapaddr", "r");
+	if (!fp || getc(fp) != '0' || getc(fp) != 'x' ||
+	    fscanf(fp, "%x", &mapaddr) != 1)
+		goto ipmmui_error;
+	fclose(fp);
+	ipmmui_paddr = mapaddr;
+	ipmmui_size = mapsize;
 
 	pthread_mutex_lock(&uiomux_mutex);
 	if (!uiomux) {
 		uiores = uiomux_query();
-		if (!(uiores & UIOMUX_SH_VPU))
+		if (!(uiores & UIOMUX_SH_VPU)) {
+			munmap(ipmmui_vaddr, IPMMUI_MEMSIZE);
 			return NULL;
+		}
 		uiomux = uiomux_open();
 	}
 	ref_cnt++;
 	pthread_mutex_unlock(&uiomux_mutex);
 	uiomux_get_mmio(uiomux, UIOMUX_SH_VPU, paddr_reg, NULL, NULL);
-	uiomux_get_mem(uiomux, UIOMUX_SH_VPU, paddr_pmem,
-		       (unsigned long *)size_pmem, NULL);
+
+	if (paddr_pmem)
+		*paddr_pmem = ipmmui_paddr;
+	if (size_pmem)
+		*size_pmem = ipmmui_size;
 
 	return (void *)uiomux;
+ipmmui_error:
+	if (fp)
+		fclose(fp);
+	if (ipmmui_vaddr)
+		munmap(ipmmui_vaddr, IPMMUI_MEMSIZE);
+	return NULL;
 }
 
 void
 uio_deinit() {
+	FILE *fp;
+
 	pthread_mutex_lock(&uiomux_mutex);
 	ref_cnt--;
 	if (!ref_cnt) {
@@ -182,12 +371,20 @@ uio_deinit() {
 		uiomux = NULL;
 	}
 	pthread_mutex_unlock(&uiomux_mutex);
+	fp = fopen("/sys/kernel/ipmmui/vpu5/map", "w");
+	if (fp) {
+		fprintf(fp, "0,0");
+		fclose(fp);
+	}
+	munmap(ipmmui_vaddr, IPMMUI_MEMSIZE);
 }
 
 int
 uio_get_virt_memory(void **address, unsigned long *size) {
-	uiomux_get_mem(uiomux, UIOMUX_SH_VPU, NULL,
-		       size, address);
+	if (address)
+		*address = ipmmui_vaddr;
+	if (size)
+		*size = ipmmui_size;
 	return 0;
 }
 
@@ -201,7 +398,7 @@ vpu5_mem_read(unsigned long src_addr,
 	void *src_vaddr;
 	logd("%s(%lx, %lx, %ld) invoked.\n", __FUNCTION__,
 	       src_addr, dst_addr, count);
-	src_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, src_addr);
+	src_vaddr = &ipmmui_vaddr[src_addr - ipmmui_paddr];
 	if ((unsigned long)src_vaddr != dst_addr)
 		memcpy((void *)dst_addr, src_vaddr, count);
 	else
@@ -222,7 +419,7 @@ vpu5_mem_write(unsigned long src_addr,
 
 	logd("%s(%lx, %lx, %ld) invoked.\n", __FUNCTION__,
 	     src_addr, dst_addr, count);
-	dst_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, dst_addr);
+	dst_vaddr = &ipmmui_vaddr[dst_addr - ipmmui_paddr];
 	if (src_addr != (unsigned long)dst_vaddr)
 		memcpy(dst_vaddr, (void *)src_addr, count);
 	else
@@ -245,7 +442,7 @@ vpu5_mmio_read(unsigned long src_addr,
 
 	logd("%s(%08lx, %08lx, %ld) invoked.\n", __FUNCTION__,
 	     src_addr, reg_table, size);
-	src_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, src_addr);
+	src_vaddr = uio_phys_to_virt(src_addr);
 	while (count > 0) {
 		val = *(unsigned int *)src_vaddr;
 		switch (src_addr) {
@@ -284,7 +481,7 @@ vpu5_mmio_write(unsigned long dst_addr,
 
 	logd("%s(%08lx, %08lx, %ld) invoked.\n", __FUNCTION__,
 	     dst_addr, reg_table, size);
-	dst_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, dst_addr);
+	dst_vaddr = uio_phys_to_virt(dst_addr);
 	while (count > 0) {
 		val = *(unsigned int *)reg_table;
 		switch (dst_addr) {
@@ -352,7 +549,12 @@ uio_virt_to_phys(void *context, long mode, unsigned long addr)
 	       (mode == MCIPH_DEC) ? "MCIPH_DEC" : "MCIPH_ENC",
 	       addr);
 
-	paddr = uiomux_virt_to_phys(uiomux, UIOMUX_SH_VPU, (void *)addr);
+	if (addr >= (unsigned long)ipmmui_vaddr &&
+	    addr < (unsigned long)ipmmui_vaddr + ipmmui_size)
+		paddr = addr - (unsigned long)ipmmui_vaddr + ipmmui_paddr;
+	else
+		paddr = uiomux_virt_to_phys(uiomux, UIOMUX_SH_VPU,
+					    (void *)addr);
 
 	logd("%lx\n", paddr);
 
@@ -364,7 +566,10 @@ uio_phys_to_virt(unsigned long paddr)
 {
 	void *vaddr;
 
-	vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, paddr);
+	if (paddr >= ipmmui_paddr && paddr < ipmmui_paddr + ipmmui_size)
+		vaddr = &ipmmui_vaddr[paddr - ipmmui_paddr];
+	else
+		vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, paddr);
 
 	return vaddr;
 }
