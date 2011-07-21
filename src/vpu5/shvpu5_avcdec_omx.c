@@ -28,6 +28,7 @@
 #include <bellagio/omxcore.h>
 #include <bellagio/omx_base_video_port.h>
 #include "shvpu5_avcdec_omx.h"
+#include "shvpu5_common_ext.h"
 #include "shvpu5_common_queue.h"
 #include "shvpu5_common_log.h"
 #include <OMX_Video.h>
@@ -1890,19 +1891,7 @@ shvpu_avcdec_GetExtensionIndex(OMX_HANDLETYPE hComponent,
 				OMX_INDEXTYPE *pIndexType) {
 	if (!cParameterName || !pIndexType)
 		return OMX_ErrorBadParameter;
-	if (!strcmp(cParameterName, OMX_VPU5_CommandMaxOut)) {
-		*pIndexType = OMX_IndexParamVPUMaxOutputSetting;
-		return OMX_ErrorNone;
-	}
-	if (!strcmp(cParameterName, OMX_VPU5_CommandMaxInst)) {
-		*pIndexType = OMX_IndexParamVPUMaxInstance;
-		return OMX_ErrorNone;
-	}
-	if (!strcmp(cParameterName, OMX_VPU5_SoftwareRender)) {
-		*pIndexType = OMX_IndexParamSoftwareRenderMode;
-		return OMX_ErrorNone;
-	}
-	return OMX_ErrorUnsupportedIndex;
+	return lookup_ExtensionIndex(cParameterName, pIndexType);
 }
 
 OMX_ERRORTYPE

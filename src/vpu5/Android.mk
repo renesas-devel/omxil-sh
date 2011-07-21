@@ -40,7 +40,8 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_avcdec_parse.c \
 	shvpu5_avcdec_input.c \
 	shvpu5_common_queue.c \
-	shvpu5_common_driver.c
+	shvpu5_common_driver.c \
+	shvpu5_common_ext.c
 
 ifeq ($(TARGET_DEVICE),mackerel)
 #keep these separate until we get enoder middleware for VPU5HA
