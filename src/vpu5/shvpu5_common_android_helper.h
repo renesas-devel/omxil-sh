@@ -1,12 +1,11 @@
 /**
-   src/vpu5/shvpu5_common_ext.h
+   src/vpu5/shvpu_common_android_helper.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
    on the Renesas's VPU5HG middleware library.
 
-   Copyright (C) 2010 IGEL Co., Ltd
-   Copyright (C) 2010 Renesas Solutions Corp.
+   Copyright (C) 2011 Renesas Solutions Corp.
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public License
@@ -24,25 +23,19 @@
    02110-1301 USA
 
 */
-#include "vpu5/OMX_VPU5Ext.h"
-#include "OMX_Types.h"
-#include "OMX_Core.h"
-typedef enum OMX_REVPU5INDEXTYPE {
-	OMX_IndexParamVPUMaxOutputSetting = OMX_IndexVendorStartUnused + 0x200,
-	OMX_IndexParamVPUMaxInstance,
-	OMX_IndexParamQueryIPMMUEnable,
-	OMX_IndexParamSoftwareRenderMode,
-#ifdef ANDROID_CUSTOM
-	OMX_IndexAndroidNativeEnable,
-	OMX_IndexAndroidMetaDataBuffers,
-	OMX_IndexAndroidUseNativeBuffer,
-	OMX_IndexAndroidGetNativeBufferUsage,
-#endif
-} OMX_REVPU5INDEXTYPE;
+OMX_ERRORTYPE shvpu_avcdec_UseAndroidNativeBuffer(
+	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+	OMX_PTR ComponentParameterStructure);
 
-struct extension_index_entry {
-	OMX_REVPU5INDEXTYPE	index;
-	OMX_STRING	     	name;
+OMX_ERRORTYPE shvpu_avcdec_AndroidNativeBufferEnable(
+	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+	OMX_PTR ComponentParameterStructure);
+
+OMX_ERRORTYPE shvpu_avcdec_GetNativeBufferUsage(
+	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+	OMX_PTR ComponentParameterStructure);
+
+enum {
+	HAL_PIXEL_FORMAT_RGB_565       	    = 0x4,
+	HAL_PIXEL_FORMAT_YCrCb_420_SP       = 0x11,
 };
-
-OMX_ERRORTYPE lookup_ExtensionIndex(OMX_STRING cName, OMX_INDEXTYPE *pRes);

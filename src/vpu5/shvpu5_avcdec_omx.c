@@ -38,6 +38,9 @@
 #include <unistd.h>
 #include <sys/syscall.h>
 #include "ipmmuhelper.h"
+#ifdef ANDROID_CUSTOM
+#include "shvpu5_common_android_helper.h"
+#endif
 
 /** Maximum Number of Video Component Instance*/
 #define MAX_COMPONENT_VIDEODEC 2
@@ -46,6 +49,9 @@ static OMX_U32 noVideoDecInstance = 0;
 
 /** The output decoded color format */
 #define OUTPUT_DECODED_COLOR_FMT OMX_COLOR_FormatYUV420SemiPlanar
+#ifdef ANDROID_CUSTOM
+#define OUTPUT_ANDROID_DECODED_COLOR_FMT HAL_PIXEL_FORMAT_YCrCb_420_SP
+#endif
 
 #define DEFAULT_WIDTH 128
 #define DEFAULT_HEIGHT 96
@@ -53,7 +59,7 @@ static OMX_U32 noVideoDecInstance = 0;
 #define DEFAULT_VIDEO_OUTPUT_BUF_SIZE					\
 	(DEFAULT_WIDTH * DEFAULT_HEIGHT * 3 / 2)	// YUV subQCIF
 
-#define INPUT_BUFFER_COUNT 8
+#define INPUT_BUFFER_COUNT 4
 #define INPUT_BUFFER_SIZE (1024 * 1024)
 /** The Constructor of the video decoder component
  * @param pComponent the component handle to be constructed
@@ -1701,6 +1707,52 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			     "on" : "off");
 			break;
 		}
+#ifdef ANDROID_CUSTOM
+		case OMX_IndexAndroidNativeEnable:
+		{
+			OMX_BOOL enable;
+			omx_base_video_PortType *outPort;
+			outPort = (omx_base_video_PortType *)
+				shvpu_avcdec_Private->ports[
+					OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+
+			eError = shvpu_avcdec_AndroidNativeBufferEnable(
+				shvpu_avcdec_Private,
+				ComponentParameterStructure);
+
+			if (eError)
+				break;
+
+			enable = shvpu_avcdec_Private->
+					android_native.native_buffer_enable;
+
+			logd("Switching android native mode %s\n",
+				enable? "on" : "off");
+			if (enable)
+				outPort->sPortParam.format.video.eColorFormat =
+					OUTPUT_ANDROID_DECODED_COLOR_FMT;
+			else
+				outPort->sPortParam.format.video.eColorFormat =
+					OUTPUT_DECODED_COLOR_FMT;
+			break;
+		}
+		case OMX_IndexAndroidUseNativeBuffer:
+		{
+			if (shvpu_avcdec_Private->state != OMX_StateLoaded
+				&& shvpu_avcdec_Private->state !=
+				OMX_StateWaitForResources) {
+				DEBUG(DEB_LEV_ERR,
+					"In %s Incorrect State=%x lineno=%d\n",
+					__func__, shvpu_avcdec_Private->state,
+					__LINE__);
+				return OMX_ErrorIncorrectStateOperation;
+			}
+			eError = shvpu_avcdec_UseAndroidNativeBuffer(
+				shvpu_avcdec_Private,
+				ComponentParameterStructure);
+			break;
+		}
+#endif
 		default:
 			/*Call the base component function */
 			return omx_base_component_SetParameter(hComponent,
@@ -1896,6 +1948,15 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 				!shvpu_avcdec_Private->features.tl_conv_mode;
 			break;
 		}
+#ifdef ANDROID_CUSTOM
+		case OMX_IndexAndroidGetNativeBufferUsage:
+		{
+			eError = shvpu_avcdec_GetNativeBufferUsage(
+				shvpu_avcdec_Private,
+				ComponentParameterStructure);
+			break;
+		}
+#endif
 		default:
 		/*Call the base component function */
 		return omx_base_component_GetParameter(hComponent,

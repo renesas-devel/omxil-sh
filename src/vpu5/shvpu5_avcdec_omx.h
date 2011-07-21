@@ -121,6 +121,9 @@ typedef struct {
 	int 			fmem_size;
 } shvpu_codec_t;
 
+typedef struct {
+	int 	native_buffer_enable;
+} android_native_t;
 /** Video Decoder component private structure.
   */
 DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
@@ -182,7 +185,8 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	unsigned long           uio_start_phys;				\
 	shvpu_meram_t		meram_data;				\
 	shvpu_ipmmui_t		ipmmui_data;				\
-	decode_features_t	features;
+	decode_features_t	features;				\
+	android_native_t	android_native;
 ENDCLASS(shvpu_avcdec_PrivateType)
 
 /* Component private entry points declaration */

@@ -94,6 +94,14 @@ ifeq ($(VPU_DECODE_USE_2DDMAC), true)
 	LOCAL_SHARED_LIBRARIES += libtddmac
 endif
 
+ifeq ($(OMXIL_ANDROID_CUSTOM), true)
+LOCAL_SRC_FILES += shvpu5_common_android_helper.cpp
+LOCAL_C_INCLUDES += frameworks/base/include \
+		    hardware/renesas/shmobile/gralloc
+LOCAL_CFLAGS += -DANDROID_CUSTOM
+LOCAL_SHARED_LIBRARIES += libui
+endif
+
 ifeq ($(VPU_DECODE_TL_CONV), true)
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
