@@ -302,14 +302,20 @@ uio_init(char *name, unsigned long *paddr_reg,
 
 	ipmmui_vaddr = NULL;
 	fp = fopen("/sys/kernel/ipmmui/vpu5/map", "w");
-	if (!fp)
+	if (!fp) {
+		loge("Cannot open /sys/kernel/ipmmui/vpu5/map for write");
 		goto ipmmui_error;
-	if (fprintf(fp, "0,0") <= 0)
+	}
+	if (fprintf(fp, "0,0") <= 0) {
+		loge("Cannot write to /sys/kernel/ipmmui/vpu5/map");
 		goto ipmmui_error;
+	}
 	fflush(fp);
 	fd = open("/dev/ipmmui", O_RDWR);
-	if (fd < 0)
+	if (fd < 0) {
+		loge("Cannot open /dev/ipmmui");
 		goto ipmmui_error;
+	}
 	ipmmui_vaddr = mmap(NULL, IPMMUI_MEMSIZE, PROT_READ | PROT_WRITE,
 			    MAP_PRIVATE, fd, 0);
 	close(fd);
