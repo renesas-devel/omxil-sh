@@ -38,4 +38,5 @@ OMX_ERRORTYPE shvpu_avcdec_GetNativeBufferUsage(
 enum {
 	HAL_PIXEL_FORMAT_RGB_565       	    = 0x4,
 	HAL_PIXEL_FORMAT_YCrCb_420_SP       = 0x11,
+	HAL_PIXEL_FORMAT_YV12		    = 0x32315659, // YCrCb 4:2:0 Planar
 };

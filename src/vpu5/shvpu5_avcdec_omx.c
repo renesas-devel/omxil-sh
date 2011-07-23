@@ -50,7 +50,7 @@ static OMX_U32 noVideoDecInstance = 0;
 /** The output decoded color format */
 #define OUTPUT_DECODED_COLOR_FMT OMX_COLOR_FormatYUV420SemiPlanar
 #ifdef ANDROID_CUSTOM
-#define OUTPUT_ANDROID_DECODED_COLOR_FMT HAL_PIXEL_FORMAT_YCrCb_420_SP
+#define OUTPUT_ANDROID_DECODED_COLOR_FMT HAL_PIXEL_FORMAT_YV12
 #endif
 
 #define DEFAULT_WIDTH 128
