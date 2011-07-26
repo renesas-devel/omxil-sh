@@ -178,7 +178,8 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	unsigned long           uio_start_phys;				\
 	shvpu_meram_t		meram_data;				\
 	shvpu_ipmmui_t		ipmmui_data;				\
-	OMX_BOOL		software_readable_output;
+	OMX_BOOL		software_readable_output;		\
+	OMX_BOOL		use_buffer_mode;
 ENDCLASS(shvpu_avcdec_PrivateType)
 
 /* Component private entry points declaration */

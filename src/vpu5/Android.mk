@@ -84,6 +84,10 @@ ifneq (,$(findstring $(TARGET_DEVICE),ape5r kota2))
 LOCAL_CFLAGS += -DVPU_VERSION_5HA -DDECODER_COMPONENT
 endif
 
+ifeq ($(VPU_DECODE_USE_BUFFER), true)
+	LOCAL_CFLAGS += -DUSE_BUFFER_MODE
+endif
+
 ifeq ($(VPU_DECODE_WITH_IPMMU), true)
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include

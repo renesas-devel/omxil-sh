@@ -253,6 +253,10 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	loge("reg = %x, mem = %x, memsz = %d\n",
 	     reg, shvpu_avcdec_Private->uio_start_phys, memsz);
 
+#ifdef USE_BUFFER_MODE
+	shvpu_avcdec_Private->use_buffer_mode = OMX_TRUE;
+#endif
+
 	return eError;
 }
 
@@ -534,6 +538,14 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 		inPort->sPortParam.format.video.nFrameWidth;
 	outPort->sPortParam.format.video.nFrameHeight =
 		inPort->sPortParam.format.video.nFrameHeight;
+	if (shvpu_avcdec_Private->use_buffer_mode) {
+		outPort->sPortParam.nBufferSize =
+			outPort->sPortParam.format.video.nFrameWidth *
+			outPort->sPortParam.format.video.nFrameHeight * 3 / 2;
+	} else {
+		outPort->sPortParam.nBufferSize =
+			shvpu_avcdec_Private->uio_size;
+	}
 #if 0
 	switch (outPort->sVideoParam.eColorFormat) {
 	case OMX_COLOR_FormatYUV420Planar:
@@ -1979,10 +1991,6 @@ shvpu_avcdec_SendCommand(
 	DEBUG(DEB_LEV_ERR, "In %s shvpu_avcdec_vpuLibInit Failed\n", __func__);
         return err;
     }
-    omx_base_video_PortType *outPort =
-		(omx_base_video_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
-    outPort->sPortParam.nBufferSize = shvpu_avcdec_Private->uio_size;
   }
   return omx_base_component_SendCommand(hComponent, Cmd, nParam, pCmdData);
 }
