@@ -92,11 +92,11 @@ ifeq ($(VPU_DECODE_USE_2DDMAC), true)
 	LOCAL_SRC_FILES += shvpu5_common_2ddmac.c uio.c ipmmuhelper.c
 endif
 
-ifeq ($(VPU_DECODE_WITH_IPMMU), true)
+ifeq ($(VPU_DECODE_TL_CONV), true)
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c
-	LOCAL_CFLAGS += -DIPMMU_ENABLE
+	LOCAL_CFLAGS += -DTL_CONV_ENABLE
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
@@ -141,9 +141,9 @@ LOCAL_C_INCLUDES += \
 		hardware/renesas/shmobile/prebuilt/vpu5/include
 endif
 
-ifeq ($(VPU_DECODE_WITH_IPMMU), true)
+ifeq ($(VPU_DECODE_TL_CONV), true)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
-	LOCAL_CFLAGS += -DIPMMU_ENABLE
+	LOCAL_CFLAGS += -DTL_CONV_ENABLE
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
@@ -184,9 +184,9 @@ LOCAL_C_INCLUDES += \
 		hardware/renesas/shmobile/prebuilt/vpu5ha/include
 endif
 
-ifeq ($(VPU_DECODE_WITH_IPMMU), true)
+ifeq ($(VPU_DECODE_TL_CONV), true)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
-	LOCAL_CFLAGS += -DIPMMU_ENABLE
+	LOCAL_CFLAGS += -DTL_CONV_ENABLE
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
@@ -232,10 +232,10 @@ LOCAL_C_INCLUDES += \
 		hardware/renesas/shmobile/prebuilt/vpu5ha/include
 endif
 
-ifeq ($(VPU_DECODE_WITH_IPMMU), true)
+ifeq ($(VPU_DECODE_TL_CONV), true)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c
-	LOCAL_CFLAGS += -DIPMMU_ENABLE
+	LOCAL_CFLAGS += -DTL_CONV_ENABLE
 	LOCAL_SHARED_LIBRARIES += libmeram
 endif
 

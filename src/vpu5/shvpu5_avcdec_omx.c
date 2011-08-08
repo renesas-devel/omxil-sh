@@ -1379,7 +1379,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		pic_size = pic_infos[0]->xpic_size *
 			(pic_infos[0]->ypic_size -
 			 pic_infos[0]->frame_crop[MCVDEC_CROP_BOTTOM]);
-#ifdef IPMMU_ENABLE
+#ifdef TL_CONV_ENABLE
 		if (shvpu_avcdec_Private->software_readable_output ==
 				OMX_FALSE) {
 			real_phys = ipmmui_to_phys(
@@ -1894,7 +1894,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 					     (OMX_PARAM_REVPU5IPMMUSTATUS));
 			if (eError != OMX_ErrorNone)
 				break;
-#ifdef IPMMU_ENABLE
+#ifdef TL_CONV_ENABLE
 			pIpmmuEnable->bIpmmuEnable = OMX_TRUE;
 #else
 			pIpmmuEnable->bIpmmuEnable = OMX_FALSE;

@@ -1,4 +1,4 @@
-#ifdef IPMMU_ENABLE
+#ifdef TL_CONV_ENABLE
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -103,4 +103,4 @@ ipmmui_to_phys(shvpu_ipmmui_t *ipmmui_data, unsigned long ipmmu,
 	return (ipmmu & ~ipmmui_data->ipmmui_mask) |
 		(phys_base & ipmmui_data->ipmmui_mask);
 }
-#endif /* IPMMU_ENABLE */
+#endif /* TL_CONV_ENABLE */

@@ -58,7 +58,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	       __FUNCTION__, xpic_size, ypic_size,
 	       required_fmem_cnt, nsampling);
 
-#ifdef IPMMU_ENABLE
+#ifdef TL_CONV_ENABLE
 	if (shvpu_avcdec_Private->software_readable_output == OMX_TRUE) {
 		fmem_x = (xpic_size + 31) / 32 * 32;
 		align = 32;
@@ -128,7 +128,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			break;
 		shvpu_avcdec_Private->avCodec->fmem[i].fmem_start = ypic_paddr;
 		shvpu_avcdec_Private->avCodec->fmem[i].fmem_len = alloc_size;
-#ifdef IPMMU_ENABLE
+#ifdef TL_CONV_ENABLE
 		if (!shvpu_avcdec_Private->software_readable_output ==
 				OMX_TRUE) {
 			/*alignment offset*/

@@ -28,12 +28,12 @@
 #ifndef _SHVPU5_COMMON_IPMMU_H
 #define _SHVPU5_COMMON_IPMMU_H
 
-#ifdef IPMMU_ENABLE
+#ifdef TL_CONV_ENABLE
 #include <meram/ipmmui.h>
 #endif
 
 typedef struct {
-#ifdef IPMMU_ENABLE
+#ifdef TL_CONV_ENABLE
 	IPMMUI *ipmmui;
 	PMB *pmb;
 	unsigned long ipmmui_vaddr;
