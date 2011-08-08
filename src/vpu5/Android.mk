@@ -86,6 +86,7 @@ endif
 
 ifeq ($(VPU_DECODE_USE_BUFFER), true)
 	LOCAL_CFLAGS += -DUSE_BUFFER_MODE
+	LOCAL_SRC_FILES += shvpu5_common_2ddmac.c uio.c ipmmuhelper.c
 endif
 
 ifeq ($(VPU_DECODE_WITH_IPMMU), true)
@@ -120,6 +121,9 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_uio.c \
 	shvpu5_common_log.c
+
+LOCAL_SRC_FILES += 	\
+	uiohelper.c
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5uio
