@@ -1,4 +1,3 @@
-#ifdef MERAM_ENABLE
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -113,4 +112,3 @@ finish_meram_read(shvpu_meram_t *mdata, ICB *icb) {
 		meram_write_icb(mdata->meram, icb, MExxCTL, tmp | 0x10);
 	}
 }
-#endif

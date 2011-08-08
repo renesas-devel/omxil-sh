@@ -97,6 +97,11 @@ ifeq ($(VPU_DECODE_TL_CONV), true)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c
 	LOCAL_CFLAGS += -DTL_CONV_ENABLE
+ifeq ($(VPU_DECODE_USE_2DDMAC), true)
+ifneq ($(VPU_DECODE_WITH_MERAM), true)
+	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
+endif
+endif
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)

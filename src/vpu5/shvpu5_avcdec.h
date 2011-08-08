@@ -31,7 +31,7 @@
 #include <OMX_Types.h>
 #include <OMX_Core.h>
 #include <OMX_Component.h>
-#ifdef MERAM_ENABLE
+#if defined(MERAM_ENABLE) || defined(TL_CONV_ENABLE)
 #include <meram/meram.h>
 #endif
 
@@ -47,7 +47,7 @@ typedef struct {
 } decode_features_t;
 
 typedef struct {
-#ifdef MERAM_ENABLE
+#if defined(MERAM_ENABLE) || defined(TL_CONV_ENABLE)
 	MERAM *meram;
 	ICB *decY_icb;
 	ICB *decC_icb;

@@ -1402,7 +1402,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			if (shvpu_avcdec_Private->features.dmac_mode) {
 				pOutBuffer->nOffset = 0;
 				DMAC_copy_buffer(pOutBuffer->pPlatformPrivate,
-					real_phys);
+					frame->Ypic_addr);
 			} else {
 				pOutBuffer->nOffset = 0;
 				memcpy(pOutBuffer->pBuffer, vaddr, pic_size * 3 / 2);

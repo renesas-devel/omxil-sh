@@ -28,6 +28,7 @@
 the system.  A proper implementation is in order */
 #include "uio.h"
 #include "shvpu5_common_log.h"
+#include "shvpu5_avcdec.h" // should be moved to shvpu_common_<something>.h
 
 #define CHSTCLR		0x10
 #define CHnCTRL		0x20
@@ -69,7 +70,16 @@ typedef struct {
 	int	h;
 	int	pitch;
 	int	enabled;
+#ifdef TL_CONV_ENABLE
+	/* Always use MERAM with T/L conversion */
+	shvpu_meram_t meram_data;
+#endif
 } shvpu_DMAC_t;
+
+#ifdef TL_CONV_ENABLE
+#define DMAC_YICB	19
+#define DMAC_CICB	20
+#endif
 
 static shvpu_DMAC_t DMAC_data;
 
@@ -97,6 +107,8 @@ int DMAC_init()
 		return -1;
 	}
 
+	memset(&DMAC_data, 0, sizeof(DMAC_data));
+
 	/* Y buffer */
 	dmac_write32(&dmac_uio.mmio, 0, 0, CHnCTRL);
 	dmac_write32(&dmac_uio.mmio, SWAP_OLS | SWAP_OWS | SWAP_OBS |
@@ -116,11 +128,15 @@ int DMAC_init()
 
 void DMAC_deinit()
 {
+#ifdef TL_CONV_ENABLE
+	close_meram(&DMAC_data.meram_data);
+#endif
 	td_uio_deinit(&dmac_uio);
 }
 
 static int DMAC_copy(unsigned long to,
-	unsigned long from)
+	unsigned long fromY,
+	unsigned long fromC)
 {
 	int w, h, pitch;
 	if (!dmac_uio.mmio.iomem) {
@@ -138,11 +154,11 @@ static int DMAC_copy(unsigned long to,
 	pitch = DMAC_data.pitch;
 
 	/* Y buffer */
-	dmac_write32(&dmac_uio.mmio, from, 0, CHnSAR);
+	dmac_write32(&dmac_uio.mmio, fromY, 0, CHnSAR);
 	dmac_write32(&dmac_uio.mmio, to, 0, CHnDAR);
 
 	/* CbCr (4:2:0) buffer */
-	dmac_write32(&dmac_uio.mmio, from + VALIGN(h) * pitch, 1, CHnSAR);
+	dmac_write32(&dmac_uio.mmio, fromC, 1, CHnSAR);
 	dmac_write32(&dmac_uio.mmio, to + h * w, 1, CHnDAR);
 
 	/* Start transfers */
@@ -178,8 +194,27 @@ int DMAC_setup_buffers(int w, int h)
 	DMAC_data.w = w;
 	DMAC_data.h = h;
 
+#ifdef TL_CONV_ENABLE
+	pitch = (w - 1);
+	pitch |= pitch >> 1;
+	pitch |= pitch >> 2;
+	pitch |= pitch >> 4;
+	pitch ++;
+
+	open_meram(&DMAC_data.meram_data);
+	setup_icb(&DMAC_data.meram_data,
+		&DMAC_data.meram_data.decY_icb,
+		pitch, VALIGN(h), 128, 0xD, 0, DMAC_YICB);
+	setup_icb(&DMAC_data.meram_data,
+		&DMAC_data.meram_data.decC_icb,
+		pitch, VALIGN(h) / 2, 64, 0xC, 0, DMAC_CICB);
+	DMAC_data.pitch = pitch;
+	if (pitch < 1024)
+		pitch = 1024;
+#else
 	pitch = w;
 	DMAC_data.pitch = pitch;
+#endif
 
 	/* Y buffer */
 	temp = dmac_read32(&dmac_uio.mmio, 0, CHnSFMT);
@@ -205,5 +240,41 @@ int DMAC_setup_buffers(int w, int h)
 
 int DMAC_copy_buffer(unsigned long to, unsigned long from)
 {
-	return DMAC_copy(to, from);
+	unsigned long copy_fromY;
+	unsigned long copy_fromC;
+
+	int h, pitch;
+	int ret;
+
+	h = DMAC_data.h;
+	pitch = DMAC_data.pitch;
+
+#ifdef TL_CONV_ENABLE
+	set_meram_address(&DMAC_data.meram_data,
+		DMAC_data.meram_data.decY_icb, from);
+	set_meram_address(&DMAC_data.meram_data,
+		DMAC_data.meram_data.decC_icb, from + VALIGN(h) * pitch);
+
+	copy_fromY = meram_get_icb_address(
+			DMAC_data.meram_data.meram,
+			DMAC_data.meram_data.decY_icb, 0);
+	copy_fromC = meram_get_icb_address(
+			DMAC_data.meram_data.meram,
+			DMAC_data.meram_data.decC_icb, 0);
+#else
+	copy_fromY = from;
+	copy_fromC = from + VALIGN(h) * pitch;
+#endif
+	ret = DMAC_copy(to, copy_fromY, copy_fromC);
+	if (ret)
+		return ret;
+
+#ifdef TL_CONV_ENABLE
+	finish_meram_read(&DMAC_data.meram_data,
+		DMAC_data.meram_data.decY_icb);
+	finish_meram_read(&DMAC_data.meram_data,
+		DMAC_data.meram_data.decC_icb);
+#endif
+
+	return ret;
 }
