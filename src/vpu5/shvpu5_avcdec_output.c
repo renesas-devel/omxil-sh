@@ -47,7 +47,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	MCVDEC_FMEM_INFO_T *_fmem;
 	size_t fmemsize;
 	long fmem_x;
-	int i;
+	int i, ret;
 	void *ypic_vaddr;
 	unsigned long ypic_paddr, cpic_paddr;
 	unsigned long align, alloc_size;
@@ -78,9 +78,12 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			pitch >>=1;
 		}
 		pitch = (1 << (i + next_power));
-		init_ipmmu(&shvpu_avcdec_Private->ipmmui_data, 0,
+		ret = init_ipmmu(&shvpu_avcdec_Private->ipmmui_data, 0,
 			shvpu_avcdec_Private->uio_start_phys, i + next_power,
 			&align_bits);
+		if (ret)
+			loge("Cannot init IPMMUI\n");
+
 		fmem_x = pitch;
 		align = (1 << align_bits);
 		fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
