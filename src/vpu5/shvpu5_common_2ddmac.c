@@ -26,50 +26,25 @@
 
 /* This is a temporary hack to test how the 2DDMAC would integrate with
 the system.  A proper implementation is in order */
-#include "uio.h"
+#include <tddmac/tddmac.h>
+#ifdef TL_CONV_ENABLE
+#include <meram/meram.h>
+#endif
+#include "stdint.h"
 #include "shvpu5_common_log.h"
 #include "shvpu5_avcdec.h" // should be moved to shvpu_common_<something>.h
 
-#define CHSTCLR		0x10
-#define CHnCTRL		0x20
-#define CTRL_DMAEN	(1 << 0)
-#define CTRL_TE		(1 << 4)
-#define CHnSWAP		0x30
-#define SWAP_OLS	(1 << 6)
-#define SWAP_OWS	(1 << 5)
-#define SWAP_OBS	(1 << 4)
-#define SWAP_ILS	(1 << 2)
-#define SWAP_IWS	(1 << 1)
-#define SWAP_IBS	(1 << 0)
-#define CHnSAR		0x80
-#define CHnDAR		0x84
-#define CHnDPXL		0x88
-#define CHnSFMT		0x8C
-#define HBYTES_OFFSET	16
-#define HBYTES_MASK 	(0xFFFF << HBYTES_OFFSET)
-#define FMT_RGB		(0 << 5)
-#define FMT_Y		(1 << 5)
-#define FMT_CbCr_12	(2 << 5)
-#define FMT_CbCr_16	(3 << 5)
-#define FMT_MASK	(3 << 5)
-#define CHnDFMT		0x90
-#define CHnSARE		0x94
-#define CHnDARE		0x98
-#define CHnDPXLE	0x9C
-
 #define VALIGN(x) ((x + 15) & ~15)
 
-#define DMAC_OFFSET(dmac, offset)	\
-	((offset == CHnCTRL || offset == CHnSWAP) ? ((dmac & 4) << 6) | \
-		((dmac << 2) & 0xf) | offset : offset + (dmac << 5))
-
-static struct uio dmac_uio;
 
 typedef struct {
+	TDDMAC *tddmac;
 	int	w;
 	int	h;
 	int	pitch;
-	int	enabled;
+	dmac_id_t ydmac;
+	dmac_id_t cdmac;
+	int	do_tl_conv;
 #ifdef TL_CONV_ENABLE
 	/* Always use MERAM with T/L conversion */
 	shvpu_meram_t meram_data;
@@ -83,158 +58,72 @@ typedef struct {
 
 static shvpu_DMAC_t DMAC_data;
 
-static void dmac_write32(struct uio_map *ump, u32 val, int dmac, int offset)
-{
-	uio_write32(ump, val, DMAC_OFFSET(dmac, offset));
-}
-
-static u32 dmac_read32(struct uio_map *ump, int dmac, int offset)
-{
-	return uio_read32(ump, DMAC_OFFSET(dmac, offset));
-}
-
-static void DMAC_clear_all_done_bits(struct uio_map *ump)
-{
-	uio_write32(ump, uio_read32(ump, CHSTCLR), CHSTCLR);
-}
-
 int DMAC_init()
 {
-	td_uio_init(&dmac_uio, "2DDMAC");
-
-	if (!dmac_uio.mmio.iomem) {
-		loge("2D DMAC uio not initialized\n");
-		return -1;
-	}
-
 	memset(&DMAC_data, 0, sizeof(DMAC_data));
 
-	/* Y buffer */
-	dmac_write32(&dmac_uio.mmio, 0, 0, CHnCTRL);
-	dmac_write32(&dmac_uio.mmio, SWAP_OLS | SWAP_OWS | SWAP_OBS |
-		SWAP_ILS | SWAP_IWS | SWAP_IBS, 0, CHnSWAP);
-	dmac_write32(&dmac_uio.mmio, FMT_Y, 0, CHnSFMT);
-	dmac_write32(&dmac_uio.mmio, FMT_Y, 0, CHnDFMT);
-
-	/* CbCr (4:2:0) buffer */
-	dmac_write32(&dmac_uio.mmio, 0, 1, CHnCTRL);
-	dmac_write32(&dmac_uio.mmio, SWAP_OLS | SWAP_OWS | SWAP_OBS |
-		SWAP_ILS | SWAP_IWS | SWAP_IBS, 1, CHnSWAP);
-	dmac_write32(&dmac_uio.mmio, FMT_CbCr_12, 1, CHnSFMT);
-	dmac_write32(&dmac_uio.mmio, FMT_CbCr_12, 1, CHnDFMT);
-
+	DMAC_data.tddmac = tddmac_open();
+	if (!DMAC_data.tddmac)
+		return -1;
 	return 0;
 }
 
 void DMAC_deinit()
 {
-#ifdef TL_CONV_ENABLE
-	close_meram(&DMAC_data.meram_data);
-#endif
-	td_uio_deinit(&dmac_uio);
+	if (DMAC_data.do_tl_conv)
+		close_meram(&DMAC_data.meram_data);
+	tddmac_close(DMAC_data.tddmac);
 }
 
-static int DMAC_copy(unsigned long to,
-	unsigned long fromY,
-	unsigned long fromC)
-{
-	int w, h, pitch;
-	if (!dmac_uio.mmio.iomem) {
-		loge("2D DMAC uio not initialized\n");
-		return -1;
-	}
-
-	if (!DMAC_data.enabled) {
-		loge("2D DMAC buffers not initialized\n");
-		return -1;
-	}
-
-	w = DMAC_data.w;
-	h = DMAC_data.h;
-	pitch = DMAC_data.pitch;
-
-	/* Y buffer */
-	dmac_write32(&dmac_uio.mmio, fromY, 0, CHnSAR);
-	dmac_write32(&dmac_uio.mmio, to, 0, CHnDAR);
-
-	/* CbCr (4:2:0) buffer */
-	dmac_write32(&dmac_uio.mmio, fromC, 1, CHnSAR);
-	dmac_write32(&dmac_uio.mmio, to + h * w, 1, CHnDAR);
-
-	/* Start transfers */
-	dmac_write32(&dmac_uio.mmio, dmac_read32(&dmac_uio.mmio, 0, CHnCTRL) |
-		 CTRL_DMAEN, 0, CHnCTRL);
-	dmac_write32(&dmac_uio.mmio, dmac_read32(&dmac_uio.mmio, 1, CHnCTRL) |
-		 CTRL_DMAEN, 1, CHnCTRL);
-
-	/* Wait for done */
-	/* Busy wait for now */
-
-	while (!(dmac_read32(&dmac_uio.mmio, 0, CHnCTRL) & CTRL_TE))
-		;
-
-
-	while (!(dmac_read32(&dmac_uio.mmio, 1, CHnCTRL) & CTRL_TE))
-		;
-
-	DMAC_clear_all_done_bits(&dmac_uio.mmio);
-
-	return 0;
-}
-
-int DMAC_setup_buffers(int w, int h)
+int DMAC_setup_buffers(int w, int h, int do_tl_conv)
 {
 	int pitch;
-	u32 temp;
-	if (!dmac_uio.mmio.iomem) {
-		loge("2D DMAC uio not initialized\n");
-		return -1;
-	}
+	struct tddmac_buffer ysrc, ydst;
+	struct tddmac_buffer csrc, cdst;
 
 	DMAC_data.w = w;
 	DMAC_data.h = h;
+	DMAC_data.do_tl_conv = do_tl_conv;
 
-#ifdef TL_CONV_ENABLE
-	pitch = (w - 1);
-	pitch |= pitch >> 1;
-	pitch |= pitch >> 2;
-	pitch |= pitch >> 4;
-	pitch ++;
+	if (do_tl_conv) {
+		pitch = (w - 1);
+		pitch |= pitch >> 1;
+		pitch |= pitch >> 2;
+		pitch |= pitch >> 4;
+		pitch ++;
 
-	open_meram(&DMAC_data.meram_data);
-	setup_icb(&DMAC_data.meram_data,
-		&DMAC_data.meram_data.decY_icb,
-		pitch, VALIGN(h), 128, 0xD, 0, DMAC_YICB);
-	setup_icb(&DMAC_data.meram_data,
-		&DMAC_data.meram_data.decC_icb,
-		pitch, VALIGN(h) / 2, 64, 0xC, 0, DMAC_CICB);
-	DMAC_data.pitch = pitch;
+		open_meram(&DMAC_data.meram_data);
+		setup_icb(&DMAC_data.meram_data,
+			&DMAC_data.meram_data.decY_icb,
+			pitch, VALIGN(h), 128, 0xD, 0, DMAC_YICB);
+		setup_icb(&DMAC_data.meram_data,
+			&DMAC_data.meram_data.decC_icb,
+			pitch, VALIGN(h) / 2, 64, 0xC, 0, DMAC_CICB);
+		DMAC_data.pitch = pitch;
 	if (pitch < 1024)
 		pitch = 1024;
-#else
-	pitch = w;
-	DMAC_data.pitch = pitch;
-#endif
+	} else {
+		pitch = w;
+		DMAC_data.pitch = pitch;
+	}
 
-	/* Y buffer */
-	temp = dmac_read32(&dmac_uio.mmio, 0, CHnSFMT);
-	dmac_write32(&dmac_uio.mmio, (pitch << HBYTES_OFFSET) |
-		(temp & ~HBYTES_MASK), 0, CHnSFMT);
-	temp = dmac_read32(&dmac_uio.mmio, 0, CHnDFMT);
-	dmac_write32(&dmac_uio.mmio, (w << HBYTES_OFFSET) |
-		(temp & ~HBYTES_MASK), 0, CHnDFMT);
-	dmac_write32(&dmac_uio.mmio, (w << 16) | h, 0, CHnDPXL);
+	logd("pitch = %d, w = %d", pitch, w);
 
-	/* CbCr (4:2:0) buffer */
-	temp = dmac_read32(&dmac_uio.mmio, 1, CHnSFMT);
-	dmac_write32(&dmac_uio.mmio, (pitch << HBYTES_OFFSET) |
-		(temp & ~HBYTES_MASK), 1, CHnSFMT);
-	temp = dmac_read32(&dmac_uio.mmio, 1, CHnDFMT);
-	dmac_write32(&dmac_uio.mmio, (w << HBYTES_OFFSET) |
-		(temp & ~HBYTES_MASK), 1, CHnDFMT);
-	dmac_write32(&dmac_uio.mmio, ((w / 2) << 16) | (h / 2), 1, CHnDPXL);
+	ysrc.w = ydst.w = w;
+	ysrc.h = ydst.h = h;
+	ysrc.pitch = pitch;
+	ydst.pitch = w;
+	ysrc.fmt = ydst.fmt = TDDMAC_Y;
 
-	DMAC_data.enabled = 1;
+	csrc.w = cdst.w = w;
+	csrc.h = cdst.h = h/2;
+	csrc.pitch = pitch;
+	cdst.pitch = w;
+	csrc.fmt = cdst.fmt = TDDMAC_CbCr420;
+
+	DMAC_data.ydmac = tddmac_setup(DMAC_data.tddmac, &ysrc, &ydst);
+	DMAC_data.cdmac = tddmac_setup(DMAC_data.tddmac, &csrc, &cdst);
+
 	return 0;
 }
 
@@ -242,39 +131,47 @@ int DMAC_copy_buffer(unsigned long to, unsigned long from)
 {
 	unsigned long copy_fromY;
 	unsigned long copy_fromC;
+	int do_tl_conv;
 
-	int h, pitch;
+	int h, w, pitch;
 	int ret;
 
 	h = DMAC_data.h;
+	w = DMAC_data.w;
 	pitch = DMAC_data.pitch;
 
-#ifdef TL_CONV_ENABLE
-	set_meram_address(&DMAC_data.meram_data,
-		DMAC_data.meram_data.decY_icb, from);
-	set_meram_address(&DMAC_data.meram_data,
-		DMAC_data.meram_data.decC_icb, from + VALIGN(h) * pitch);
+	do_tl_conv = DMAC_data.do_tl_conv;
 
-	copy_fromY = meram_get_icb_address(
-			DMAC_data.meram_data.meram,
-			DMAC_data.meram_data.decY_icb, 0);
-	copy_fromC = meram_get_icb_address(
-			DMAC_data.meram_data.meram,
-			DMAC_data.meram_data.decC_icb, 0);
-#else
-	copy_fromY = from;
-	copy_fromC = from + VALIGN(h) * pitch;
-#endif
-	ret = DMAC_copy(to, copy_fromY, copy_fromC);
-	if (ret)
-		return ret;
+	if (do_tl_conv) {
+		set_meram_address(&DMAC_data.meram_data,
+			DMAC_data.meram_data.decY_icb, from);
+		set_meram_address(&DMAC_data.meram_data,
+			DMAC_data.meram_data.decC_icb,
+			from + VALIGN(h) * pitch);
 
-#ifdef TL_CONV_ENABLE
-	finish_meram_read(&DMAC_data.meram_data,
-		DMAC_data.meram_data.decY_icb);
-	finish_meram_read(&DMAC_data.meram_data,
-		DMAC_data.meram_data.decC_icb);
-#endif
+		copy_fromY = meram_get_icb_address(
+				DMAC_data.meram_data.meram,
+				DMAC_data.meram_data.decY_icb, 0);
+		copy_fromC = meram_get_icb_address(
+				DMAC_data.meram_data.meram,
+				DMAC_data.meram_data.decC_icb, 0);
+	} else {
+		copy_fromY = from;
+		copy_fromC = from + VALIGN(h) * pitch;
+	}
+
+	tddmac_start(DMAC_data.tddmac, DMAC_data.ydmac, copy_fromY, to);
+	tddmac_start(DMAC_data.tddmac, DMAC_data.cdmac, copy_fromC, to + h * w);
+
+	tddmac_wait(DMAC_data.tddmac, DMAC_data.ydmac);
+	tddmac_wait(DMAC_data.tddmac, DMAC_data.cdmac);
+
+	if (do_tl_conv) {
+		finish_meram_read(&DMAC_data.meram_data,
+			DMAC_data.meram_data.decY_icb);
+		finish_meram_read(&DMAC_data.meram_data,
+			DMAC_data.meram_data.decC_icb);
+	}
 
 	return ret;
 }

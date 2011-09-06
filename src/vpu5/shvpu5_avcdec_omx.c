@@ -2026,11 +2026,18 @@ shvpu_avcdec_SendCommand(
   if ((Cmd == OMX_CommandStateSet) && (nParam == OMX_StateExecuting) &&
       (shvpu_avcdec_Private->state == OMX_StateIdle) &&
       (shvpu_avcdec_Private->features.dmac_mode)) {
+
+	int do_tl_conv = 0;
+#if TL_CONV_ENABLE
+	if (shvpu_avcdec_Private->software_readable_output == OMX_FALSE)
+		do_tl_conv = 1;
+#endif
+
     omx_base_video_PortType *outPort =
                (omx_base_video_PortType *)
                shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
     DMAC_setup_buffers(outPort->sPortParam.format.video.nFrameWidth,
-	   outPort->sPortParam.format.video.nFrameHeight);
+	   outPort->sPortParam.format.video.nFrameHeight, do_tl_conv);
   }
   return omx_base_component_SendCommand(hComponent, Cmd, nParam, pCmdData);
 }

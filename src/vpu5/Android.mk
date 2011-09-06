@@ -89,7 +89,9 @@ ifeq ($(VPU_DECODE_USE_BUFFER), true)
 endif
 ifeq ($(VPU_DECODE_USE_2DDMAC), true)
 	LOCAL_CFLAGS += -DDMAC_MODE
-	LOCAL_SRC_FILES += shvpu5_common_2ddmac.c uio.c ipmmuhelper.c
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libtddmac/include
+	LOCAL_SRC_FILES += shvpu5_common_2ddmac.c ipmmuhelper.c
+	LOCAL_SHARED_LIBRARIES += libtddmac
 endif
 
 ifeq ($(VPU_DECODE_TL_CONV), true)
@@ -129,9 +131,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_uio.c \
 	shvpu5_common_log.c
-
-LOCAL_SRC_FILES += 	\
-	uiohelper.c
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5uio
