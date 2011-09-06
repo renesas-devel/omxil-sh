@@ -273,13 +273,13 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 	}
 	if (pPic->hasSlice)
 		pCodec->bufferingCount += 1;
-	free(pPic);
 
 	input_strm->second_id = 0;
 	input_strm->strm_info = pStrmInfo;
         input_strm->strm_cnt = pPic->n_nals;
 	input_strm->strm_id = *pFrameCount;
 	*pFrameCount += 1;
+	free(pPic);
 
 	for (j=0; j<input_strm->strm_cnt; j++) {
 		unsigned char *addr;
