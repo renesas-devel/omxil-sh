@@ -179,7 +179,6 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
 	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
 	queue_t *pSIQueue = pCodec->pSIQueue;
-	queue_t *pBMIQueue = pCodec->pBMIQueue;
 	int *pFrameCount = &pCodec->frameCount;
 	pic_t *pPic;
 	nal_t *nal;
@@ -309,7 +308,8 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 
 	if (pBMI) {
 		pBMI->id = input_strm->strm_id;
-		shvpu_queue(pBMIQueue, pBMI);
+		pCodec->BMIEntries[pBMI->id % BMI_ENTRIES_SIZE] = *pBMI;
+		free(pBMI);
 	}
 
 	logd("%s: %d: %d nals input\n",

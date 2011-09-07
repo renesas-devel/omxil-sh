@@ -58,6 +58,8 @@
 
 #define AVC_PROFILE_COUNT 3
 
+#define BMI_ENTRIES_SIZE 300
+
 typedef	struct {
 	OMX_BUFFERHEADERTYPE*	pBuffer[2];
 	OMX_U32			offset;
@@ -107,7 +109,7 @@ typedef struct {
 	int			releaseBufCount;
 	/** @param queue for stream info data */
 	queue_t*		pSIQueue;
-	queue_t*		pBMIQueue;
+	buffer_metainfo_t	BMIEntries[BMI_ENTRIES_SIZE];
 	OMX_BOOL		enoughHeaders;
 	OMX_BOOL		enoughPreprocess;
 	pthread_cond_t		cond_buffering;

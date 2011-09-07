@@ -336,8 +336,6 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	}
 	pCodec->pSIQueue = calloc(1, sizeof(queue_t));
 	shvpu_queue_init(pCodec->pSIQueue);
-	pCodec->pBMIQueue = calloc(1, sizeof(queue_t));
-	shvpu_queue_init(pCodec->pBMIQueue);
 	pCodec->enoughHeaders = pCodec->enoughPreprocess = OMX_FALSE;
 	pthread_cond_init(&pCodec->cond_buffering, NULL);
 	pthread_mutex_init(&pCodec->mutex_buffering, NULL);
@@ -389,15 +387,10 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 		free_remaining_streams(pCodec->pSIQueue);
 		free(pCodec->pSIQueue);
 
-		while (pCodec->pBMIQueue->nelem > 0) {
-			pBMI = shvpu_dequeue(pCodec->pBMIQueue);
-			free(pBMI);
-		}
 #ifdef MERAM_ENABLE
 		close_meram(&shvpu_avcdec_Private->meram_data);
 #endif
 
-		free(pCodec->pBMIQueue);
 		free(pCodec);
 
 		shvpu_avcdec_Private->avCodec = NULL;

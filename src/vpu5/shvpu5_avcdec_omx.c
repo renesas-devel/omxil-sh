@@ -671,11 +671,6 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 			/*Flush out Pic and Nal queues*/
 			free_remaining_pictures(shvpu_avcdec_Private);
 
-			while (pCodec->pBMIQueue->nelem > 0) {
-				pBMI = shvpu_dequeue(pCodec->pBMIQueue);
-				free(pBMI);
-			}
-
 			logd("Resetting play mode");
 			/*Flush buffers inside VPU5*/
 			mcvdec_set_play_mode(
@@ -1362,8 +1357,8 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		size_t pic_size;
 		int i;
 		unsigned long real_phys;
+		unsigned long index;
 		buffer_metainfo_t *pBMI;
-		queue_t *pBMIQueue = pCodec->pBMIQueue;
 
 		logd("pic_infos[0]->frame_cnt = %d\n",
 		     pic_infos[0]->frame_cnt);
@@ -1422,25 +1417,14 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		pOutBuffer->nFilledLen += pic_size + pic_size / 2;
 
 		/* receive an appropriate metadata */
-		if (pBMIQueue->nelem > 0) {
-			while ((pBMI = shvpu_peek(pBMIQueue)) != NULL) {
-				if (pBMI->id > pic_infos[0]->pic_order_cnt)
-					break;
-
-				pBMI = shvpu_dequeue(pBMIQueue);
-				if (pBMI->id == pic_infos[0]->pic_order_cnt) {
-					pOutBuffer->nTimeStamp =
-						pBMI->nTimeStamp;
-					pOutBuffer->nFlags =
-						pBMI->nFlags;
-					free(pBMI);
-					break;
-				}
-				loge("Warning: timestamp and flags for "
-				     "frame-%d were dropped.\n",
-				     pBMI->id);
-				free(pBMI);
-			}
+		index = pic_infos[0]->strm_id;
+		pBMI = &pCodec->BMIEntries[index % BMI_ENTRIES_SIZE];
+		if (pBMI->id == pic_infos[0]->strm_id) {
+			pOutBuffer->nTimeStamp = pBMI->nTimeStamp;
+			pOutBuffer->nFlags = pBMI->nFlags;
+		} else {
+			loge("Warning: invalid hash on BMI (%d)"
+			     "for frame-%d.\n", pBMI->id, index);
 		}
 		pCodec->bufferingCount--;
 	} else {
