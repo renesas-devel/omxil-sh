@@ -46,6 +46,9 @@
 #include "shvpu5_common_uio.h"
 #include "shvpu5_common_log.h"
 
+#ifndef BUFFERING_COUNT
+#define BUFFERING_COUNT 10
+#endif
 static inline void *
 malloc_aligned(size_t size, int align)
 {
@@ -208,6 +211,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		.func_imd_buffering_ready	= notify_buffering,
 		.virt_to_phys_func		= uio_virt_to_phys,
 #if defined(VPU_VERSION_5HA)
+		.buffering_pic_cnt		= BUFFERING_COUNT,
 		.ce_config		= MCVDEC_2CE,
 		.num_views		= 1,
 #endif
