@@ -46,7 +46,7 @@ struct ipmmui_list {
 
 static UIOMux *uiomux = NULL;
 
-static struct ipmmui_list *ipmmui_alloc;
+static struct ipmmui_list *ipmmui_alloc = NULL;
 static char *ipmmui_vaddr;
 static unsigned long ipmmui_paddr;
 static size_t ipmmui_size;
@@ -383,6 +383,8 @@ uio_deinit() {
 		fclose(fp);
 	}
 	munmap(ipmmui_vaddr, IPMMUI_MEMSIZE);
+	if (ipmmui_alloc) 
+		loge("ipmmui_alloc should be NULL, possible memory leak!");
 }
 
 int
