@@ -47,7 +47,7 @@
 #include "shvpu5_common_log.h"
 
 #ifndef BUFFERING_COUNT
-#define BUFFERING_COUNT 10
+#define BUFFERING_COUNT 15
 #endif
 static inline void *
 malloc_aligned(size_t size, int align)
