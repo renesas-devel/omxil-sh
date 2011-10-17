@@ -1401,7 +1401,8 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		if (shvpu_avcdec_Private->features.use_buffer_mode) {
 			if (shvpu_avcdec_Private->features.dmac_mode) {
 				pOutBuffer->nOffset = 0;
-				DMAC_copy_buffer(pOutBuffer->pPlatformPrivate,
+				DMAC_copy_buffer((unsigned long)
+						pOutBuffer->pPlatformPrivate,
 					frame->Ypic_addr);
 			} else {
 				pOutBuffer->nOffset = 0;
