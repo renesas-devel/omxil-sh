@@ -649,9 +649,6 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 
 		if (PORT_IS_BEING_FLUSHED(pInPort)) {
 
-			mcvdec_flush_buff(shvpu_avcdec_Private->avCodecContext,
-				MCVDEC_FLMODE_CLEAR);
-
 			pInBuffer[0] = pInBuffer[1] = NULL;
 			free(*pNal);
 			*pNal = NULL;
