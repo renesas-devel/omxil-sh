@@ -554,6 +554,7 @@ shvpu_avcdec_Deinit(OMX_COMPONENTTYPE * pComponent)
 static inline void
 UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 {
+	int pg_mask;
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 		pComponent->pComponentPrivate;
 	omx_base_video_PortType *outPort =
@@ -570,6 +571,9 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 		outPort->sPortParam.nBufferSize =
 			outPort->sPortParam.format.video.nFrameWidth *
 			outPort->sPortParam.format.video.nFrameHeight * 3 / 2;
+		pg_mask = getpagesize() - 1;
+		outPort->sPortParam.nBufferSize += pg_mask;
+		outPort->sPortParam.nBufferSize &= ~pg_mask;
 	} else {
 		outPort->sPortParam.nBufferSize =
 			shvpu_avcdec_Private->uio_size;
