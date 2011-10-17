@@ -681,6 +681,8 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 			mcvdec_flush_buff(shvpu_avcdec_Private->avCodecContext,
 				MCVDEC_FLMODE_CLEAR);
 
+			pCodec->releaseBufCount = pCodec->bufferingCount = 0;
+
 			if (pCodec->codecMode == MCVDEC_MODE_MAIN ) {
 				pCodec->enoughHeaders = OMX_FALSE;
 				pCodec->enoughPreprocess = OMX_FALSE;
