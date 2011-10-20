@@ -332,12 +332,12 @@ void free_remaining_pictures(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 	tsem_reset(pNalSem);
 
 	while (pPicQueue->nelem > 0) {
-		pPic = shvpu_dequeue(pPicQueue);
+		pPic = dequeue(pPicQueue);
 		free(pPic);
 	}
 
 	while (pNalQueue->nelem > 0) {
-		nal = shvpu_dequeue(pNalQueue);
+		nal = dequeue(pNalQueue);
 		free(nal);
 	}
 }
