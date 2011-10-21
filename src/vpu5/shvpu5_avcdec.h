@@ -44,4 +44,10 @@ typedef struct {
 	OMX_BOOL tl_conv_mode;
 } decode_features_t;
 
+#ifdef OUTPUT_BUFFER_ALIGN
+#define ALIGN_STRIDE(x) ((x + (OUTPUT_BUFFER_ALIGN - 1)) & \
+		 ~((OUTPUT_BUFFER_ALIGN - 1)))
+#else
+#define ALIGN_STRIDE(x) (x)
+#endif
 #endif /* __SIMPLE_AVCDEC_H_ */

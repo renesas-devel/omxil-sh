@@ -75,7 +75,7 @@ int DMAC_setup_buffers(int w, int h, int do_tl_conv)
 	struct tddmac_buffer ysrc, ydst;
 	struct tddmac_buffer csrc, cdst;
 
-	DMAC_data.w = w;
+	DMAC_data.w = ALIGN_STRIDE(w);
 	DMAC_data.h = h;
 	DMAC_data.do_tl_conv = do_tl_conv;
 
@@ -106,13 +106,13 @@ int DMAC_setup_buffers(int w, int h, int do_tl_conv)
 	ysrc.w = ydst.w = w;
 	ysrc.h = ydst.h = h;
 	ysrc.pitch = pitch;
-	ydst.pitch = w;
+	ydst.pitch = ALIGN_STRIDE(w);
 	ysrc.fmt = ydst.fmt = TDDMAC_Y;
 
 	csrc.w = cdst.w = w;
 	csrc.h = cdst.h = h/2;
 	csrc.pitch = pitch;
-	cdst.pitch = w;
+	cdst.pitch = ALIGN_STRIDE(w);
 	csrc.fmt = cdst.fmt = TDDMAC_CbCr420;
 
 	DMAC_data.ydmac = tddmac_setup(DMAC_data.tddmac, &ysrc, &ydst);

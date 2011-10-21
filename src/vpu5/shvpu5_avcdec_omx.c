@@ -564,7 +564,7 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 		(omx_base_video_PortType *)
 		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 	outPort->sPortParam.format.video.nFrameWidth =
-		inPort->sPortParam.format.video.nFrameWidth;
+		ALIGN_STRIDE(inPort->sPortParam.format.video.nFrameWidth);
 	outPort->sPortParam.format.video.nFrameHeight =
 		inPort->sPortParam.format.video.nFrameHeight;
 	if (shvpu_avcdec_Private->features.use_buffer_mode) {
@@ -2016,11 +2016,14 @@ shvpu_avcdec_SendCommand(
       (shvpu_avcdec_Private->state == OMX_StateIdle) &&
       (shvpu_avcdec_Private->features.dmac_mode)) {
 
-    omx_base_video_PortType *outPort =
+    /* Input port holds the dimensions of the input data stream, while the
+       output port has its size adjusted to meet requirements of downstream
+       components/devices */
+    omx_base_video_PortType *inPort =
                (omx_base_video_PortType *)
-               shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
-    DMAC_setup_buffers(outPort->sPortParam.format.video.nFrameWidth,
-	   outPort->sPortParam.format.video.nFrameHeight,
+               shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+    DMAC_setup_buffers(inPort->sPortParam.format.video.nFrameWidth,
+	   inPort->sPortParam.format.video.nFrameHeight,
 	   shvpu_avcdec_Private->features.tl_conv_mode);
   }
   return omx_base_component_SendCommand(hComponent, Cmd, nParam, pCmdData);
