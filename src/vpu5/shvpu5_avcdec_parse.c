@@ -103,6 +103,11 @@ isSubsequentPic(nal_t *pNal[], int former, OMX_BOOL *pHasSlice)
 			first_mb[i] = pbuf[4] & 0x80U;
 			break;
 		}
+		switch (type[i]) {
+		case 1:
+		case 5:
+			pNal[former]->hasPicData = OMX_TRUE;
+		}
 		former ^= 1;
 	}
 
@@ -153,6 +158,11 @@ isSubsequentPic(nal_t *pNal[], int former, OMX_BOOL *pHasSlice)
 			logd("%d:EoStr\n", i);
 			has_eos = 1;
 			return OMX_TRUE;
+		case 12:
+			logd("%d:Filler data\n", i);
+			if (*pHasSlice)
+				return OMX_TRUE;
+			break;
 		default:
 			loge("UNKNOWN(%2d)\n", type[i]);
 			break;

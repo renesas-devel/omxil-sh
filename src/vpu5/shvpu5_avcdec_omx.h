@@ -64,6 +64,7 @@ typedef	struct {
 	OMX_BUFFERHEADERTYPE*	pBuffer[2];
 	OMX_U32			offset;
 	size_t			size;
+	OMX_BOOL		hasPicData;
 } nal_t;
 
 typedef	struct {
