@@ -226,8 +226,16 @@ shvpu_avcdec_port_AllocateOutBuffer(
   OMX_PTR pAppPrivate,
   OMX_U32 nSizeBytes);
 
+OMX_ERRORTYPE shvpu_avcdec_port_UseBuffer(
+  omx_base_PortType *openmaxStandPort,
+  OMX_BUFFERHEADERTYPE** ppBufferHdr,
+  OMX_U32 nPortIndex,
+  OMX_PTR pAppPrivate,
+  OMX_U32 nSizeBytes,
+  OMX_U8* pBuffer);
+
 OMX_ERRORTYPE
-shvpu_avcdec_port_FreeOutBuffer(
+shvpu_avcdec_port_FreeBuffer(
   omx_base_PortType *pPort,
   OMX_U32 nPortIndex,
   OMX_BUFFERHEADERTYPE* pBuffer);
