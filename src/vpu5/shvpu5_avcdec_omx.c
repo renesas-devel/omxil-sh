@@ -254,10 +254,10 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	     reg, shvpu_avcdec_Private->uio_start_phys, memsz);
 
 #ifdef USE_BUFFER_MODE
-	shvpu_avcdec_Private->use_buffer_mode = OMX_TRUE;
+	shvpu_avcdec_Private->features.use_buffer_mode = OMX_TRUE;
 #endif
 	/* initialize ippmui for buffers */
-	if (!shvpu_avcdec_Private->use_buffer_mode)
+	if (!shvpu_avcdec_Private->features.use_buffer_mode)
 		return eError;
 
 	if (ipmmui_buffer_init() < 0)
@@ -316,7 +316,7 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 
 	uio_deinit();
 
-	if(shvpu_avcdec_Private->use_buffer_mode) {
+	if(shvpu_avcdec_Private->features.use_buffer_mode) {
 		DMAC_deinit();
 		ipmmui_buffer_deinit();
 	}
@@ -553,7 +553,7 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 		inPort->sPortParam.format.video.nFrameWidth;
 	outPort->sPortParam.format.video.nFrameHeight =
 		inPort->sPortParam.format.video.nFrameHeight;
-	if (shvpu_avcdec_Private->use_buffer_mode) {
+	if (shvpu_avcdec_Private->features.use_buffer_mode) {
 		outPort->sPortParam.nBufferSize =
 			outPort->sPortParam.format.video.nFrameWidth *
 			outPort->sPortParam.format.video.nFrameHeight * 3 / 2;
@@ -1392,7 +1392,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		if (!pOutBuffer->pPlatformPrivate) {
 			pOutBuffer->nOffset = 0;
 			memcpy(pOutBuffer->pBuffer, vaddr, pic_size * 3 / 2);
-		} else if (!shvpu_avcdec_Private->use_buffer_mode) {
+		} else if (!shvpu_avcdec_Private->features.use_buffer_mode) {
 			if ((unsigned long) vaddr < (unsigned long)
 				shvpu_avcdec_Private->uio_start)
 				pOutBuffer->nOffset = 0;
@@ -2014,7 +2014,7 @@ shvpu_avcdec_SendCommand(
   }
   if ((Cmd == OMX_CommandStateSet) && (nParam == OMX_StateExecuting) &&
       (shvpu_avcdec_Private->state == OMX_StateIdle) &&
-      (shvpu_avcdec_Private->use_buffer_mode)) {
+      (shvpu_avcdec_Private->features.use_buffer_mode)) {
     omx_base_video_PortType *outPort =
                (omx_base_video_PortType *)
                shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
@@ -2223,7 +2223,7 @@ shvpu_avcdec_port_FreeBuffer(
       if(pPort->bBufferStateAllocated[i] & BUFFER_ALLOCATED)
         pBuffer->pBuffer = NULL; /* we don't actually allocate anything */
       else if (pPort->bBufferStateAllocated[i] & BUFFER_ASSIGNED)
-	if (shvpu_avcdec_Private->use_buffer_mode)
+	if (shvpu_avcdec_Private->features.use_buffer_mode)
 	    ipmmui_buffer_unmap_vaddr(pBuffer->pBuffer);
       if(pPort->bBufferStateAllocated[i] & HEADER_ALLOCATED) {
         free(pPort->pInternalBufferStorage[i]);

@@ -42,6 +42,10 @@ int
 decode_finalize(void *context);
 
 typedef struct {
+	OMX_BOOL use_buffer_mode;
+} decode_features_t;
+
+typedef struct {
 #ifdef MERAM_ENABLE
 	MERAM *meram;
 	ICB *decY_icb;
