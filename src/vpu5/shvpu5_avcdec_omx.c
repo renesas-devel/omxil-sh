@@ -1177,6 +1177,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 
 	switch (ret) {
 	case MCVDEC_CAUTION:
+		break;
 	case MCVDEC_CONCEALED_1:
 	case MCVDEC_CONCEALED_2:
 		loge("Warning: a recoverable error (%d) "
