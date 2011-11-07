@@ -1,10 +1,55 @@
+/**
+   src/vpu55/shvpu5_avcdec_meram.c
+
+   This component implements H.264 / MPEG-4 AVC video codec.
+   The H.264 / MPEG-4 AVC video encoder/decoder is implemented
+   on the Renesas's VPU5HG middleware library.
+
+   Copyright (C) 2010 Renesas Solutions Corp.
+
+   This library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public License
+   as published by the Free Software Foundation; either version 2.1 of
+   the License, or (at your option) any later version.
+
+   This library is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with this library; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+   02110-1301 USA
+*/
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <stdlib.h>
-#include <meram/meram.h>
+#include "shvpu5_avcdec_meram.h"
 #include "shvpu5_avcdec.h"
+
+#define MERAM_REG_BASE 0xE8000000
+#define MERAM_REG_SIZE 0x200000
+#define MERAM_ICB0BASE 0x400
+#define MERAM_ICB28BASE 0x780
+#define MExxCTL 0x0
+#define MExxSIZE 0x4
+#define MExxMNCF 0x8
+#define MExxSARA 0x10
+#define MExxSARB 0x14
+#define MExxBSIZE 0x18
+#define MSAR_OFF 0x3C0
+
+#define MEACTS 0x10
+#define MEQSEL1 0x40
+#define MEQSEL2 0x44
+
+#define MERAM_START(ind, ab) (0xC0000000 | ((ab & 0x1) << 23) | \
+        ((ind & 0x1F) << 24))
+
 
 static void *meram_base = NULL;
 static int mem_fd;

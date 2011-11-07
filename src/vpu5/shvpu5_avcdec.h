@@ -31,9 +31,6 @@
 #include <OMX_Types.h>
 #include <OMX_Core.h>
 #include <OMX_Component.h>
-#if defined(MERAM_ENABLE) || defined(TL_CONV_ENABLE)
-#include <meram/meram.h>
-#endif
 
 void
 free_remaining_streams(queue_t *pSIQueue);
@@ -45,13 +42,5 @@ typedef struct {
 	OMX_BOOL use_buffer_mode;
 	OMX_BOOL dmac_mode;
 } decode_features_t;
-
-typedef struct {
-#if defined(MERAM_ENABLE) || defined(TL_CONV_ENABLE)
-	MERAM *meram;
-	ICB *decY_icb;
-	ICB *decC_icb;
-#endif
-} shvpu_meram_t;
 
 #endif /* __SIMPLE_AVCDEC_H_ */

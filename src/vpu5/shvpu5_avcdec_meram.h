@@ -1,19 +1,58 @@
-#define MERAM_REG_BASE 0xE8000000
-#define MERAM_REG_SIZE 0x200000
-#define MERAM_ICB0BASE 0x400
-#define MERAM_ICB28BASE 0x780
-#define MExxCTL 0x0
-#define MExxSIZE 0x4
-#define MExxMNCF 0x8
-#define MExxSARA 0x10
-#define MExxSARB 0x14
-#define MExxBSIZE 0x18
-#define MSAR_OFF 0x3C0
+/**
+   src/vpu55/shvpu5_avcdec_meram.c
 
-#define MEACTS 0x10
-#define MEQSEL1 0x40
-#define MEQSEL2 0x44
+   This component implements H.264 / MPEG-4 AVC video codec.
+   The H.264 / MPEG-4 AVC video encoder/decoder is implemented
+   on the Renesas's VPU5HG middleware library.
 
-#define MERAM_START(ind, ab) (0xC0000000 | ((ab & 0x1) << 23) | \
-        ((ind & 0x1F) << 24))
+   Copyright (C) 2010 Renesas Solutions Corp.
 
+   This library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public License
+   as published by the Free Software Foundation; either version 2.1 of
+   the License, or (at your option) any later version.
+
+   This library is distributed in the hope that it will be useful, but
+   WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
+
+   You should have received a copy of the GNU Lesser General Public
+   License along with this library; if not, write to the Free Software
+   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+   02110-1301 USA
+*/
+#ifndef SHVPU_AVCDEC_MERAM_H
+#define SHVPU_AVCDEC_MERAM_H
+
+#if defined(MERAM_ENABLE) || defined (TL_CONV_ENABLE)
+#include <meram/meram.h>
+typedef struct {
+	MERAM *meram;
+	ICB *decY_icb;
+	ICB *decC_icb;
+} shvpu_meram_t;
+
+int open_meram(shvpu_meram_t *mdata);
+void close_meram(shvpu_meram_t *mdata);
+unsigned long setup_icb(shvpu_meram_t *mdata,
+	  ICB **icb,
+	  unsigned long pitch,
+	  unsigned long lines,
+	  int res_lines,
+	  int block_lines,
+	  int rdnwr,
+	  int index);
+void set_meram_address(shvpu_meram_t *mdata, ICB *icb, unsigned long address);
+void finish_meram_write(shvpu_meram_t *mdata, ICB *icb);
+void finish_meram_read(shvpu_meram_t *mdata, ICB *icb);
+#else
+typedef struct shvpu_meram_t;
+#define open_meram(x) (0)
+#define close_meram()
+#define setup_icb(a,b,c,d,e,f,g,h) (0)
+#define set_meram_address(x, y, z)
+#define finish_meram_write(x, y)
+#define finish_meram_read(x, y)
+#endif
+#endif /* SHVPU_AVCDEC_MERAM_H */

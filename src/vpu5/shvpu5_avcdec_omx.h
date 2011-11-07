@@ -44,6 +44,7 @@
 #include "shvpu5_driver.h"
 #include "shvpu5_avcdec.h"
 #include "shvpu5_common_ipmmu.h"
+#include "shvpu5_avcdec_meram.h"
 
 /* Specific include files */
 #include <vpu5/OMX_VPU5Ext.h>

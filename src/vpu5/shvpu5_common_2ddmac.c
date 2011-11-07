@@ -27,11 +27,9 @@
 /* This is a temporary hack to test how the 2DDMAC would integrate with
 the system.  A proper implementation is in order */
 #include <tddmac/tddmac.h>
-#ifdef TL_CONV_ENABLE
-#include <meram/meram.h>
-#endif
 #include "stdint.h"
 #include "shvpu5_common_log.h"
+#include "shvpu5_avcdec_meram.h"
 #include "shvpu5_avcdec.h" // should be moved to shvpu_common_<something>.h
 
 #define VALIGN(x) ((x + 15) & ~15)
@@ -45,16 +43,12 @@ typedef struct {
 	dmac_id_t ydmac;
 	dmac_id_t cdmac;
 	int	do_tl_conv;
-#ifdef TL_CONV_ENABLE
 	/* Always use MERAM with T/L conversion */
 	shvpu_meram_t meram_data;
-#endif
 } shvpu_DMAC_t;
 
-#ifdef TL_CONV_ENABLE
 #define DMAC_YICB	19
 #define DMAC_CICB	20
-#endif
 
 static shvpu_DMAC_t DMAC_data;
 
