@@ -30,15 +30,12 @@
 
 #ifdef TL_CONV_ENABLE
 #include <meram/ipmmui.h>
-#endif
 
 typedef struct {
-#ifdef TL_CONV_ENABLE
 	IPMMUI *ipmmui;
 	PMB *pmb;
 	unsigned long ipmmui_vaddr;
 	unsigned long ipmmui_mask;
-#endif
 } shvpu_ipmmui_t;
 
 int
@@ -58,5 +55,11 @@ unsigned long
 ipmmui_to_phys(shvpu_ipmmui_t *ipmmui_data, unsigned long ipmmu,
 	unsigned long phys_base);
 
-
+#else
+typedef struct shvpu_ipmmui_t;
+#define init_ipmmu(a, b, c, d, e) (0)
+#define deinit_ipmmu(x)
+#define phys_to_ipmmui(x, y) (0)
+#define ipmmui_to_phys(x, y, z) (0)
+#endif
 #endif /*  _SHVPU5_COMMON_IPMMU_H */
