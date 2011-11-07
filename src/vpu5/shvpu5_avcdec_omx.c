@@ -30,12 +30,14 @@
 #include "shvpu5_avcdec_omx.h"
 #include "shvpu5_common_ext.h"
 #include "shvpu5_common_queue.h"
+#include "shvpu5_common_2ddmac.h"
 #include "shvpu5_common_log.h"
 #include <OMX_Video.h>
 #define _GNU_SOURCE
 #include <stdint.h>
 #include <unistd.h>
 #include <sys/syscall.h>
+#include "ipmmuhelper.h"
 
 /** Maximum Number of Video Component Instance*/
 #define MAX_COMPONENT_VIDEODEC 2
@@ -255,9 +257,16 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 #ifdef USE_BUFFER_MODE
 	shvpu_avcdec_Private->features.use_buffer_mode = OMX_TRUE;
+#ifdef DMAC_MODE
+	shvpu_avcdec_Private->features.dmac_mode = OMX_TRUE;
 #endif
+#endif
+
 	/* initialize ippmui for buffers */
 	if (!shvpu_avcdec_Private->features.use_buffer_mode)
+		return eError;
+
+	if (!shvpu_avcdec_Private->features.dmac_mode)
 		return eError;
 
 	if (ipmmui_buffer_init() < 0)
@@ -316,7 +325,7 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 
 	uio_deinit();
 
-	if(shvpu_avcdec_Private->features.use_buffer_mode) {
+	if(shvpu_avcdec_Private->features.dmac_mode) {
 		DMAC_deinit();
 		ipmmui_buffer_deinit();
 	}
@@ -1389,10 +1398,16 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			     pic_size / 2 * 3, pOutBuffer->nAllocLen);
 			pic_size = pOutBuffer->nAllocLen / 3 * 2;
 		}
-		if (!pOutBuffer->pPlatformPrivate) {
-			pOutBuffer->nOffset = 0;
-			memcpy(pOutBuffer->pBuffer, vaddr, pic_size * 3 / 2);
-		} else if (!shvpu_avcdec_Private->features.use_buffer_mode) {
+		if (shvpu_avcdec_Private->features.use_buffer_mode) {
+			if (shvpu_avcdec_Private->features.dmac_mode) {
+				pOutBuffer->nOffset = 0;
+				DMAC_copy_buffer(pOutBuffer->pPlatformPrivate,
+					real_phys);
+			} else {
+				pOutBuffer->nOffset = 0;
+				memcpy(pOutBuffer->pBuffer, vaddr, pic_size * 3 / 2);
+			}
+		} else {
 			if ((unsigned long) vaddr < (unsigned long)
 				shvpu_avcdec_Private->uio_start)
 				pOutBuffer->nOffset = 0;
@@ -1403,10 +1418,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			pOutBuffer->pPlatformPrivate = (void *)
 				(shvpu_avcdec_Private->uio_start_phys +
 				pOutBuffer->nOffset);
-		} else {
-			pOutBuffer->nOffset = 0;
-			DMAC_copy_buffer(pOutBuffer->pPlatformPrivate,
-				real_phys);
 		}
 		pOutBuffer->nFilledLen += pic_size + pic_size / 2;
 
@@ -2014,7 +2025,7 @@ shvpu_avcdec_SendCommand(
   }
   if ((Cmd == OMX_CommandStateSet) && (nParam == OMX_StateExecuting) &&
       (shvpu_avcdec_Private->state == OMX_StateIdle) &&
-      (shvpu_avcdec_Private->features.use_buffer_mode)) {
+      (shvpu_avcdec_Private->features.dmac_mode)) {
     omx_base_video_PortType *outPort =
                (omx_base_video_PortType *)
                shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
@@ -2155,9 +2166,11 @@ OMX_ERRORTYPE shvpu_avcdec_port_UseBuffer(
 
       outPort->pInternalBufferStorage[i]->pBuffer = pBuffer;
       outPort->pInternalBufferStorage[i]->nAllocLen = nSizeBytes;
-      ipmmui_buffer_map_vaddr(pBuffer, nSizeBytes,
+      if (shvpu_avcdec_Private->features.dmac_mode) {
+          ipmmui_buffer_map_vaddr(pBuffer, nSizeBytes,
 		(unsigned long *)&outPort->pInternalBufferStorage[i]->
 		pPlatformPrivate);
+      }
 
       outPort->pInternalBufferStorage[i]->pAppPrivate = pAppPrivate;
       outPort->bBufferStateAllocated[i] = BUFFER_ASSIGNED;
@@ -2223,7 +2236,7 @@ shvpu_avcdec_port_FreeBuffer(
       if(pPort->bBufferStateAllocated[i] & BUFFER_ALLOCATED)
         pBuffer->pBuffer = NULL; /* we don't actually allocate anything */
       else if (pPort->bBufferStateAllocated[i] & BUFFER_ASSIGNED)
-	if (shvpu_avcdec_Private->features.use_buffer_mode)
+	if (shvpu_avcdec_Private->features.dmac_mode)
 	    ipmmui_buffer_unmap_vaddr(pBuffer->pBuffer);
       if(pPort->bBufferStateAllocated[i] & HEADER_ALLOCATED) {
         free(pPort->pInternalBufferStorage[i]);

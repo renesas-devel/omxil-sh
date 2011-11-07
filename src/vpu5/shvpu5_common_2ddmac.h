@@ -24,7 +24,14 @@
 */
 
 
+#ifdef DMAC_MODE
 int DMAC_init();
 void DMAC_deinit();
 int DMAC_setup_buffers(int w, int h);
 int DMAC_copy_buffer(unsigned long to, unsigned long from);
+#else
+#define DMAC_init() (0)
+#define DMAC_deinit()
+#define DMAC_setup_buffers(w, h) (0)
+#define DMAC_copy_buffer(to, from) (0)
+#endif

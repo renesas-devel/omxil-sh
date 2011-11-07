@@ -1,12 +1,11 @@
 /**
-   src/vpu5/shvpu5_avcdec.h
+   src/vpu5/ipmmuihelper.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
    on the Renesas's VPU5HG middleware library.
 
-   Copyright (C) 2010 IGEL Co., Ltd
-   Copyright (C) 2010 Renesas Solutions Corp.
+   Copyright (C) 2011 Renesas Solutions Corp.
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public License
@@ -24,34 +23,21 @@
    02110-1301 USA
 
 */
-#ifndef __SIMPLE_AVCDEC_H_
-#define __SIMPLE_AVCDEC_H_
-#include "mcvdec.h"
-#include "queue.h"
-#include <OMX_Types.h>
-#include <OMX_Core.h>
-#include <OMX_Component.h>
-#ifdef MERAM_ENABLE
-#include <meram/meram.h>
-#endif
 
-void
-free_remaining_streams(queue_t *pSIQueue);
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
 
-int
-decode_finalize(void *context);
 
-typedef struct {
-	OMX_BOOL use_buffer_mode;
-	OMX_BOOL dmac_mode;
-} decode_features_t;
-
-typedef struct {
-#ifdef MERAM_ENABLE
-	MERAM *meram;
-	ICB *decY_icb;
-	ICB *decC_icb;
-#endif
-} shvpu_meram_t;
-
-#endif /* __SIMPLE_AVCDEC_H_ */
+#ifdef DMAC_MODE
+int ipmmui_buffer_init();
+int ipmmui_buffer_map_vaddr(void *vaddr, unsigned int size,
+		unsigned long *paddr);
+int ipmmui_buffer_unmap_vaddr(void *vaddr);
+void ipmmui_buffer_deinit();
+#else
+#define ipmmui_buffer_init() (0)
+#define ipmmui_buffer_map_vaddr(x, y, z) (0)
+#define ipmmui_buffer_unmap_vaddr(x) (0)
+#define ipmmui_buffer_deinit()
+#endif //DMAC_MODE

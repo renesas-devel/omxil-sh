@@ -38,7 +38,6 @@
 #define FILENAME_LEN 50
 
 static int bufcount;
-
 int ipmmui_buffer_init()
 {
 	static FILE *mapfile;

@@ -86,6 +86,9 @@ endif
 
 ifeq ($(VPU_DECODE_USE_BUFFER), true)
 	LOCAL_CFLAGS += -DUSE_BUFFER_MODE
+endif
+ifeq ($(VPU_DECODE_USE_2DDMAC), true)
+	LOCAL_CFLAGS += -DDMAC_MODE
 	LOCAL_SRC_FILES += shvpu5_common_2ddmac.c uio.c ipmmuhelper.c
 endif
 
