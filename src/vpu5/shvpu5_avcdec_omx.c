@@ -262,6 +262,10 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 #endif
 #endif
 
+#ifdef TL_CONV_ENABLE
+	shvpu_avcdec_Private->features.tl_conv_mode = OMX_TRUE;
+#endif
+
 	/* initialize ippmui for buffers */
 	if (!shvpu_avcdec_Private->features.use_buffer_mode)
 		return eError;
@@ -1379,9 +1383,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		pic_size = pic_infos[0]->xpic_size *
 			(pic_infos[0]->ypic_size -
 			 pic_infos[0]->frame_crop[MCVDEC_CROP_BOTTOM]);
-#ifdef TL_CONV_ENABLE
-		if (shvpu_avcdec_Private->software_readable_output ==
-				OMX_FALSE) {
+		if (shvpu_avcdec_Private->features.tl_conv_mode) {
 			real_phys = ipmmui_to_phys(
 				&shvpu_avcdec_Private->ipmmui_data,
 				frame->Ypic_addr,
@@ -1389,9 +1391,6 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		} else {
 			real_phys = frame->Ypic_addr;
 		}
-#else
-		real_phys = frame->Ypic_addr;
-#endif
 		vaddr = uio_phys_to_virt(real_phys);
 		if ((pic_size / 2 * 3) > pOutBuffer->nAllocLen) {
 			loge("WARNING: shrink output size %d to %d\n",
@@ -1704,12 +1703,14 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		}
 		case OMX_IndexParamSoftwareRenderMode:
 		{
-			shvpu_avcdec_Private->software_readable_output =
-				*(OMX_BOOL *)ComponentParameterStructure;
+#ifdef TL_CONV_ENABLE
+			shvpu_avcdec_Private->features.tl_conv_mode =
+				!(*(OMX_BOOL *)ComponentParameterStructure);
+#endif
 			shvpu_avcdec_Private->enable_sync = OMX_TRUE;
 			logd("Switching software readable output mode %s\n",
 			     shvpu_avcdec_Private->
-			     software_readable_output == OMX_TRUE ?
+			     features.tl_conv_mode == OMX_FALSE ?
 			     "on" : "off");
 			break;
 		}
@@ -1905,7 +1906,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		case OMX_IndexParamSoftwareRenderMode:
 		{
 			*(OMX_BOOL *)ComponentParameterStructure =
-				shvpu_avcdec_Private->software_readable_output;
+				!shvpu_avcdec_Private->features.tl_conv_mode;
 			break;
 		}
 		default:
@@ -2028,17 +2029,12 @@ shvpu_avcdec_SendCommand(
       (shvpu_avcdec_Private->state == OMX_StateIdle) &&
       (shvpu_avcdec_Private->features.dmac_mode)) {
 
-	int do_tl_conv = 0;
-#if TL_CONV_ENABLE
-	if (shvpu_avcdec_Private->software_readable_output == OMX_FALSE)
-		do_tl_conv = 1;
-#endif
-
     omx_base_video_PortType *outPort =
                (omx_base_video_PortType *)
                shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
     DMAC_setup_buffers(outPort->sPortParam.format.video.nFrameWidth,
-	   outPort->sPortParam.format.video.nFrameHeight, do_tl_conv);
+	   outPort->sPortParam.format.video.nFrameHeight,
+	   shvpu_avcdec_Private->features.tl_conv_mode);
   }
   return omx_base_component_SendCommand(hComponent, Cmd, nParam, pCmdData);
 }

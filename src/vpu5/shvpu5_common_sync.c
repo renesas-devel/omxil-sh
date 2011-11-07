@@ -100,7 +100,7 @@ mciph_uf_ce_restart(void *context, long mode)
 		MCVDEC_CONTEXT_T *dec_context = (MCVDEC_CONTEXT_T *)context;
 		shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 	                (shvpu_avcdec_PrivateType *)dec_context->user_info;
-		if(shvpu_avcdec_Private->software_readable_output == OMX_TRUE) {
+		if(shvpu_avcdec_Private->features.tl_conv_mode == OMX_FALSE) {
 			_uf_vp5_restart(context, mode, VP5_MODULE_CE);
 			return;
 		}
@@ -134,7 +134,7 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 		shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 	                (shvpu_avcdec_PrivateType *)dec_context->user_info;
 		MCVDEC_FMEM_INDEX_T *fmem_index;
-		if(shvpu_avcdec_Private->software_readable_output == OMX_TRUE) {
+		if(shvpu_avcdec_Private->features.tl_conv_mode == OMX_FALSE) {
 			_uf_vp5_start(context, mode, VP5_MODULE_CE);
 			return;
 		}

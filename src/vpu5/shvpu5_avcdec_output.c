@@ -58,8 +58,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	       __FUNCTION__, xpic_size, ypic_size,
 	       required_fmem_cnt, nsampling);
 
-#ifdef TL_CONV_ENABLE
-	if (shvpu_avcdec_Private->software_readable_output == OMX_TRUE) {
+	if (shvpu_avcdec_Private->features.tl_conv_mode == OMX_FALSE) {
 		fmem_x = (xpic_size + 31) / 32 * 32;
 		align = 32;
 		fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
@@ -90,12 +89,6 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		alloc_size = ((fmemsize * 3 / 2) + (align - 1)) & ~(align - 1);
 		alloc_size += align;
 	}
-#else
-	fmem_x = (xpic_size + 31) / 32 * 32;
-	align = 32;
-	fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
-	alloc_size = fmemsize * 3 / 2;
-#endif
 #ifdef MERAM_ENABLE
 	open_meram(&shvpu_avcdec_Private->meram_data);
 	setup_icb(&shvpu_avcdec_Private->meram_data,
@@ -131,9 +124,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			break;
 		shvpu_avcdec_Private->avCodec->fmem[i].fmem_start = ypic_paddr;
 		shvpu_avcdec_Private->avCodec->fmem[i].fmem_len = alloc_size;
-#ifdef TL_CONV_ENABLE
-		if (!shvpu_avcdec_Private->software_readable_output ==
-				OMX_TRUE) {
+		if (shvpu_avcdec_Private->features.tl_conv_mode == OMX_TRUE) {
 			/*alignment offset*/
 			ypic_paddr = (ypic_paddr + (align - 1)) & ~(align - 1);
 			/*access via IPMMUI*/
@@ -141,7 +132,6 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 				&shvpu_avcdec_Private->ipmmui_data,
 				ypic_paddr);
 		}
-#endif
 		cpic_paddr = ypic_paddr + fmemsize;
 		_fmem[i].Ypic_addr = ypic_paddr;
 		logd("fmem[%d].Ypic_addr = %lx\n", i, _fmem[i].Ypic_addr);

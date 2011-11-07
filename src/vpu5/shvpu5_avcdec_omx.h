@@ -179,7 +179,6 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	unsigned long           uio_start_phys;				\
 	shvpu_meram_t		meram_data;				\
 	shvpu_ipmmui_t		ipmmui_data;				\
-	OMX_BOOL		software_readable_output;		\
 	decode_features_t	features;
 ENDCLASS(shvpu_avcdec_PrivateType)
 

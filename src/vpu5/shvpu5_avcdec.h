@@ -41,6 +41,7 @@ decode_finalize(void *context);
 typedef struct {
 	OMX_BOOL use_buffer_mode;
 	OMX_BOOL dmac_mode;
+	OMX_BOOL tl_conv_mode;
 } decode_features_t;
 
 #endif /* __SIMPLE_AVCDEC_H_ */
