@@ -128,7 +128,7 @@ int DMAC_copy_buffer(unsigned long to, unsigned long from)
 	int do_tl_conv;
 
 	int h, w, pitch;
-	int ret;
+	int ret = 0;
 
 	h = DMAC_data.h;
 	w = DMAC_data.w;
