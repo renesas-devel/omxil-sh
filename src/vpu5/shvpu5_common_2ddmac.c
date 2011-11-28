@@ -33,6 +33,7 @@ the system.  A proper implementation is in order */
 #include "shvpu5_avcdec.h" // should be moved to shvpu_common_<something>.h
 
 #define VALIGN(x) ((x + 15) & ~15)
+#define HALIGN(x) ((x + 31) & ~31)
 
 
 typedef struct {
@@ -94,10 +95,10 @@ int DMAC_setup_buffers(int w, int h, int do_tl_conv)
 			&DMAC_data.meram_data.decC_icb,
 			pitch, VALIGN(h) / 2, 64, 0xC, 0, DMAC_CICB);
 		DMAC_data.pitch = pitch;
-	if (pitch < 1024)
-		pitch = 1024;
+		if (pitch < 1024)
+			pitch = 1024;
 	} else {
-		pitch = w;
+		pitch = HALIGN(w);
 		DMAC_data.pitch = pitch;
 	}
 
