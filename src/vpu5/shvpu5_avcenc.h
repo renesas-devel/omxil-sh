@@ -38,6 +38,12 @@
 #define SHVPU_AVCENC_OUTBUF_SIZE (1280 * 720)
 #define SHVPU_AVCENC_OUTBUF_NUM 3
 
+#if defined(VPU_VERSION_5)
+#define SPS_FLAG_COUNT 4
+#elif defined(VPU_VERSION_5HA)
+#define SPS_FLAG_COUNT AVCENC_CNST_NOEL
+#endif
+
 typedef enum {
 	SHVPU_BUFFER_STATUS_NONE = 0,
 	SHVPU_BUFFER_STATUS_READY,
@@ -69,6 +75,7 @@ typedef struct {
         MCVENC_CMN_PROPERTY_T	cmnProp;
         AVCENC_OPTION_T		avcOpt;
 	unsigned long		avcOptSet;
+	long			sps_constraint_flags[SPS_FLAG_COUNT];
 } shvpu_codec_t;
 
 int logd(const char *format, ...);

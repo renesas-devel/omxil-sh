@@ -40,6 +40,8 @@
 #include "mciph_ip0_cmn.h"
 #include "mciph_ip0_dec.h"
 #include "mciph_ip0_avcdec.h"
+#include "mciph_ip0_enc.h"
+#include "mciph_ip0_avcenc.h"
 #endif
 
 static shvpu_driver_t *pDriver;
@@ -133,11 +135,16 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 	pDriver->vpu5Init.vpu_version			= MCIPH_NA;
 	pDriver->vpu5Init.vpu_ext_init			= &(pDriver->ip0Init);
 
+#ifdef DECODER_COMPONENT
 	pDriver->ip0Init.dec_tbl[2] = &mciph_ip0_avcdec_api_tbl;
+	pDriver->apiTbl.dec_api_tbl 	= &mciph_ip0_dec_api_tbl;
+#endif
+#ifdef ENCODER_COMPONENT
+	pDriver->ip0Init.enc_tbl[2] = &mciph_ip0_avcenc_api_tbl;
+	pDriver->apiTbl.enc_api_tbl 	= &mciph_ip0_enc_api_tbl;
+#endif
 
 	pDriver->apiTbl.cmn_api_tbl 	= &mciph_ip0_cmn_api_tbl;
-	pDriver->apiTbl.enc_api_tbl 	= NULL;
-	pDriver->apiTbl.dec_api_tbl 	= &mciph_ip0_dec_api_tbl;
 #elif defined(VPU_VERSION_5)
 	memcpy(&(pDriver->apiTbl), &mciph_hg_api_tbl, sizeof(mciph_hg_api_tbl));
 #endif

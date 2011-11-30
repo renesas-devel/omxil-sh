@@ -32,7 +32,12 @@
 #include <unistd.h>
 #include <string.h>
 #include "mciph.h"
+#if defined(VPU_VERSION_5)
 #include "mciph_hg.h"
+#elif defined(VPU_VERSION_5HA)
+#include "mciph_ip0_cmn.h"
+#include "mciph_ip0_enc.h"
+#endif
 #include "mcvenc.h"
 #include "avcenc.h"
 #include "shvpu5_avcenc.h"
@@ -111,16 +116,20 @@ encode_new()
 	pCodec->cmnProp.max_GOP_length = 30;
 	pCodec->cmnProp.B_pic_mode = 0;
 	pCodec->cmnProp.num_ref_frames = 1;
+#if defined(VPU_VERSION_5HA)
+	pCodec->cmnProp.hrc_mode = MCVENC_OFF;
+	pCodec->cmnProp.num_views = 1;
+	pCodec->cmnProp.max_rate_delay = 5;
+#endif
 
 	/* initialize the (non-zero) default AVCENC_OPTION_T parameters */
 	pCodec->avcOpt.start_code_mode = AVCENC_ON;
-	pCodec->avcOpt.hrc_mode = AVCENC_OFF;
 	/* MEMO: cbp_size and cbp_remain never set. */
 	pCodec->avcOpt.sps_profile_idc = AVCENC_BASELINE;
-	pCodec->avcOpt.sps_constraint_set0_flag = AVCENC_ON;
-	pCodec->avcOpt.sps_constraint_set1_flag = AVCENC_ON;
-	pCodec->avcOpt.sps_constraint_set2_flag = AVCENC_ON;
-	pCodec->avcOpt.sps_constraint_set3_flag = AVCENC_OFF;
+	pCodec->sps_constraint_flags[0] = AVCENC_ON;
+	pCodec->sps_constraint_flags[1] = AVCENC_ON;
+	pCodec->sps_constraint_flags[2] = AVCENC_ON;
+	pCodec->sps_constraint_flags[3] = AVCENC_OFF;
 	pCodec->avcOpt.sps_level_idc = 10;
 	pCodec->avcOpt.sps_pic_order_cnt_type =	AVCENC_POC_TYPE_2;
 	pCodec->avcOpt.sps_gaps_in_frame_num_value_allowed_flag = AVCENC_OFF;
@@ -129,6 +138,9 @@ encode_new()
 	pCodec->avcOpt.pps_transform_8x8_mode_flag = AVCENC_OFF;
 	pCodec->avcOpt.slh_slice_type_mode = AVCENC_SLICE_TYPE_A;
 	pCodec->avcOpt.slh_disable_deblocking_filter_idc = AVCENC_DBF_MODE_0;
+#if defined(VPU_VERSION_5HA)
+	pCodec->avcOpt.pps_num = 1;
+#endif
 
 	return pCodec;
 }
@@ -141,6 +153,14 @@ encode_init(shvpu_codec_t *pCodec)
 	extern const MCVENC_API_T avcenc_api_tbl;
 	MCVENC_CMN_PROPERTY_T *pCmnProp = &pCodec->cmnProp;
         AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
+	shvpu_work_memory_t *pCmnWorkMem = &pCodec->cmnWorkMem;
+	int num_views;
+#if defined(VPU_VERSION_5)
+	num_views = 1;
+#elif defined(VPU_VERSION_5HA)
+	num_views = pCmnProp->num_views;
+
+#endif
 
 	ret = shvpu_driver_init(&pCodec->pDriver);
 	if (ret != 0)
@@ -148,9 +168,13 @@ encode_init(shvpu_codec_t *pCodec)
 
 	/*** initialize encoder ***/
 	extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
-	static MCVENC_WORK_INFO_T wbuf_enc = {
-		.work_area_size = 0x5800,  /* 20 + 2KiB */
-	};
+	static MCVENC_WORK_INFO_T wbuf_enc;
+#if defined(VPU_VERSION_5)
+	wbuf_enc.work_area_size = 0x5800,  /* 20 + 2KiB */
+#elif defined(VPU_VERSION_5HA)
+	wbuf_enc.work_area_size = 12000 + (1024 * num_views) +
+		(1024 * pCmnProp->max_rate_delay * num_views) + (10 * 1024);
+#endif
 	static MCVENC_FIRMWARE_INFO_T fw;
 	size_t fwsize;
 	wbuf_enc.work_area_addr = malloc_aligned(wbuf_enc.work_area_size, 4);
@@ -190,7 +214,7 @@ encode_init(shvpu_codec_t *pCodec)
 	b = pCmnProp->x_pic_size * pCmnProp->y_pic_size * 4;
 	imd_info.imd_buff_size = (a > b) ? a : b;
 	imd_info.imd_buff_size =
-		((imd_info.imd_buff_size + 2047) / 2048) * 2048;
+		((imd_info.imd_buff_size + 2047) / 2048) * 2048 * num_views;
 	vaddr = pmem_alloc(imd_info.imd_buff_size,
 			   32, &imd_info.imd_buff_addr);
 	logd("imd_info.imd_buff_addr = %lx\n",
@@ -207,8 +231,11 @@ encode_init(shvpu_codec_t *pCodec)
 		ldec_info.fmem[i][1].Ypic_addr = 0U;
 		ldec_info.fmem[i][1].Cpic_addr = 0U;
 	}
-
+#if defined(VPU_VERSION_5)
 	ir_info.ir_info_size = 4800;
+#elif defined(VPU_VERSION_5HA)
+	ir_info.ir_info_size = 6656;
+#endif
 	ir_info.ir_info_addr = (unsigned long)
 		pmem_alloc(ir_info.ir_info_size, 32, &paddr);
 	logd("ir_info.ir_info_addr = %lx\n", ir_info.ir_info_addr);
@@ -216,8 +243,14 @@ encode_init(shvpu_codec_t *pCodec)
 		return -1;
 	mb_width = (pCmnProp->x_pic_size + 15) / 16;
 	mb_height = (pCmnProp->y_pic_size + 15) / 16;
+
+#if defined(VPU_VERSION_5)
 	mv_info_size = ((16 * mb_width *
 			 ((mb_height + 1) / 2) + 255) / 256) * 256;
+#elif defined(VPU_VERSION_5HA)
+	mv_info_size = ((16 * mb_width *
+			 ((mb_height + 1) / 2) + 511) / 512) * 512 + 512;
+#endif
 	vaddr = pmem_alloc(mv_info_size, 32, &mv_info.mv_info_addr[0]);
 	logd("mv_info.mv_info_addr[0] = %lx\n", mv_info.mv_info_addr[0]);
 	if (!vaddr)
@@ -247,6 +280,20 @@ encode_init(shvpu_codec_t *pCodec)
 
 	/*** set avc specific option ***/
 	if (pCodec->avcOptSet) {
+#if defined(VPU_VERSION_5)
+		pAvcOpt->sps_constraint_set0_flag =
+			pCodec->sps_constraint_flags[0]
+		pAvcOpt->sps_constraint_set1_flag =
+			pCodec->sps_constraint_flags[1]
+		pAvcOpt->sps_constraint_set2_flag =
+			pCodec->sps_constraint_flags[2]
+		pAvcOpt->sps_constraint_set3_flag =
+			pCodec->sps_constraint_flags[3]
+#elif defined(VPU_VERSION_5HA)
+		memcpy(&pAvcOpt->sps_constraint_set_flag,
+			&pCodec->sps_constraint_flags,
+			sizeof(pCodec->sps_constraint_flags));
+#endif
 		logd("----- invoke avcdec_set_option() -----\n");
 		ret = avcenc_set_option(pContext, pAvcOpt,
 					pCodec->avcOptSet);
@@ -275,25 +322,25 @@ encode_set_profile(shvpu_codec_t *pCodec, int profile_id)
 	case 66:
 		pAvcOpt->sps_profile_idc = AVCENC_BASELINE;
 		pAvcOpt->sps_pic_order_cnt_type = AVCENC_POC_TYPE_2;
-		pAvcOpt->sps_constraint_set0_flag = AVCENC_ON;
-		pAvcOpt->sps_constraint_set1_flag = AVCENC_ON;
-		pAvcOpt->sps_constraint_set2_flag = AVCENC_ON;
+		pCodec->sps_constraint_flags[0] = AVCENC_ON;
+		pCodec->sps_constraint_flags[1] = AVCENC_ON;
+		pCodec->sps_constraint_flags[2] = AVCENC_ON;
 		break;
 	case 77:
 		pAvcOpt->sps_profile_idc = AVCENC_MAIN;
 		pAvcOpt->sps_pic_order_cnt_type = AVCENC_POC_TYPE_0;
 		pAvcOpt->pps_cabac_mode = AVCENC_CABAC_INIT_IDC_0;
-		pAvcOpt->sps_constraint_set0_flag = AVCENC_OFF;
-		pAvcOpt->sps_constraint_set1_flag = AVCENC_ON;
-		pAvcOpt->sps_constraint_set2_flag = AVCENC_OFF;
+		pCodec->sps_constraint_flags[0] = AVCENC_OFF;
+		pCodec->sps_constraint_flags[1] = AVCENC_ON;
+		pCodec->sps_constraint_flags[2] = AVCENC_OFF;
 		break;
 	case 100:
 		pAvcOpt->sps_profile_idc = AVCENC_HIGH;
 		pAvcOpt->sps_pic_order_cnt_type = AVCENC_POC_TYPE_0;
 		pAvcOpt->pps_cabac_mode = AVCENC_CABAC_INIT_IDC_0;
-		pAvcOpt->sps_constraint_set0_flag = AVCENC_OFF;
-		pAvcOpt->sps_constraint_set1_flag = AVCENC_OFF;
-		pAvcOpt->sps_constraint_set2_flag = AVCENC_OFF;
+		pCodec->sps_constraint_flags[0] = AVCENC_OFF;
+		pCodec->sps_constraint_flags[1] = AVCENC_OFF;
+		pCodec->sps_constraint_flags[2] = AVCENC_OFF;
 		pAvcOpt->pps_transform_8x8_mode_flag = AVCENC_ON;
 		break;
 	default:
@@ -310,10 +357,10 @@ encode_set_level(shvpu_codec_t *pCodec, int level_id, int is1b)
 {
         AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
 
-	pAvcOpt->sps_constraint_set3_flag = AVCENC_OFF;
+	pCodec->sps_constraint_flags[3] = AVCENC_OFF;
 	pAvcOpt->sps_level_idc = level_id;
 	if (is1b && (pAvcOpt->sps_profile_idc != AVCENC_HIGH))
-		pAvcOpt->sps_constraint_set3_flag = AVCENC_ON;
+		pCodec->sps_constraint_flags[3] = AVCENC_ON;
 
 	pCodec->avcOptSet |= AVCENC_OPT_SPS;
 
@@ -460,7 +507,11 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 	if (nBufferLen < (size_t) head.buff_size)
 		return -1;
 	head.buff_addr = pBuffer;
+#if defined(VPU_VERSION_5)
 	ret2 = avcenc_put_PPS(context, &head);
+#elif defined(VPU_VERSION_5HA)
+	ret2 = avcenc_put_PPS(context, 0, &head);
+#endif
 	logd("avcenc_put_PPS = %d\n", ret2);
 	if (ret2 < 0)
 		return ret2;
@@ -483,7 +534,11 @@ encode_setqmatrix(MCVENC_CONTEXT_T *pContext)
 	};
 	int ret;
 
+#if defined(VPU_VERSION_5)
 	ret = avcenc_set_Q_matrix(pContext, &qmat);
+#elif defined(VPU_VERSION_5HA)
+	ret = avcenc_set_Q_matrix(pContext, AVCENC_QMAT_SPS_IDX, &qmat);
+#endif
 	if (ret < 0)
 		loge("avcenc_set_Q_matrix() = %d\n", ret);
 
