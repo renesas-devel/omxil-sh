@@ -276,9 +276,16 @@ void
 shvpu_avcenc_vpuLibDeInit(shvpu_avcenc_PrivateType *
 			  shvpu_avcenc_Private)
 {
+	int i;
 	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 
+	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
+		pmem_free(pCodec->streamBuffer[i].bufferInfo.buff_addr,
+			pCodec->streamBuffer[i].bufferInfo.buff_size);
+	}
+
 	encode_deinit(pCodec);
+
 	shvpu_driver_deinit(pCodec->pDriver);
 	pCodec->pDriver = NULL;
 

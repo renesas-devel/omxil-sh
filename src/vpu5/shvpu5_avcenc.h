@@ -66,6 +66,18 @@ typedef struct {
 } shvpu_avcenc_outbuf_t;
 
 typedef struct {
+	MCVENC_WORK_INFO_T	wbuf_enc;
+	MCVENC_IMD_INFO_T	imd_info;
+	MCVENC_LDEC_INFO_T	ldec_info;
+	MCVENC_IR_INFO_T	ir_info;
+	MCVENC_MV_INFO_T	mv_info;
+	MCVENC_FIRMWARE_INFO_T	fw;
+	size_t  		mv_info_size;
+	size_t			ce_fw_size;
+	size_t			vlc_fw_size;
+} shvpu_work_memory_t;
+
+typedef struct {
 	shvpu_driver_t		*pDriver;
 
 	/* only for encode */
@@ -76,6 +88,7 @@ typedef struct {
         AVCENC_OPTION_T		avcOpt;
 	unsigned long		avcOptSet;
 	long			sps_constraint_flags[SPS_FLAG_COUNT];
+	shvpu_work_memory_t 	cmnWorkMem;
 } shvpu_codec_t;
 
 int logd(const char *format, ...);
