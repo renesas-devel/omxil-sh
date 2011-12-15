@@ -121,9 +121,5 @@ mcvenc_uf_strm_available(MCVENC_CONTEXT_T *context,
 		loge("%s: no buffer found.\n", __FUNCTION__);
 	}
 
-	if (pCodec->cmnProp.B_pic_mode == 0) {
-		/* for using the VPU exclusively */
-		uiomux_unlock_vpu();
-	}
 	return;
 }

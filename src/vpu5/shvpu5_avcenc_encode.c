@@ -573,8 +573,7 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	uiomux_lock_vpu();
 	ret = mcvenc_encode_picture(pContext, frameId, MCVENC_OFF,
 				    &capt_info, &frm_stat);
-	if (pCodec->cmnProp.B_pic_mode != 0)
-		uiomux_unlock_vpu();
+	uiomux_unlock_vpu();
 	logd("----- resume from mcvenc_encode_picture() = %d "
 	       "-----\n", ret);
 	switch (ret) {
