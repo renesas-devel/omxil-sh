@@ -1408,8 +1408,18 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 						pOutBuffer->pPlatformPrivate,
 					frame->Ypic_addr);
 			} else {
+				size_t copy_size;
+				size_t pitch;
+				OMX_U8 *out_buffer;
+				pitch = ROUND_2POW(pic_infos[0]->xpic_size, 32);
+				copy_size = pitch * (pic_infos[0]->ypic_size -
+					pic_infos[0]->frame_crop
+						[MCVDEC_CROP_BOTTOM]);
 				pOutBuffer->nOffset = 0;
-				memcpy(pOutBuffer->pBuffer, vaddr, pic_size * 3 / 2);
+				memcpy(pOutBuffer->pBuffer, vaddr, copy_size);
+				memcpy(pOutBuffer->pBuffer + copy_size,
+					vaddr + pitch * pic_infos[0]->ypic_size,
+					copy_size / 2);
 			}
 		} else {
 			if ((unsigned long) vaddr < (unsigned long)
@@ -1700,11 +1710,15 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			shvpu_avcdec_Private->features.tl_conv_mode =
 				!(*(OMX_BOOL *)ComponentParameterStructure);
 #endif
+#ifdef DMAC_MODE
+			shvpu_avcdec_Private->features.dmac_mode =
+				!(*(OMX_BOOL *)ComponentParameterStructure);
+#endif
 			shvpu_avcdec_Private->enable_sync = OMX_TRUE;
+
 			logd("Switching software readable output mode %s\n",
-			     shvpu_avcdec_Private->
-			     features.tl_conv_mode == OMX_FALSE ?
-			     "on" : "off");
+			     (*(OMX_BOOL *)ComponentParameterStructure ==
+			      OMX_FALSE) ?  "off" : "on");
 			break;
 		}
 #ifdef ANDROID_CUSTOM
