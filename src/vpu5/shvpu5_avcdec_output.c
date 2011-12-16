@@ -59,9 +59,9 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	       required_fmem_cnt, nsampling);
 
 	if (shvpu_avcdec_Private->features.tl_conv_mode == OMX_FALSE) {
-		fmem_x = (xpic_size + 31) / 32 * 32;
+		fmem_x = ROUND_2POW(xpic_size, 32);
 		align = 32;
-		fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
+		fmemsize = fmem_x * (ROUND_2POW(ypic_size, 16));
 		alloc_size = fmemsize * 3 / 2;
 	} else {
 		unsigned long pitch;
@@ -85,7 +85,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 
 		fmem_x = pitch;
 		align = (1 << align_bits);
-		fmemsize = fmem_x * ((ypic_size + 15) / 16 * 16);
+		fmemsize = fmem_x * (ROUND_2POW(ypic_size, 16));
 		alloc_size = ((fmemsize * 3 / 2) + (align - 1)) & ~(align - 1);
 		alloc_size += align;
 	}
@@ -93,10 +93,10 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	open_meram(&shvpu_avcdec_Private->meram_data);
 	setup_icb(&shvpu_avcdec_Private->meram_data,
 		&shvpu_avcdec_Private->meram_data.decY_icb,
-		fmem_x, (ypic_size + 15) / 16 * 16, 128, 0xD, 1, 21);
+		fmem_x, ROUND_2POW(ypic_size, 16), 128, 0xD, 1, 21);
 	setup_icb(&shvpu_avcdec_Private->meram_data,
 		&shvpu_avcdec_Private->meram_data.decC_icb,
-		fmem_x, (ypic_size + 15) / 16 * 8, 64, 0xC, 1, 22);
+		fmem_x, ROUND_2POW(ypic_size, 16) / 2, 64, 0xC, 1, 22);
 #endif
 
 	/*

@@ -44,9 +44,11 @@ typedef struct {
 	OMX_BOOL tl_conv_mode;
 } decode_features_t;
 
+/* ROUND_2POW rounds up to the next muliple of y,
+   which must be a power of 2 */
+#define ROUND_2POW(x,y) ((x + (y - 1) ) & ~(y - 1))
 #ifdef OUTPUT_BUFFER_ALIGN
-#define ALIGN_STRIDE(x) ((x + (OUTPUT_BUFFER_ALIGN - 1)) & \
-		 ~((OUTPUT_BUFFER_ALIGN - 1)))
+#define ALIGN_STRIDE(x) (ROUND_2POW(x,OUTPUT_BUFFER_ALIGN))
 #else
 #define ALIGN_STRIDE(x) (x)
 #endif
