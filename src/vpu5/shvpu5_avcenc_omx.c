@@ -279,6 +279,11 @@ shvpu_avcenc_vpuLibDeInit(shvpu_avcenc_PrivateType *
 	int i;
 	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 
+	/*make sure that we end the encoder if encoding was
+          forcefully terminated */
+	if (!shvpu_avcenc_Private->bIsEOSReached)
+		encode_finalize(pCodec->pContext);
+
 	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
 		pmem_free(pCodec->streamBuffer[i].bufferInfo.buff_addr,
 			pCodec->streamBuffer[i].bufferInfo.buff_size);
@@ -288,6 +293,9 @@ shvpu_avcenc_vpuLibDeInit(shvpu_avcenc_PrivateType *
 
 	shvpu_driver_deinit(pCodec->pDriver);
 	pCodec->pDriver = NULL;
+
+	free(shvpu_avcenc_Private->avCodec);
+	shvpu_avcenc_Private->avCodec = NULL;
 
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec de-initialized\n");
 }
