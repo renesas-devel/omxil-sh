@@ -210,6 +210,7 @@ shvpu5_load_firmware(char *filename, size_t *size)
 		len -= ret;
 		p += ret;
 	} while (len > 0);
+	close(fd);
 	return paddr;
 fail_read:
 	pmem_free(vaddr, lseek(fd, 0, SEEK_END));
