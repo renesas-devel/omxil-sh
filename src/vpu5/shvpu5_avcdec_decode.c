@@ -77,6 +77,9 @@ typedef enum {
     AVC_LEVEL4_1 = 41
 } AVCLevel;
 
+#define VP5_IRQ_ENB 0xfe900010
+#define VP5_IRQ_STA 0xfe900014
+
 long header_processed_callback( MCVDEC_CONTEXT_T *context,
 				long 	data_type,
 				void 	*api_data,
@@ -161,12 +164,18 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	unsigned long ce_firmware_addr;
 	int num_views;
 	long ret;
+	int zero = 0;
 
 	/*** allocate memory ***/
 	pCodec = (shvpu_codec_t *)calloc(1, sizeof(shvpu_codec_t));
 	if (pCodec == NULL)
 		return -1L;
 	memset((void *)pCodec, 0, sizeof(shvpu_codec_t));
+
+	/*** workaround clear VP5_IRQ_ENB and VPU5_IRQ_STA ***/
+	vpu5_mmio_write(VP5_IRQ_ENB, (unsigned long) &zero, 1);
+	vpu5_mmio_write(VP5_IRQ_STA, (unsigned long) &zero, 1);
+
 
 	/*** initialize driver ***/
 	ret = shvpu_driver_init(&pCodec->pDriver);
