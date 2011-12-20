@@ -115,4 +115,8 @@ shvpu_avcenc_FreeBuffer(omx_base_PortType *pPort,
 OMX_ERRORTYPE
 shvpu_avcenc_ComponentRoleEnum(OMX_HANDLETYPE hComponent,
 			       OMX_U8 * cRole, OMX_U32 nIndex);
+OMX_ERRORTYPE
+shvpu_avcenc_GetExtensionIndex(OMX_HANDLETYPE hComponent,
+				OMX_STRING cParameterName,
+				OMX_INDEXTYPE *pIndexType);
 #endif

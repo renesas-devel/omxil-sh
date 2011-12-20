@@ -177,7 +177,7 @@ shvpu_avcenc_Constructor(OMX_COMPONENTTYPE * pComponent,
 	pComponent->SetParameter = shvpu_avcenc_SetParameter;
 	pComponent->GetParameter = shvpu_avcenc_GetParameter;
 	pComponent->ComponentRoleEnum = shvpu_avcenc_ComponentRoleEnum;
-	//pComponent->GetExtensionIndex = shvpu_avcenc_GetExtensionIndex;
+	pComponent->GetExtensionIndex = shvpu_avcenc_GetExtensionIndex;
 
 	/* set up default encodeing parameters */
 	shvpu_avcenc_Private->avCodec = encode_new();
@@ -815,6 +815,15 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 			ComponentParameterStructure);
 	}
 	return eError;
+}
+
+OMX_ERRORTYPE
+shvpu_avcenc_GetExtensionIndex(OMX_HANDLETYPE hComponent,
+				OMX_STRING cParameterName,
+				OMX_INDEXTYPE *pIndexType) {
+	if (!cParameterName || !pIndexType)
+		return OMX_ErrorBadParameter;
+	return lookup_ExtensionIndex(cParameterName, pIndexType);
 }
 
 OMX_ERRORTYPE
