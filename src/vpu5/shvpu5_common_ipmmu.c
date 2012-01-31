@@ -63,6 +63,7 @@ init_ipmmu(shvpu_ipmmui_t *ipmmui_data,
                 | (1 << 9));
 
 	reg = ipmmui_lock_reg(ipmmui);
+	ipmmui_write_reg(ipmmui, reg, IMCTR1, 2);
 	ipmmui_write_reg(ipmmui, reg, IMCTR2, 1);
 	ipmmui_unlock_reg(ipmmui, reg);
 
@@ -85,6 +86,7 @@ deinit_ipmmu(shvpu_ipmmui_t *ipmmui_data) {
 
 	reg = ipmmui_lock_reg(ipmmui_data->ipmmui);
 	ipmmui_write_reg(ipmmui_data->ipmmui, reg, IMCTR2, 0);
+	ipmmui_write_reg(ipmmui_data->ipmmui, reg, IMCTR1, 2);
 	ipmmui_unlock_reg(ipmmui_data->ipmmui, reg);
 
 	ipmmui_close(ipmmui_data->ipmmui);
