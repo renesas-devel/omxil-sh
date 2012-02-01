@@ -47,7 +47,8 @@ void set_meram_address(shvpu_meram_t *mdata, ICB *icb, unsigned long address);
 void finish_meram_write(shvpu_meram_t *mdata, ICB *icb);
 void finish_meram_read(shvpu_meram_t *mdata, ICB *icb);
 #else
-typedef struct shvpu_meram_t;
+typedef struct {
+} shvpu_meram_t;
 #define open_meram(x) (0)
 #define close_meram()
 #define setup_icb(a,b,c,d,e,f,g,h) (0)
