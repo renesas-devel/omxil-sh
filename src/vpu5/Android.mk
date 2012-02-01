@@ -19,21 +19,28 @@ LOCAL_PATH := $(call my-dir)
 # hw/<OVERLAY_HARDWARE_MODULE_ID>.<ro.product.board>.so
 include $(CLEAR_VARS)
 
+ifeq ($(VPU_MIDDLEWARE_PATH),)
+	VPU_MIDDLEWARE_PATH := hardware/renesas/shmobile/prebuilt/vpu5
+endif
+
 ifeq ($(TARGET_DEVICE),mackerel)
 VPU_VERSION := VPU_VERSION_5
-DECODER_COMPONENT := 1
-ENCODER_COMPONENT := 1
-MIDDLEWARE_INCLUDE_PATH := \
-		hardware/renesas/shmobile/prebuilt/vpu5/include
+VPU_DECODER_COMPONENT := true
+VPU_ENCODER_COMPONENT := true
 endif
 
 ifneq (,$(findstring $(TARGET_DEVICE),ape5r kota2))
 VPU_VERSION := VPU_VERSION_5HA
-DECODER_COMPONENT := 1
-ENCODER_COMPONENT := 1
-MIDDLEWARE_INCLUDE_PATH := \
-		hardware/renesas/shmobile/prebuilt/vpu5ha/include
+VPU_DECODER_COMPONENT := true
+VPU_ENCODER_COMPONENT := true
 endif
+
+ifeq ($(PRODUCT_VPU_VERSION),VPU_VERSION_5HD)
+VPU_VERSION := VPU_VERSION_5HA # same settings for VPU5HA and VPU5HD
+endif
+
+MIDDLEWARE_INCLUDE_PATH := $(VPU_MIDDLEWARE_PATH)/include
+MIDDLEWARE_LIB_PATH := $(VPU_MIDDLEWARE_PATH)/lib
 
 LOCAL_PRELINK_MODULE := false
 
@@ -55,7 +62,7 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_common_driver.c \
 	shvpu5_common_ext.c
 
-ifeq ($(DECODER_COMPONENT),1)
+ifeq ($(VPU_DECODER_COMPONENT),true)
 	LOCAL_SRC_FILES += \
 		shvpu5_avcdec_decode.c \
 		shvpu5_avcdec_notify.c \
@@ -64,16 +71,16 @@ ifeq ($(DECODER_COMPONENT),1)
 		shvpu5_avcdec_input.c
 	LOCAL_CFLAGS += -DDECODER_COMPONENT
 endif
-ifeq ($(ENCODER_COMPONENT),1)
+ifeq ($(VPU_ENCODER_COMPONENT),true)
 	LOCAL_SRC_FILES += \
 		shvpu5_avcenc_encode.c \
 		shvpu5_avcenc_omx.c
 	LOCAL_CFLAGS += -DENCODER_COMPONENT
 endif
 
-ifeq ($(TARGET_DEVICE),mackerel)
+ifeq ($(VPU_VERSION),VPU_VERSION_5)
 
-LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/vpu5/lib \
+LOCAL_LDFLAGS = -L$(MIDDLEWARE_LIB_PATH) \
 	-lvpu5decavc \
 	-lvpu5deccmn \
 	-lvpu5encavc \
@@ -82,8 +89,8 @@ LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/vpu5/lib \
 	-lvpu5drvhg
 endif
 
-ifneq (,$(findstring $(TARGET_DEVICE),ape5r kota2))
-LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/vpu5ha/lib \
+ifeq ($(PRODUCT_VPU_VERSION),VPU_VERSION_5HA)
+LOCAL_LDFLAGS = -L$(MIDDLEWARE_LIB_PATH) \
 	-lvpu5hadecavc -lvpu5hadeccmn \
 	-lvpu5hadrvcmn -lvpu5drv \
 	-lvpu5hadrvavcdec -lvpu5hadrvcmndec \
@@ -91,6 +98,13 @@ LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/vpu5ha/lib \
 	-lvpu5hadrvcmnenc -lvpu5haenccmn
 endif
 
+ifeq ($(PRODUCT_VPU_VERSION), VPU_VERSION_5HD)
+LOCAL_LDFLAGS = -L$(MIDDLEWARE_LIB_PATH) \
+	-lvpu5hddecavc -lvpu5hddeccmn \
+	-lvpu5hadrvcmn -lvpu5drv \
+	-lvpu5hddrvavcdec -lvpu5hddrvcmndec
+VPU_VERSION := VPU_VERSION_5HA
+endif
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libshvpu5avc
@@ -190,7 +204,7 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udf
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROI -D$(VPU_VERSION)D
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROI -D$(VPU_VERSION)
 
 ifeq ($(VPU_DECODE_TL_CONV), true)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
@@ -205,7 +219,7 @@ ifeq ($(VPU_DECODE_WITH_MERAM), true)
 endif
 include $(BUILD_SHARED_LIBRARY)
 
-ifeq ($(DECODER_COMPONENT),1)
+ifeq ($(VPU_DECODER_COMPONENT),true)
 include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 
@@ -230,7 +244,7 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfdec
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROI -D$(VPU_VERSION)D
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROI -D$(VPU_VERSION)
 
 ifeq ($(VPU_DECODE_TL_CONV), true)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libmeram/include
@@ -248,7 +262,7 @@ endif
 include $(BUILD_SHARED_LIBRARY)
 endif
 
-ifeq ($(ENCODER_COMPONENT),1)
+ifeq ($(VPU_ENCODER_COMPONENT),true)
 include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 
