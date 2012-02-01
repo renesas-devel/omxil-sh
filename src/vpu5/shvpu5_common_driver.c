@@ -38,10 +38,14 @@
 #include "mciph_hg.h"
 #elif defined(VPU_VERSION_5HA)
 #include "mciph_ip0_cmn.h"
+#ifdef DECODER_COMPONENT
 #include "mciph_ip0_dec.h"
 #include "mciph_ip0_avcdec.h"
+#endif
+#ifdef ENCODER_COMPONENT
 #include "mciph_ip0_enc.h"
 #include "mciph_ip0_avcenc.h"
+#endif
 #endif
 
 static shvpu_driver_t *pDriver;
