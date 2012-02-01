@@ -38,13 +38,14 @@ static UIOMux *uiomux = NULL;
 
 static pthread_mutex_t uiomux_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int ref_cnt = 0;
+static unsigned long uio_reg_base = 0;
 int
 uio_interrupt_clear()
 {
 	unsigned int *vp5_irq_sta;
 
 	vp5_irq_sta = uiomux_phys_to_virt(uiomux,
-					  UIOMUX_SH_VPU, 0xfe900014);
+					  UIOMUX_SH_VPU, uio_reg_base + 0x14);
 	if (vp5_irq_sta == NULL)
 		return -1;
 
@@ -167,15 +168,18 @@ uio_init(char *name, unsigned long *paddr_reg,
 	}
 	ref_cnt++;
 	pthread_mutex_unlock(&uiomux_mutex);
-	uiomux_get_mmio(uiomux, UIOMUX_SH_VPU, paddr_reg, NULL, NULL);
+	uiomux_get_mmio(uiomux, UIOMUX_SH_VPU, &uio_reg_base, NULL, NULL);
 	uiomux_get_mem(uiomux, UIOMUX_SH_VPU, paddr_pmem,
 		       (unsigned long *)size_pmem, NULL);
 
 	/* clear register save on init */
 	save[0] = save[1] = save[2] = 0;
+	if (paddr_reg)
+		*paddr_reg = uio_reg_base;
 
 	return (void *)uiomux;
 }
+
 
 void
 uio_deinit() {
@@ -252,16 +256,16 @@ vpu5_mmio_read(unsigned long src_addr,
 	src_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, src_addr);
 	while (count > 0) {
 		val = *(unsigned int *)src_vaddr;
-		switch (src_addr) {
-		case 0xfe900010:
+		switch (src_addr - uio_reg_base) {
+		case 0x10:
 			logd("%s(VP5_IRQ_ENB) = %08x\n",
 			       __FUNCTION__, val);
 			break;
-		case 0xfe900014:
+		case 0x14:
 			logd("%s(VP5_IRQ_STA) = %08x\n",
 			       __FUNCTION__, val);
 			break;
-		case 0xfe900020:
+		case 0x20:
 			logd("%s(VP5_STATUS) = %08x\n",
 			       __FUNCTION__, val);
 			break;
@@ -292,15 +296,15 @@ vpu5_mmio_write(unsigned long dst_addr,
 	while (count > 0) {
 		val = *(unsigned int *)reg_table;
 		switch (dst_addr) {
-		case 0xfe900010:
+		case 0x10:
 			logd("%s(VP5_IRQ_ENB, %08x)\n",
 			       __FUNCTION__, val);
 			break;
-		case 0xfe900014:
+		case 0x14:
 			logd("%s(VP5_IRQ_STA, %08x)\n",
 			       __FUNCTION__, val);
 			break;
-		case 0xfe900020:
+		case 0x20:
 			logd("%s(VP5_STATUS, %08x)\n",
 			       __FUNCTION__, val);
 			break;
@@ -330,7 +334,7 @@ vpu5_set_imask(long mask_enable, long now_interrupt)
 		return;
 
 	vp5_irq_enb = uiomux_phys_to_virt(uiomux,
-					  UIOMUX_SH_VPU, 0xfe900010);
+					  UIOMUX_SH_VPU, uio_reg_base + 0x10);
 	if (vp5_irq_enb == NULL)
 		return;
 
@@ -370,6 +374,9 @@ uio_phys_to_virt(unsigned long paddr)
 	vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, paddr);
 
 	return vaddr;
+}
+unsigned long uio_register_base(void) {
+	return uio_reg_base;
 }
 
 void

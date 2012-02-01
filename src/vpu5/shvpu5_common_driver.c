@@ -126,7 +126,7 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 		goto init_failed;
 	}
 
-	pDriver->vpu5Init.vpu_base_address		= 0xfe900000;
+	pDriver->vpu5Init.vpu_base_address		= uio_register_base();
 	pDriver->vpu5Init.vpu_image_endian		= MCIPH_LIT;
 	pDriver->vpu5Init.vpu_stream_endian		= MCIPH_LIT;
 	pDriver->vpu5Init.vpu_firmware_endian		= MCIPH_LIT;

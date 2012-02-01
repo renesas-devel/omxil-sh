@@ -189,6 +189,13 @@ uio_virt_to_phys(void *context, long mode, unsigned long addr);
 void *
 uio_phys_to_virt(unsigned long paddr);
 
+/** get the base address of the VPU registers
+  *
+  * @return physical base address of VPU registers
+  */
+unsigned long
+uio_register_base(void);
+
 /** Lock access to VPU
   *
   */
