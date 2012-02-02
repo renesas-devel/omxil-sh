@@ -257,6 +257,8 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 	/* initialize a vpu uio */
 	uio_init("VPU", &reg, &shvpu_avcdec_Private->uio_start_phys, &memsz);
+	uio_get_virt_memory(&shvpu_avcdec_Private->uio_start,
+			&shvpu_avcdec_Private->uio_size);
 
 	loge("reg = %x, mem = %x, memsz = %d\n",
 	     reg, shvpu_avcdec_Private->uio_start_phys, memsz);
@@ -352,8 +354,6 @@ shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
 	int ret;
 
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec initialized\n");
-	uio_get_virt_memory(&shvpu_avcdec_Private->uio_start,
-			&shvpu_avcdec_Private->uio_size);
 
 	uiomux_lock_vpu();
 	/* initialize the decoder middleware */
