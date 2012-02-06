@@ -36,7 +36,8 @@ VPU_ENCODER_COMPONENT := true
 endif
 
 ifeq ($(PRODUCT_VPU_VERSION),VPU_VERSION_5HD)
-VPU_VERSION := VPU_VERSION_5HA # same settings for VPU5HA and VPU5HD
+# same settings for VPU5HA and VPU5HD
+VPU_VERSION := VPU_VERSION_5HD -DVPU_VERSION_5HA
 endif
 
 MIDDLEWARE_INCLUDE_PATH := $(VPU_MIDDLEWARE_PATH)/include
@@ -101,9 +102,8 @@ endif
 ifeq ($(PRODUCT_VPU_VERSION), VPU_VERSION_5HD)
 LOCAL_LDFLAGS = -L$(MIDDLEWARE_LIB_PATH) \
 	-lvpu5hddecavc -lvpu5hddeccmn \
-	-lvpu5hadrvcmn -lvpu5drv \
+	-lvpu5hddrvcmn -lvpu5drv \
 	-lvpu5hddrvavcdec -lvpu5hddrvcmndec
-VPU_VERSION := VPU_VERSION_5HA
 endif
 
 LOCAL_MODULE_TAGS := optional
