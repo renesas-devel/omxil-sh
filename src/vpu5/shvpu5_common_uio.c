@@ -35,17 +35,53 @@
 #include <sys/file.h>
 
 static UIOMux *uiomux = NULL;
+static const char *uio_names[] = {
+	"VPU",
+	"VPC",
+	NULL
+};
+
+#define VPU_UIO	(1 << 0)
+#define VPC_UIO	(1 << 1)
+
 
 static pthread_mutex_t uiomux_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int ref_cnt = 0;
 static unsigned long uio_reg_base = 0;
+
+#define VPCCTL	4
+#define VPCSTS	8
+
+#define VPCCTL_ENB	(1 << 0)
+#define VPCCTL_CLR	(1 << 1)
+#define VPCCTL_LWSWP	(1 << 12)
+
+static uint8_t *vpc_regs = NULL;
+
+int vpc_init(void) {
+	unsigned long tmp;
+	uiomux_get_mmio(uiomux, VPC_UIO, NULL, NULL, &vpc_regs);
+	tmp = *((unsigned long *) (vpc_regs + VPCCTL));
+	*((unsigned long *) (vpc_regs + VPCCTL)) =
+		tmp | VPCCTL_ENB | VPCCTL_CLR | VPCCTL_LWSWP;
+	return 0;
+}
+
+int vpc_clear(void) {
+	unsigned long tmp;
+	tmp = *((unsigned long *) (vpc_regs + VPCCTL));
+	*((unsigned long *) (vpc_regs + VPCCTL)) =
+		tmp | VPCCTL_CLR;
+	return 0;
+}
+
 int
 uio_interrupt_clear()
 {
 	unsigned int *vp5_irq_sta;
 
 	vp5_irq_sta = uiomux_phys_to_virt(uiomux,
-					  UIOMUX_SH_VPU, uio_reg_base + 0x14);
+					  VPU_UIO, uio_reg_base + 0x14);
 	if (vp5_irq_sta == NULL)
 		return -1;
 
@@ -58,9 +94,9 @@ pmem_alloc(size_t size, int align, unsigned long *paddr)
 {
 	void *vaddr;
 
-	vaddr = uiomux_malloc(uiomux, UIOMUX_SH_VPU, size, align);
+	vaddr = uiomux_malloc(uiomux, VPU_UIO, size, align);
 	if (vaddr && paddr)
-		*paddr = uiomux_virt_to_phys(uiomux, UIOMUX_SH_VPU, vaddr);
+		*paddr = uiomux_virt_to_phys(uiomux, VPU_UIO, vaddr);
 
 	return vaddr;
 }
@@ -68,14 +104,14 @@ pmem_alloc(size_t size, int align, unsigned long *paddr)
 void
 pmem_free(void *vaddr, size_t size)
 {
-	return uiomux_free(uiomux, UIOMUX_SH_VPU, vaddr, size);
+	return uiomux_free(uiomux, VPU_UIO, vaddr, size);
 }
 
 void
 phys_pmem_free(unsigned long paddr, size_t size)
 {
-	return uiomux_free(uiomux, UIOMUX_SH_VPU,
-		uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, paddr), size);
+	return uiomux_free(uiomux, VPU_UIO,
+		uiomux_phys_to_virt(uiomux, VPU_UIO, paddr), size);
 }
 static void *
 uio_int_handler(void *arg)
@@ -100,7 +136,7 @@ uio_int_handler(void *arg)
 
 	while (uiomux && !*exit_flag) {
 		logd("wait for an interrupt...\n");
-		ret = uiomux_sleep(uiomux, UIOMUX_SH_VPU);
+		ret = uiomux_sleep(uiomux, VPU_UIO);
 		if (ret < 0) {
 			break;
 		}
@@ -113,7 +149,7 @@ uio_int_handler(void *arg)
 }
 void
 uio_wakeup() {
-	uiomux_wakeup(uiomux, UIOMUX_SH_VPU);
+	uiomux_wakeup(uiomux, VPU_UIO);
 }
 
 void
@@ -161,22 +197,24 @@ uio_init(char *name, unsigned long *paddr_reg,
 
 	pthread_mutex_lock(&uiomux_mutex);
 	if (!uiomux) {
-		uiores = uiomux_query();
+/*		uiores = uiomux_query();
 		if (!(uiores & UIOMUX_SH_VPU))
-			return NULL;
-		uiomux = uiomux_open();
+			return NULL;*/
+		uiomux = uiomux_open_named(uio_names);
 	}
 	ref_cnt++;
 	pthread_mutex_unlock(&uiomux_mutex);
-	uiomux_get_mmio(uiomux, UIOMUX_SH_VPU, &uio_reg_base, NULL, NULL);
-	uiomux_get_mem(uiomux, UIOMUX_SH_VPU, paddr_pmem,
+	uiomux_get_mmio(uiomux, VPU_UIO, &uio_reg_base, NULL, NULL);
+	uiomux_get_mem(uiomux, VPU_UIO, paddr_pmem,
 		       (unsigned long *)size_pmem, NULL);
 
 	/* clear register save on init */
 	save[0] = save[1] = save[2] = 0;
 	if (paddr_reg)
 		*paddr_reg = uio_reg_base;
-
+#if VPU_VERSION_5HD
+	vpc_init();
+#endif
 	return (void *)uiomux;
 }
 
@@ -194,7 +232,7 @@ uio_deinit() {
 
 int
 uio_get_virt_memory(void **address, unsigned long *size) {
-	uiomux_get_mem(uiomux, UIOMUX_SH_VPU, NULL,
+	uiomux_get_mem(uiomux, VPU_UIO, NULL,
 		       size, address);
 	return 0;
 }
@@ -209,7 +247,7 @@ vpu5_mem_read(unsigned long src_addr,
 	void *src_vaddr;
 	logd("%s(%lx, %lx, %ld) invoked.\n", __FUNCTION__,
 	       src_addr, dst_addr, count);
-	src_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, src_addr);
+	src_vaddr = uiomux_phys_to_virt(uiomux, VPU_UIO, src_addr);
 	if ((unsigned long)src_vaddr != dst_addr)
 		memcpy((void *)dst_addr, src_vaddr, count);
 	else
@@ -230,7 +268,7 @@ vpu5_mem_write(unsigned long src_addr,
 
 	logd("%s(%lx, %lx, %ld) invoked.\n", __FUNCTION__,
 	     src_addr, dst_addr, count);
-	dst_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, dst_addr);
+	dst_vaddr = uiomux_phys_to_virt(uiomux, VPU_UIO, dst_addr);
 	if (src_addr != (unsigned long)dst_vaddr)
 		memcpy(dst_vaddr, (void *)src_addr, count);
 	else
@@ -253,7 +291,7 @@ vpu5_mmio_read(unsigned long src_addr,
 
 	logd("%s(%08lx, %08lx, %ld) invoked.\n", __FUNCTION__,
 	     src_addr, reg_table, size);
-	src_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, src_addr);
+	src_vaddr = uiomux_phys_to_virt(uiomux, VPU_UIO, src_addr);
 	while (count > 0) {
 		val = *(unsigned int *)src_vaddr;
 		switch (src_addr - uio_reg_base) {
@@ -292,10 +330,10 @@ vpu5_mmio_write(unsigned long dst_addr,
 
 	logd("%s(%08lx, %08lx, %ld) invoked.\n", __FUNCTION__,
 	     dst_addr, reg_table, size);
-	dst_vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, dst_addr);
+	dst_vaddr = uiomux_phys_to_virt(uiomux, VPU_UIO, dst_addr);
 	while (count > 0) {
 		val = *(unsigned int *)reg_table;
-		switch (dst_addr) {
+		switch (dst_addr - uio_reg_base) {
 		case 0x10:
 			logd("%s(VP5_IRQ_ENB, %08x)\n",
 			       __FUNCTION__, val);
@@ -334,7 +372,7 @@ vpu5_set_imask(long mask_enable, long now_interrupt)
 		return;
 
 	vp5_irq_enb = uiomux_phys_to_virt(uiomux,
-					  UIOMUX_SH_VPU, uio_reg_base + 0x10);
+					  VPU_UIO, uio_reg_base + 0x10);
 	if (vp5_irq_enb == NULL)
 		return;
 
@@ -359,7 +397,7 @@ uio_virt_to_phys(void *context, long mode, unsigned long addr)
 	       (mode == MCIPH_DEC) ? "MCIPH_DEC" : "MCIPH_ENC",
 	       addr);
 
-	paddr = uiomux_virt_to_phys(uiomux, UIOMUX_SH_VPU, (void *)addr);
+	paddr = uiomux_virt_to_phys(uiomux, VPU_UIO, (void *)addr);
 
 	logd("%lx\n", paddr);
 
@@ -371,7 +409,7 @@ uio_phys_to_virt(unsigned long paddr)
 {
 	void *vaddr;
 
-	vaddr = uiomux_phys_to_virt(uiomux, UIOMUX_SH_VPU, paddr);
+	vaddr = uiomux_phys_to_virt(uiomux, VPU_UIO, paddr);
 
 	return vaddr;
 }
@@ -382,12 +420,12 @@ unsigned long uio_register_base(void) {
 void
 uiomux_lock_vpu() {
 	logd("Locking VPU in thread %lx\n", pthread_self());
-	uiomux_lock(uiomux, UIOMUX_SH_VPU);
+	uiomux_lock(uiomux, VPU_UIO);
 	logd("Locked: %lx\n", pthread_self());
 }
 
 void
 uiomux_unlock_vpu() {
 	logd("Unlocking VPU in thread %lx\n", pthread_self());
-	uiomux_unlock(uiomux, UIOMUX_SH_VPU);
+	uiomux_unlock(uiomux, VPU_UIO);
 }

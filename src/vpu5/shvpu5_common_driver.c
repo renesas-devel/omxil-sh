@@ -149,6 +149,9 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 #endif
 
 	pDriver->apiTbl.cmn_api_tbl 	= &mciph_ip0_cmn_api_tbl;
+#if defined(VPU_VERSION_5HD)
+	pDriver->ip0Init.drv_extensions = 0x3;
+#endif
 #elif defined(VPU_VERSION_5)
 	memcpy(&(pDriver->apiTbl), &mciph_hg_api_tbl, sizeof(mciph_hg_api_tbl));
 #endif

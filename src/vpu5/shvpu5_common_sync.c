@@ -127,6 +127,9 @@ void
 mciph_uf_ce_start(void *context, long mode, void *start_info)
 {
 	logd("%s invoked.\n", __FUNCTION__);
+#if defined(VPU_VERSION_5HD)
+	vpc_start_frame();
+#endif
 #ifdef MERAM_ENABLE
 	if (mode == MCIPH_DEC) {
 		MCVDEC_CONTEXT_T *dec_context = (MCVDEC_CONTEXT_T *)context;

@@ -55,3 +55,7 @@ mciph_uf_set_imask(long mask_enable, long now_interrupt)
 {
 	vpu5_set_imask(mask_enable, now_interrupt);
 }
+
+int vpc_start_frame() {
+	return vpc_clear();
+}
