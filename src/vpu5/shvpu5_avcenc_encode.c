@@ -34,7 +34,7 @@
 #include "mciph.h"
 #if defined(VPU_VERSION_5)
 #include "mciph_hg.h"
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 #include "mciph_ip0_cmn.h"
 #include "mciph_ip0_enc.h"
 #endif
@@ -117,7 +117,7 @@ encode_new()
 	pCodec->cmnProp.max_GOP_length = 30;
 	pCodec->cmnProp.B_pic_mode = 0;
 	pCodec->cmnProp.num_ref_frames = 1;
-#if defined(VPU_VERSION_5HA)
+#if defined(VPU5HA_SERIES)
 	pCodec->cmnProp.hrc_mode = MCVENC_OFF;
 	pCodec->cmnProp.num_views = 1;
 	pCodec->cmnProp.max_rate_delay = 5;
@@ -139,7 +139,7 @@ encode_new()
 	pCodec->avcOpt.pps_transform_8x8_mode_flag = AVCENC_OFF;
 	pCodec->avcOpt.slh_slice_type_mode = AVCENC_SLICE_TYPE_A;
 	pCodec->avcOpt.slh_disable_deblocking_filter_idc = AVCENC_DBF_MODE_0;
-#if defined(VPU_VERSION_5HA)
+#if defined(VPU5HA_SERIES)
 	pCodec->avcOpt.pps_num = 1;
 #endif
 
@@ -158,7 +158,7 @@ encode_init(shvpu_avcenc_codec_t *pCodec)
 	int num_views;
 #if defined(VPU_VERSION_5)
 	num_views = 1;
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 	num_views = pCmnProp->num_views;
 
 #endif
@@ -171,7 +171,7 @@ encode_init(shvpu_avcenc_codec_t *pCodec)
 	extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
 #if defined(VPU_VERSION_5)
 	pCmnWorkMem->wbuf_enc.work_area_size = 0x5800,  /* 20 + 2KiB */
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 	pCmnWorkMem->wbuf_enc.work_area_size = 12000 + (1024 * num_views) +
 		(1024 * pCmnProp->max_rate_delay * num_views) + (10 * 1024);
 #endif
@@ -229,7 +229,7 @@ encode_init(shvpu_avcenc_codec_t *pCodec)
 	}
 #if defined(VPU_VERSION_5)
 	pCmnWorkMem->ir_info.ir_info_size = 4800;
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 	pCmnWorkMem->ir_info.ir_info_size = 6656;
 #endif
 	pCmnWorkMem->ir_info.ir_info_addr = (unsigned long)
@@ -243,7 +243,7 @@ encode_init(shvpu_avcenc_codec_t *pCodec)
 #if defined(VPU_VERSION_5)
 	pCmnWorkMem->mv_info_size = ((16 * mb_width *
 			 ((mb_height + 1) / 2) + 255) / 256) * 256;
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 	pCmnWorkMem->mv_info_size = ((16 * mb_width *
 			 ((mb_height + 1) / 2) + 511) / 512) * 512 + 512;
 #endif
@@ -290,7 +290,7 @@ encode_init(shvpu_avcenc_codec_t *pCodec)
 			pCodec->sps_constraint_flags[2]
 		pAvcOpt->sps_constraint_set3_flag =
 			pCodec->sps_constraint_flags[3]
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 		memcpy(&pAvcOpt->sps_constraint_set_flag,
 			&pCodec->sps_constraint_flags,
 			sizeof(pCodec->sps_constraint_flags));
@@ -510,7 +510,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 	head.buff_addr = pBuffer;
 #if defined(VPU_VERSION_5)
 	ret2 = avcenc_put_PPS(context, &head);
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 	ret2 = avcenc_put_PPS(context, 0, &head);
 #endif
 	logd("avcenc_put_PPS = %d\n", ret2);
@@ -537,7 +537,7 @@ encode_setqmatrix(MCVENC_CONTEXT_T *pContext)
 
 #if defined(VPU_VERSION_5)
 	ret = avcenc_set_Q_matrix(pContext, &qmat);
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 	ret = avcenc_set_Q_matrix(pContext, AVCENC_QMAT_SPS_IDX, &qmat);
 #endif
 	if (ret < 0)

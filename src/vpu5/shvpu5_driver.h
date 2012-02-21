@@ -30,7 +30,7 @@
 #include <bellagio/tsemaphore.h>
 #include "mciph.h"
 #include "uiomux/uiomux.h"
-#if defined(VPU_VERSION_5HA)
+#if defined(VPU5HA_SERIES)
 #include "mciph_ip0_cmn.h"
 #endif
 
@@ -40,7 +40,7 @@ typedef struct {
 	/** @param mode for VPU5HG video decoder */
 	MCIPH_WORK_INFO_T	wbufVpu5;
 	MCIPH_VPU5_INIT_T	vpu5Init;
-#if defined(VPU_VERSION_5HA)
+#if defined(VPU5HA_SERIES)
 	MCIPH_IP0_INIT_T	ip0Init;
 #endif
 	UIOMux*			uiomux;

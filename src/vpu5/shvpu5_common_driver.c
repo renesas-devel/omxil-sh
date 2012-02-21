@@ -36,7 +36,7 @@
 #include "shvpu5_common_log.h"
 #if defined(VPU_VERSION_5)
 #include "mciph_hg.h"
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 #include "mciph_ip0_cmn.h"
 #ifdef DECODER_COMPONENT
 #include "mciph_ip0_dec.h"
@@ -112,7 +112,7 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 	memset((void *)pDriver, 0, sizeof(shvpu_driver_t));
 
 	/*** initialize vpu ***/
-#if defined(VPU_VERSION_5HA)
+#if defined(VPU5HA_SERIES)
 	pDriver->wbufVpu5.work_size = MCIPH_IP0_WORKAREA_SIZE;
 #elif defined(VPU_VERSION_5)
 	pDriver->wbufVpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
@@ -135,7 +135,7 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 	pDriver->vpu5Init.vpu_constrained_mode		= MCIPH_OFF;
 	pDriver->vpu5Init.vpu_address_mode		= MCIPH_ADDR_32BIT;
 	pDriver->vpu5Init.vpu_reset_mode			= MCIPH_RESET_SOFT;
-#if defined(VPU_VERSION_5HA)
+#if defined(VPU5HA_SERIES)
 	pDriver->vpu5Init.vpu_version			= MCIPH_NA;
 	pDriver->vpu5Init.vpu_ext_init			= &(pDriver->ip0Init);
 

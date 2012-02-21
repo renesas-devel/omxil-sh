@@ -33,7 +33,7 @@
 #include "mciph.h"
 #if defined(VPU_VERSION_5)
 #include "mciph.h"
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 #include "mciph_ip0_cmn.h"
 #include "mciph_ip0_dec.h"
 #endif
@@ -198,7 +198,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		.forced_VclHrdBpPresentFlag = MCVDEC_OFF,
 		.forced_NalHrdBpPresentFlag = MCVDEC_OFF,
 		.forced_CpbDpbDelaysPresentFlag = MCVDEC_OFF,
-#if defined(VPU_VERSION_5HA)
+#if defined(VPU5HA_SERIES)
 		.intra_pred_conceal_mode = MCVDEC_INTRA_CONCEAL_DC,
 		.need_search_sc = MCVDEC_NA,
 		.mv_info_mode = MCVDEC_ALL_OUTPUT,
@@ -222,7 +222,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		.func_userdata_callback		= notify_userdata,
 		.func_imd_buffering_ready	= notify_buffering,
 		.virt_to_phys_func		= uio_virt_to_phys,
-#if defined(VPU_VERSION_5HA)
+#if defined(VPU5HA_SERIES)
 		.buffering_pic_cnt		= BUFFERING_COUNT,
 		.ce_config		= MCVDEC_2CE,
 		.num_views		= 1,
@@ -231,7 +231,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	static const MCVDEC_WORK_INFO_T _wbuf_dec_def = {
 #if defined(VPU_VERSION_5)
 		.work_area_size = 0xea000,  /* 104 + 832KiB */
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 		.work_area_size = 0x190000,  /* 2048 + 915KiB + 630KiB */
 #endif
 	};
@@ -264,7 +264,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 #if defined(VPU_VERSION_5)
 	pCodec->fw.ce_firmware_addr = ce_firmware_addr;
 	num_views = 1;
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 	pCodec->fw.ce_firmware_addr[0] = ce_firmware_addr;
 	num_views = pCodec->cprop.num_views;
 #endif
@@ -393,7 +393,7 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 #if defined(VPU_VERSION_5)
 		phys_pmem_free(pCodec->fw.ce_firmware_addr,
 			pCodec->fw_size.ce_firmware_size);
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 		phys_pmem_free(pCodec->fw.ce_firmware_addr[0],
 			pCodec->fw_size.ce_firmware_size);
 #endif

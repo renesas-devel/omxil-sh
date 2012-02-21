@@ -40,7 +40,7 @@
 
 #if defined(VPU_VERSION_5)
 #define SPS_FLAG_COUNT 4
-#elif defined(VPU_VERSION_5HA)
+#elif defined(VPU5HA_SERIES)
 #define SPS_FLAG_COUNT AVCENC_CNST_NOEL
 #endif
 
