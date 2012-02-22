@@ -166,6 +166,10 @@ LOCAL_SRC_FILES := 	\
 	shvpu5_common_uio.c \
 	shvpu5_common_log.c
 
+ifeq ($(VPU_MEMORY_TYPE), ipmmui)
+	LOCAL_SRC_FILES += shvpu5_memory_ipmmui.c
+endif
+
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5uio
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DANDROID $(VPU_VERSION_DEFS)

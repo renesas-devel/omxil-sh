@@ -19,3 +19,14 @@ $(error Unknown VPU setting: $(PRODUCT_VPU_VERSION))
 endif
 
 VPU_VERSION_DEFS += -D$(PRODUCT_VPU_VERSION) -D$(VPU_SERIES)
+
+#VPU memory type: IPMMUI allocation or UIOMUX(default) allocation
+ifeq ($(VPU_MEMORY_TYPE),)
+	VPU_MEMORY_TYPE := uio
+endif
+ifeq ($(VPU_MEMORY_TYPE),uio)
+	VPU_VERSION_DEFS += -DVPU_UIO_MEMORY
+endif
+ifeq ($(VPU_MEMORY_TYPE),ipmmui)
+	VPU_VERSION_DEFS += -DVPU_IPMMU_MEMORY
+endif
