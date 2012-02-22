@@ -289,6 +289,7 @@ uio_create_int_handle(pthread_t *thid,
 	return ret;
 }
 
+static unsigned int save[2 + 1];
 /**
  *
  */
@@ -356,6 +357,9 @@ uio_init(char *name, unsigned long *paddr_reg,
 		*paddr_pmem = ipmmui_paddr;
 	if (size_pmem)
 		*size_pmem = ipmmui_size;
+
+	/* clear register save on init */
+	save[0] = save[1] = save[2] = 0;
 
 	return (void *)uiomux;
 ipmmui_error:
@@ -521,7 +525,6 @@ vpu5_mmio_write(unsigned long dst_addr,
 void
 vpu5_set_imask(long mask_enable, long now_interrupt)
 {
-	static unsigned int save[2 + 1];
 	unsigned int *vp5_irq_enb;
 
 	logd("%s(%lx, %lx) invoked.\n", __FUNCTION__,
