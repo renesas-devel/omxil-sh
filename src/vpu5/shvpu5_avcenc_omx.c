@@ -31,6 +31,9 @@
 #include "shvpu5_avcenc.h"
 #include "shvpu5_common_log.h"
 #include <OMX_Video.h>
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/syscall.h>
 
 /** Maximum Number of Video Component Instance*/
 #define MAX_COMPONENT_VIDEOENC 1
@@ -223,7 +226,7 @@ OMX_ERRORTYPE
 shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 {
 	omx_base_video_PortType *inPort;
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	int ret, i;
 	void *vaddr;
 
@@ -277,7 +280,7 @@ shvpu_avcenc_vpuLibDeInit(shvpu_avcenc_PrivateType *
 			  shvpu_avcenc_Private)
 {
 	int i;
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 
 	/*make sure that we end the encoder if encoding was
           forcefully terminated */
@@ -392,7 +395,7 @@ shvpu_avcenc_Deinit(OMX_COMPONENTTYPE * pComponent)
 }
 
 static OMX_ERRORTYPE
-shvpu_avcenc_checkParameters(shvpu_codec_t *pCodec) {
+shvpu_avcenc_checkParameters(shvpu_avcenc_codec_t *pCodec) {
 	if (pCodec->cmnProp.B_pic_mode) {
 		if (pCodec->avcOpt.sps_profile_idc == AVCENC_BASELINE)
 			return OMX_ErrorUnsupportedSetting;
@@ -556,7 +559,7 @@ shvpu_avcenc_SetProfileLevel(shvpu_avcenc_PrivateType *
 		{ OMX_VIDEO_AVCLevel41, 41 },
 		{ 0, 0 },
 	};
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	int i, ret;
 
 	/* profile */
@@ -591,7 +594,7 @@ shvpu_avcenc_SetAvcTypeParameters(shvpu_avcenc_PrivateType *
 				  shvpu_avcenc_Private,
 				  OMX_VIDEO_PARAM_AVCTYPE *pAvcType)
 {
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	OMX_ERRORTYPE err;
 	int ret;
 
@@ -619,7 +622,7 @@ shvpu_avcenc_SetAvcTypeParameters(shvpu_avcenc_PrivateType *
 }
 
 static OMX_ERRORTYPE
-shvpu_avcenc_SetBitrateParameters(shvpu_codec_t *pCodec,
+shvpu_avcenc_SetBitrateParameters(shvpu_avcenc_codec_t *pCodec,
 				  OMX_VIDEO_PARAM_BITRATETYPE *pBRType)
 {
 	const struct {
@@ -1407,7 +1410,7 @@ generateHeader(OMX_COMPONENTTYPE * pComponent,
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
 		pComponent->pComponentPrivate;
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	int nFilledLen;
 
 	/* put the stream header if this is the first output */
@@ -1430,9 +1433,9 @@ static inline void
 saveBufferMetadata(queue_t *pBMIQueue, int id,
 		   OMX_BUFFERHEADERTYPE *pInBuffer)
 {
-	buffer_metainfo_t *pBMI;
+	buffer_avcenc_metainfo_t *pBMI;
 
-	pBMI = calloc(1, sizeof(buffer_metainfo_t));
+	pBMI = calloc(1, sizeof(buffer_avcenc_metainfo_t));
 	if (pBMI == NULL) {
 		loge("calloc for buffer_metainfo failed.\n");
 		return;
@@ -1455,13 +1458,13 @@ static inline void
 applyBufferMetadata(queue_t *pBMIQueue, int id,
 		    OMX_BUFFERHEADERTYPE *pOutBuffer)
 {
-	buffer_metainfo_t *pBMI;
+	buffer_avcenc_metainfo_t *pBMI;
 
-	while ((pBMI = (buffer_metainfo_t *)shvpu_peek(pBMIQueue)) != NULL) {
+	while ((pBMI = (buffer_avcenc_metainfo_t *)shvpu_peek(pBMIQueue)) != NULL) {
 		if (pBMI->id > id)
 			break;
 
-		pBMI = (buffer_metainfo_t *)shvpu_dequeue(pBMIQueue);
+		pBMI = (buffer_avcenc_metainfo_t *)shvpu_dequeue(pBMIQueue);
 		if (pBMI->id == id) {
 			pOutBuffer->nTimeStamp = pBMI->nTimeStamp;
 			pOutBuffer->nFlags = pBMI->nFlags;
@@ -1482,7 +1485,7 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
 		pComponent->pComponentPrivate;
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	shvpu_avcenc_outbuf_t *pStreamBuffer;
 	size_t nAvailLen, nFilledLen;
 	OMX_U8 *pBuffer;
@@ -1641,7 +1644,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private;
 	omx_base_video_PortType *inPort;
-	shvpu_codec_t *pCodec;
+	shvpu_avcenc_codec_t *pCodec;
 	void *pConsumed;
 	OMX_ERRORTYPE err = OMX_ErrorNone;
 	unsigned long width, height;

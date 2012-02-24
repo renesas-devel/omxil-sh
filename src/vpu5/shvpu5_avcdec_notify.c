@@ -36,7 +36,7 @@ notify_buffering(MCVDEC_CONTEXT_T *context, long status)
 {
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 		(shvpu_avcdec_PrivateType *)context->user_info;
-	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	shvpu_avcdec_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 
 	logd("%s(%ld) invoked.\n", __FUNCTION__, status);
 	pthread_mutex_lock(&pCodec->mutex_buffering);

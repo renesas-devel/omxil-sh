@@ -51,7 +51,7 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 {
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 		(shvpu_avcdec_PrivateType *)context->user_info;
-	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	shvpu_avcdec_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 	queue_t *pSIQueue = pCodec->pSIQueue;
 	si_element_t *si;
 	int i;
@@ -137,12 +137,12 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
 	return MCVDEC_NML_END;
 }
 
-static buffer_metainfo_t *
+static buffer_avcdec_metainfo_t *
 save_omx_buffer_metainfo(OMX_BUFFERHEADERTYPE *pBuffer)
 {
-	buffer_metainfo_t *pBMI;
+	buffer_avcdec_metainfo_t *pBMI;
 
-	pBMI = calloc(1, sizeof(buffer_metainfo_t));
+	pBMI = calloc(1, sizeof(buffer_avcdec_metainfo_t));
 	if (pBMI == NULL) {
 		loge("bmi alloc failed.\n");
 		return NULL;
@@ -175,14 +175,14 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 		(shvpu_avcdec_PrivateType *)context->user_info;
 	int i, j;
 	MCVDEC_STRM_INFO_T *pStrmInfo;
-	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	shvpu_avcdec_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
 	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
 	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
 	queue_t *pSIQueue = pCodec->pSIQueue;
 	int *pFrameCount = &pCodec->frameCount;
 	pic_t *pPic;
 	nal_t *nal;
-	buffer_metainfo_t *pBMI = NULL;
+	buffer_avcdec_metainfo_t *pBMI = NULL;
 	size_t size, len, uioBufSize;
 	OMX_U32 offDst, offSrc;
 	OMX_U8 *pData, *uioBuf, *pBuf; 

@@ -89,27 +89,27 @@ typedef struct {
 	unsigned long		avcOptSet;
 	long			sps_constraint_flags[SPS_FLAG_COUNT];
 	shvpu_work_memory_t 	cmnWorkMem;
-} shvpu_codec_t;
+} shvpu_avcenc_codec_t;
 
 int logd(const char *format, ...);
 int loge(const char *format, ...);
 
-shvpu_codec_t *
+shvpu_avcenc_codec_t *
 encode_new();
 long
-encode_init(shvpu_codec_t *pCodec);
+encode_init(shvpu_avcenc_codec_t *pCodec);
 int
-encode_set_profile(shvpu_codec_t *pCodec, int profile_id);
+encode_set_profile(shvpu_avcenc_codec_t *pCodec, int profile_id);
 int
-encode_set_level(shvpu_codec_t *pCodec, int level_id, int is1b);
+encode_set_level(shvpu_avcenc_codec_t *pCodec, int level_id, int is1b);
 int
-encode_set_options(shvpu_codec_t *pCodec, int num_ref_frames,
+encode_set_options(shvpu_avcenc_codec_t *pCodec, int num_ref_frames,
 		   int max_GOP_length, int num_b_frames,
 		   int isCABAC, int cabac_init_idc);
 int
-encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode);
+encode_set_bitrate(shvpu_avcenc_codec_t *pCodec, int bitrate, char mode);
 int
-encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,
+encode_set_propaties(shvpu_avcenc_codec_t *pCodec, int width, int height,
 		     unsigned int framerate, int bitrate, char ratecontrol);
 int
 encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen);
@@ -124,7 +124,7 @@ int
 encode_setqmatrix(MCVENC_CONTEXT_T *pContext);
 
 void
-encode_deinit(shvpu_codec_t *pCodec);
+encode_deinit(shvpu_avcenc_codec_t *pCodec);
 
 int
 encode_finalize(void *context);

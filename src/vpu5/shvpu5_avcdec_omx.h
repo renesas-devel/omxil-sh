@@ -73,7 +73,7 @@ typedef	struct {
 	OMX_PTR			pMarkData;
 	OMX_TICKS		nTimeStamp;
 	OMX_U32			nFlags;
-} buffer_metainfo_t;
+} buffer_avcdec_metainfo_t;
 
 typedef	struct {
 	nal_t*			pNal[16];
@@ -110,7 +110,7 @@ typedef struct {
 	int			releaseBufCount;
 	/** @param queue for stream info data */
 	queue_t*		pSIQueue;
-	buffer_metainfo_t	BMIEntries[BMI_ENTRIES_SIZE];
+	buffer_avcdec_metainfo_t	BMIEntries[BMI_ENTRIES_SIZE];
 	OMX_BOOL		enoughHeaders;
 	OMX_BOOL		enoughPreprocess;
 	pthread_cond_t		cond_buffering;
@@ -119,7 +119,7 @@ typedef struct {
 	shvpu_fmem_data		*fmem;
 	shvpu_firmware_size_t	fw_size;
 	int 			fmem_size;
-} shvpu_codec_t;
+} shvpu_avcdec_codec_t;
 
 typedef struct {
 	int 	native_buffer_enable;
@@ -129,7 +129,7 @@ typedef struct {
 DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 #define shvpu_avcdec_PrivateType_FIELDS omx_base_filter_PrivateType_FIELDS \
 	/** @param avCodec pointer to the VPU5HG video decoder */	\
-	shvpu_codec_t *avCodec;						\
+	shvpu_avcdec_codec_t *avCodec;						\
 	/** @param avCodecContext pointer to VPU5HG decoder context  */ \
 	MCVDEC_CONTEXT_T *avCodecContext;				\
 	/** @param avPicInfo pointer to the VPU5HG current decoded picrure */ 	\

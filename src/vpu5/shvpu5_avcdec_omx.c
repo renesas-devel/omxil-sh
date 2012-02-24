@@ -625,8 +625,8 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 	tsem_t *pInputSem = pInPort->pBufferSem;
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
-	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
-	buffer_metainfo_t *pBMI;
+	shvpu_avcdec_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	buffer_avcdec_metainfo_t *pBMI;
 
 	pthread_mutex_lock(&shvpu_avcdec_Private->flush_mutex);
 	while (PORT_IS_BEING_FLUSHED(pInPort) ||
@@ -1132,7 +1132,7 @@ show_error(void *context)
 }
 
 static inline void
-wait_vlc_buffering(shvpu_codec_t *pCodec)
+wait_vlc_buffering(shvpu_avcdec_codec_t *pCodec)
 {
 	pthread_mutex_lock(&pCodec->mutex_buffering);
 	while (!pCodec->enoughPreprocess) {
@@ -1154,7 +1154,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	MCVDEC_CMN_PICINFO_T *pic_infos[2];
 	MCVDEC_FMEM_INFO_T *frame;
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
-	shvpu_codec_t *pCodec;
+	shvpu_avcdec_codec_t *pCodec;
 	MCVDEC_CONTEXT_T *pCodecContext;
 	OMX_ERRORTYPE err = OMX_ErrorNone;
 	long ret, hdr_ready;
@@ -1367,7 +1367,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		int i;
 		unsigned long real_phys;
 		unsigned long index;
-		buffer_metainfo_t *pBMI;
+		buffer_avcdec_metainfo_t *pBMI;
 
 		logd("pic_infos[0]->frame_cnt = %d\n",
 		     pic_infos[0]->frame_cnt);

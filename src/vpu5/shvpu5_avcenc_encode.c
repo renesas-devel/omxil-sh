@@ -92,17 +92,18 @@ free_fmem(int width, int height, MCVENC_FMEM_INFO_T *fmem)
 }
 
 
-shvpu_codec_t *
+shvpu_avcenc_codec_t *
 encode_new()
 {
         extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
-	shvpu_codec_t *pCodec;
+	shvpu_avcenc_codec_t *pCodec;
 
 	/* allocate */
-	pCodec = (shvpu_codec_t *)calloc(1, sizeof(shvpu_codec_t));
+	pCodec = (shvpu_avcenc_codec_t *)
+			calloc(1, sizeof(shvpu_avcenc_codec_t));
 	if (!pCodec)
 		return NULL;
-	memset((void *)pCodec, 0, sizeof(shvpu_codec_t));
+	memset((void *)pCodec, 0, sizeof(shvpu_avcenc_codec_t));
 
 	/* initialize const MCVENC_CMN_PROPERTY_T parameters */
 	pCodec->cmnProp.stream_type = MCVENC_H264;
@@ -146,7 +147,7 @@ encode_new()
 }
 
 long
-encode_init(shvpu_codec_t *pCodec)
+encode_init(shvpu_avcenc_codec_t *pCodec)
 {
 	MCVENC_CONTEXT_T *pContext;
 	long ret;
@@ -314,7 +315,7 @@ init_failed:
 }
 
 int
-encode_set_profile(shvpu_codec_t *pCodec, int profile_id)
+encode_set_profile(shvpu_avcenc_codec_t *pCodec, int profile_id)
 {
         AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
 
@@ -353,7 +354,7 @@ encode_set_profile(shvpu_codec_t *pCodec, int profile_id)
 }
 
 int
-encode_set_level(shvpu_codec_t *pCodec, int level_id, int is1b)
+encode_set_level(shvpu_avcenc_codec_t *pCodec, int level_id, int is1b)
 {
         AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
 
@@ -368,7 +369,7 @@ encode_set_level(shvpu_codec_t *pCodec, int level_id, int is1b)
 }
 
 int
-encode_set_options(shvpu_codec_t *pCodec, int num_ref_frames,
+encode_set_options(shvpu_avcenc_codec_t *pCodec, int num_ref_frames,
 		   int max_GOP_length, int num_b_frames,
 		   int isCABAC, int cabac_init_idc)
 {
@@ -433,7 +434,7 @@ encode_set_options(shvpu_codec_t *pCodec, int num_ref_frames,
 }
 
 int
-encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode)
+encode_set_bitrate(shvpu_avcenc_codec_t *pCodec, int bitrate, char mode)
 {
 	switch (mode) {
 	case 'v':
@@ -461,7 +462,7 @@ encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode)
 }
 
 int
-encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,
+encode_set_propaties(shvpu_avcenc_codec_t *pCodec, int width, int height,
 		     unsigned int framerate, int bitrate, char ratecontrol)
 {
 	int fr;
@@ -550,7 +551,8 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	    unsigned char *pBuffer, int nWidth, int nHeight,
 	    void **ppConsumed)
 {
-	shvpu_codec_t *pCodec = (shvpu_codec_t *)pContext->user_info;
+	shvpu_avcenc_codec_t *pCodec =
+		(shvpu_avcenc_codec_t *) pContext->user_info;
 	MCVENC_CAPT_INFO_T capt_info;
 	MCVENC_FRM_STAT_T frm_stat;
 	int memWidth, memHeight, ret;
@@ -639,7 +641,7 @@ encode_finalize(void *context)
 }
 
 void
-encode_deinit(shvpu_codec_t *pCodec)
+encode_deinit(shvpu_avcenc_codec_t *pCodec)
 {
 	int i;
 	/* free all alloced work memory */

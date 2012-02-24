@@ -36,7 +36,8 @@ mcvenc_uf_set_strm_addr(MCVENC_CONTEXT_T *context,
 			MCVENC_STRM_BUFF_INFO_T *strm_buff_info,
 			long vlc_mode)
 {
-	shvpu_codec_t *pCodec = (shvpu_codec_t *)context->user_info;
+	shvpu_avcenc_codec_t *pCodec =
+			(shvpu_avcenc_codec_t *) context->user_info;
 	int i;
 
 	logd("%s(%s,%d,%d,%d) invoked.\n", __FUNCTION__,
@@ -74,7 +75,8 @@ mcvenc_uf_strm_available(MCVENC_CONTEXT_T *context,
 			 MCVENC_VLC_PIC_INFO_T *vlc_pic_info,
 			 MCVENC_STRM_BUFF_INFO_T *strm_buff_info)
 {
-	shvpu_codec_t *pCodec = (shvpu_codec_t *)context->user_info;
+	shvpu_avcenc_codec_t *pCodec =
+			(shvpu_avcenc_codec_t *) context->user_info;
 	shvpu_avcenc_outbuf_t *pStreamBuffer;
 	int i;
 
