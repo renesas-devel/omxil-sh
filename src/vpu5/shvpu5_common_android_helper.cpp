@@ -32,6 +32,7 @@
 #include <ui/GraphicBuffer.h>
 extern "C" {
 #include "shvpu5_avcdec_omx.h"
+#include "shvpu5_avcenc_omx.h"
 #include "shvpu5_common_log.h"
 }
 
@@ -39,6 +40,7 @@ using android::sp;
 using android::UseAndroidNativeBufferParams;
 using android::EnableAndroidNativeBuffersParams;
 using android::GetAndroidNativeBufferUsageParams;
+using android::StoreMetaDataInBuffersParams;
 using android::GraphicBuffer;
 using android::GraphicBufferMapper;
 using android::Rect;
@@ -108,6 +110,18 @@ OMX_ERRORTYPE shvpu_avcdec_GetNativeBufferUsage(
 	pUsage = (struct GetAndroidNativeBufferUsageParams *)
 		ComponentParameterStructure;
 	pUsage->nUsage = 0;
+	return OMX_ErrorNone;
+}
+
+OMX_ERRORTYPE shvpu_avcenc_SetMetaDataInBuffers(
+	shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
+	OMX_PTR ComponentParameterStructure) {
+
+	struct StoreMetaDataInBuffersParams *pEnable;
+	pEnable = (struct StoreMetaDataInBuffersParams *)
+		ComponentParameterStructure;
+	shvpu_avcenc_Private->avCodec->
+		modeSettings.meta_input_buffers = pEnable->bStoreMetaData;
 	return OMX_ErrorNone;
 }
 }

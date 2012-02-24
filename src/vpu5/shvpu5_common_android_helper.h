@@ -23,6 +23,11 @@
    02110-1301 USA
 
 */
+#if __cplusplus
+extern "C" {
+#endif
+#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_avcenc_omx.h"
 OMX_ERRORTYPE shvpu_avcdec_UseAndroidNativeBuffer(
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 	OMX_PTR ComponentParameterStructure);
@@ -35,8 +40,15 @@ OMX_ERRORTYPE shvpu_avcdec_GetNativeBufferUsage(
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 	OMX_PTR ComponentParameterStructure);
 
+OMX_ERRORTYPE shvpu_avcenc_SetMetaDataInBuffers(
+	shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
+	OMX_PTR ComponentParameterStructure);
+
 enum {
 	HAL_PIXEL_FORMAT_RGB_565       	    = 0x4,
 	HAL_PIXEL_FORMAT_YCrCb_420_SP       = 0x11,
 	HAL_PIXEL_FORMAT_YV12		    = 0x32315659, // YCrCb 4:2:0 Planar
 };
+#if __cplusplus
+}
+#endif

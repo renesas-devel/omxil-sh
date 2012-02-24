@@ -78,6 +78,14 @@ typedef struct {
 } shvpu_work_memory_t;
 
 typedef struct {
+	int			meta_input_buffers;
+} shvpu_mode_settings_t;
+
+typedef struct {
+	unsigned long		paddr;
+} shvpu_metabuffer_t;
+
+typedef struct {
 	shvpu_driver_t		*pDriver;
 
 	/* only for encode */
@@ -89,6 +97,7 @@ typedef struct {
 	unsigned long		avcOptSet;
 	long			sps_constraint_flags[SPS_FLAG_COUNT];
 	shvpu_work_memory_t 	cmnWorkMem;
+	shvpu_mode_settings_t	modeSettings;
 } shvpu_avcenc_codec_t;
 
 int logd(const char *format, ...);
@@ -116,7 +125,7 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen);
 int
 encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	    unsigned char *pBuffer, int nWidth, int nHeight,
-	    void **ppConsumed);
+	    void **ppConsumed, int metabuffers);
 int
 encode_endcode(void *context, unsigned char *pBuffer, size_t nBufferLen);
 

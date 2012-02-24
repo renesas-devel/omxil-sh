@@ -30,7 +30,11 @@
 #include "shvpu5_avcenc_omx.h"
 #include "shvpu5_avcenc.h"
 #include "shvpu5_common_log.h"
+#include "shvpu5_common_ext.h"
 #include <OMX_Video.h>
+#ifdef ANDROID_CUSTOM
+#include "shvpu5_common_android_helper.h"
+#endif
 #define _GNU_SOURCE
 #include <unistd.h>
 #include <sys/syscall.h>
@@ -820,10 +824,22 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 			pProfType->eProfile, pProfType->eLevel);
 		break;
 	}
-	default:		/*Call the base component function */
+	default:
+		switch ((OMX_REVPU5INDEXTYPE)nParamIndex) {
+#ifdef ANDROID_CUSTOM
+		case OMX_IndexAndroidMetaDataBuffers:
+		{
+			shvpu_avcenc_SetMetaDataInBuffers(
+				shvpu_avcenc_Private,
+				ComponentParameterStructure);
+			break;
+		}
+#endif
+		default: /*Call the base component function */
 		eError = omx_base_component_SetParameter(
 			hComponent, nParamIndex,
 			ComponentParameterStructure);
+		}
 	}
 	return eError;
 }
@@ -1324,7 +1340,7 @@ getInBuffer(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 }
 
 static inline OMX_BOOL
-updateFilledLen(queue_t *pProcessInBufQueue, void *pConsumed)
+updateFilledLen(queue_t *pProcessInBufQueue, void *pConsumed, int metabuffers)
 {
 	OMX_BUFFERHEADERTYPE *pBuffer;
 	OMX_BOOL ret = OMX_FALSE;
@@ -1333,13 +1349,21 @@ updateFilledLen(queue_t *pProcessInBufQueue, void *pConsumed)
 	nProcBuffers = pProcessInBufQueue->nelem;
 	while (nProcBuffers-- > 0) {
 		pBuffer = dequeue(pProcessInBufQueue);
-		if (pConsumed == (pBuffer->pBuffer + pBuffer->nOffset)) {
-			pBuffer->nFilledLen = 0;
-			ret = OMX_TRUE;
+		if (metabuffers) {
+			shvpu_metabuffer_t *metabuf = pBuffer->pBuffer;
+			if (metabuf->paddr == (unsigned long) pConsumed)
+				break;
+		} else if (pConsumed == (pBuffer->pBuffer + pBuffer->nOffset)) {
+			break;
 		}
 		queue(pProcessInBufQueue, pBuffer);
 	}
 
+	if (nProcBuffers >= 0) {
+		pBuffer->nFilledLen = 0;
+		queue(pProcessInBufQueue, pBuffer);
+		ret = OMX_TRUE;
+	}
 	return ret;
 }
 
@@ -1649,6 +1673,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 	OMX_ERRORTYPE err = OMX_ErrorNone;
 	unsigned long width, height;
 	int ret;
+	int metabuffers;
 
 	shvpu_avcenc_Private = pComponent->pComponentPrivate;
 	inPort = (omx_base_video_PortType *)
@@ -1656,6 +1681,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 	width = inPort->sPortParam.format.video.nFrameWidth;
 	height = inPort->sPortParam.format.video.nFrameHeight;
 	pCodec = shvpu_avcenc_Private->avCodec;
+	metabuffers = pCodec->modeSettings.meta_input_buffers;
 
 	if ((pInBuffer->nFilledLen == 0) &&
 	    (pInBuffer->nFlags & OMX_BUFFERFLAG_EOS)) {
@@ -1665,15 +1691,16 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 		return;
 	}
 
-	if (pInBuffer->nFilledLen < (width * height * 3 / 2)) {
+	if (!metabuffers && pInBuffer->nFilledLen < (width * height * 3 / 2)) {
 		loge("data too small (%d < %d)\n",
 		     pInBuffer->nFilledLen, (width * height * 3 / 2));
 		err = OMX_ErrorStreamCorrupt;
+	/* } else if (metabuffers && size check for metabuffers ) */
 	} else {
 		pConsumed = NULL;
 		ret = encode_main(pCodec->pContext, pCodec->pDriver->frameId,
 				  pInBuffer->pBuffer, width, height,
-				  &pConsumed);
+				  &pConsumed, metabuffers);
 
 		switch (ret) {
 		case 0: /* encoded the picture */
@@ -1682,7 +1709,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 		case 2: /* skip the picture */
 			if (pConsumed)
 				updateFilledLen(pProcessInBufQueue,
-						pConsumed);
+						pConsumed, metabuffers);
 			pCodec->pDriver->frameId += 1;
 			err = OMX_ErrorNone;
 			break;

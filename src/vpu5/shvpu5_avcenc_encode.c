@@ -549,7 +549,7 @@ encode_setqmatrix(MCVENC_CONTEXT_T *pContext)
 int
 encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	    unsigned char *pBuffer, int nWidth, int nHeight,
-	    void **ppConsumed)
+	    void **ppConsumed, int metabuffers)
 {
 	shvpu_avcenc_codec_t *pCodec =
 		(shvpu_avcenc_codec_t *) pContext->user_info;
@@ -559,9 +559,14 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	size_t yPicSize;
 
 	/* register a buffer */
-	capt_info.fmem[0].Ypic_addr =
-		uio_virt_to_phys(pContext, MCIPH_ENC,
-				 (unsigned long)pBuffer);
+	if (metabuffers) {
+		shvpu_metabuffer_t *metabuf = (shvpu_metabuffer_t *)pBuffer;
+		capt_info.fmem[0].Ypic_addr = metabuf->paddr;
+	} else {
+		capt_info.fmem[0].Ypic_addr =
+			uio_virt_to_phys(pContext, MCIPH_ENC,
+					 (unsigned long)pBuffer);
+	}
 	if (capt_info.fmem[0].Ypic_addr == 0)
 		return -1;
 	memWidth = ((nWidth + 15) / 16) * 16;
@@ -586,9 +591,14 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 		logd("[SKIP]");
 	case MCVENC_STORE_PIC:
 	case MCVENC_NML_END:
-		if (frm_stat.ce_used_capt_frm_id >= 0)
-			*ppConsumed = uio_phys_to_virt(frm_stat.capt[0].
+		if (frm_stat.ce_used_capt_frm_id >= 0)	{
+			if (metabuffers)
+				*ppConsumed = (void *) frm_stat.capt[0].
+                                                       Ypic_addr;
+			else
+				*ppConsumed = uio_phys_to_virt(frm_stat.capt[0].
 						       Ypic_addr);
+		}
 		break;
 	}
 	
