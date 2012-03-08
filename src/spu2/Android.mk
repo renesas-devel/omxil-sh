@@ -14,6 +14,7 @@
 
 LOCAL_PATH := $(call my-dir)
 
+ifeq ($(BUILD_SPU),true)
 include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 
@@ -46,3 +47,4 @@ LOCAL_MODULE := libshspu2aac
 LOCAL_CFLAGS:= -DLOG_TAG=\"shspudec\" -DLIBSPUHELPERAACDEC
 
 include $(BUILD_SHARED_LIBRARY)
+endif
