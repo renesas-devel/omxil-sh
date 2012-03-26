@@ -132,9 +132,13 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 	pDriver->vpu5Init.vpu_firmware_endian		= MCIPH_LIT;
 	pDriver->vpu5Init.vpu_interrupt_enable		= MCIPH_ON;
 	pDriver->vpu5Init.vpu_clock_supply_control	= MCIPH_CLK_CTRL;
+#ifdef VPU_INTERNAL_TL
+	pDriver->vpu5Init.vpu_constrained_mode		= MCIPH_VPU_TL;
+#else
 	pDriver->vpu5Init.vpu_constrained_mode		= MCIPH_OFF;
+#endif
 	pDriver->vpu5Init.vpu_address_mode		= MCIPH_ADDR_32BIT;
-	pDriver->vpu5Init.vpu_reset_mode			= MCIPH_RESET_SOFT;
+	pDriver->vpu5Init.vpu_reset_mode		= MCIPH_RESET_SOFT;
 #if defined(VPU5HA_SERIES)
 	pDriver->vpu5Init.vpu_version			= MCIPH_NA;
 	pDriver->vpu5Init.vpu_ext_init			= &(pDriver->ip0Init);

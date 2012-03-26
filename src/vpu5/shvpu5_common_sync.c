@@ -48,6 +48,35 @@ static int counter_vp5[2][2], status_vp5[2][2];
 #define VP5_MODULE_VLC		0
 #define VP5_MODULE_CE		1
 
+#ifdef VPU_INTERNAL_TL
+static int highest_bit(int val)
+{
+	int i = 0;
+	unsigned int mask = 0xFFFFFFFF;
+	while (val & mask) {
+		mask <<= 1;
+		i++;
+	}
+	return i - 1;
+}
+#define VB	3	// 8 line tile
+#define TB	5	// 32 pixel tile
+#define ENABLE_TL	0x3
+#define VBITS_OFF	12
+#define HBITS_OFF	8
+#define TBITS_OFF	4
+
+static unsigned long calc_tl_params(int pitch) {
+	int log2_pitch = highest_bit(pitch);
+	if (log2_pitch < 0)
+		return 0;
+
+	return ((VB - 1) << VBITS_OFF) |
+		((log2_pitch - TB - 1) << HBITS_OFF) |
+		((TB - 4) << TBITS_OFF) |
+		ENABLE_TL;
+}
+#endif
 static inline void
 _uf_vp5_restart(void *context, long mode, int module)
 {
@@ -130,10 +159,9 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 #if defined(VPU_VERSION_5HD)
 	vpc_start_frame();
 #endif
-#ifdef MERAM_ENABLE
 	if (mode == MCIPH_DEC) {
 		MCVDEC_CONTEXT_T *dec_context = (MCVDEC_CONTEXT_T *)context;
-		int i;
+		int i,j;
 		shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
 	                (shvpu_avcdec_PrivateType *)dec_context->user_info;
 		MCVDEC_FMEM_INDEX_T *fmem_index;
@@ -142,6 +170,16 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 			return;
 		}
 		fmem_index = (MCVDEC_FMEM_INDEX_T *)start_info;
+#ifdef VPU_INTERNAL_TL
+		for (i = 0; i < MCVDEC_FMX_NOEL; i++) {
+			for (j = 0; j < MCVDEC_YC_NOEL; j++) {
+				*fmem_index->ce_img_addr.tl_param[i][j] =
+					calc_tl_params(*fmem_index->
+					ce_img_addr.fmem_x_size[i]);
+			}
+		}
+#endif
+#ifdef MERAM_ENABLE
 		set_meram_address(&shvpu_avcdec_Private->meram_data,
 			shvpu_avcdec_Private->meram_data.decY_icb,
 			*fmem_index->ce_img_addr.decY_addr);
@@ -160,8 +198,8 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 		if (*fmem_index->ce_img_addr.fmem_x_size[MCVDEC_FMX_DEC] < 1024)
 			*fmem_index->ce_img_addr.fmem_x_size[MCVDEC_FMX_DEC]
 				= 1024;
-	}
 #endif
+	}
 	_uf_vp5_start(context, mode, VP5_MODULE_CE);
 	return;
 }
@@ -190,4 +228,3 @@ mciph_uf_vlc_start(void *context, long mode)
 	_uf_vp5_start(context, mode, VP5_MODULE_VLC);
 	return;
 }
-

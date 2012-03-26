@@ -26,6 +26,9 @@ init_ipmmu(shvpu_ipmmui_t *ipmmui_data,
 	unsigned long tmp;
 	PMB *pmb0;
 
+	memset(ipmmui_data, 0, sizeof(*ipmmui_data));
+
+#if !defined(VPU_INTERNAL_TL)
 	ipmmui = ipmmui_data->ipmmui = ipmmui_open();
 	if (!ipmmui)
 		return -1;
@@ -68,7 +71,7 @@ init_ipmmu(shvpu_ipmmui_t *ipmmui_data,
 	ipmmui_write_reg(ipmmui, reg, IMCTR1, tmp | 2);
 	ipmmui_write_reg(ipmmui, reg, IMCTR2, 1);
 	ipmmui_unlock_reg(ipmmui, reg);
-
+#endif
 	*align = log2_stride + VB;
 	return 0;
 }
