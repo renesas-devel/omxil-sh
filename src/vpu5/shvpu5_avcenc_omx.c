@@ -601,10 +601,20 @@ shvpu_avcenc_SetAvcTypeParameters(shvpu_avcenc_PrivateType *
 	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	OMX_ERRORTYPE err;
 	int ret;
+	int num_b_frames;
+
+	if (pAvcType->nPFrames == 0) {
+		if (pAvcType->nBFrames == 0)
+			num_b_frames = 0;
+		else
+			return OMX_ErrorUnsupportedSetting;
+	} else {
+		num_b_frames = pAvcType->nBFrames / pAvcType->nPFrames;
+	}
 
 	ret = encode_set_options(pCodec, pAvcType->nRefFrames,
 				 pAvcType->nPFrames + pAvcType->nBFrames,
-				 pAvcType->nBFrames / pAvcType->nPFrames,
+				 num_b_frames,
 				 pAvcType->bEntropyCodingCABAC == OMX_TRUE,
 				 pAvcType->nCabacInitIdc);
 	if (ret)
