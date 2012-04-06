@@ -145,7 +145,9 @@ isSubsequentPic(nal_t *pNal[], int former, OMX_BOOL *pHasSlice)
 			break;
 		case 9:
 			logd("AUD\n");
-			return OMX_TRUE;
+			if (*pHasSlice)
+				return OMX_TRUE;
+			break;
 		case 7:
 			logd("%d:SPS\n", i);
 			if (*pHasSlice)
