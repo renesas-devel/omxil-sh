@@ -51,7 +51,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 
 LOCAL_SRC_FILES := 	\
 	library_entry_point.c \
-	shvpu5_common_log.c \
 	shvpu5_common_queue.c \
 	shvpu5_common_driver.c \
 	shvpu5_common_ext.c
@@ -187,8 +186,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_sync.c \
-	shvpu5_common_udfio.c \
-	shvpu5_common_log.c
+	shvpu5_common_udfio.c
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udf
@@ -228,8 +226,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_queue.c \
 	shvpu5_avcdec_output.c \
-	shvpu5_avcdec_input.c \
-	shvpu5_common_log.c
+	shvpu5_avcdec_input.c
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfdec
@@ -269,8 +266,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(MIDDLEWARE_INCLUDE_PATH)
 
 LOCAL_SRC_FILES := 	\
-	shvpu5_avcenc_output.c \
-	shvpu5_common_log.c
+	shvpu5_avcenc_output.c
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfenc
