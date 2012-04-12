@@ -178,14 +178,17 @@ uio_init(char *name, unsigned long *paddr_reg,
 		if (!(uiores & UIOMUX_SH_VPU))
 			return NULL;*/
 		uiomux = uiomux_open_named(uio_names);
+		memops = get_memory_ops();
+		if (memops->memory_init(paddr_pmem, size_pmem) != 0) {
+			pthread_mutex_unlock(&uiomux_mutex);
+			goto memops_init_fail;
+		}
 	}
-	memops = get_memory_ops();
 	ref_cnt++;
+
 	pthread_mutex_unlock(&uiomux_mutex);
 
 	uiomux_get_mmio(uiomux, VPU_UIO, &uio_reg_base, NULL, NULL);
-	if (memops->memory_init(paddr_pmem, size_pmem) != 0)
-		return NULL;
 
 	/* clear register save on init */
 	save[0] = save[1] = save[2] = 0;
@@ -195,6 +198,12 @@ uio_init(char *name, unsigned long *paddr_reg,
 	vpc_init();
 #endif
 	return (void *)uiomux;
+
+memops_init_fail:
+	memops = NULL;
+	uiomux_close(uiomux);
+	uiomux = NULL;
+	return NULL;
 }
 
 
@@ -203,6 +212,7 @@ uio_deinit() {
 	pthread_mutex_lock(&uiomux_mutex);
 	ref_cnt--;
 	if (!ref_cnt) {
+		memops->memory_deinit();
 		uiomux_close(uiomux);
 		uiomux = NULL;
 	}
