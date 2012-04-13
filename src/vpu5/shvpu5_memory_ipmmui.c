@@ -35,7 +35,7 @@
 #include <sys/mman.h>
 #include "shvpu5_memory_util.h"
 
-#define IPMMUI_MEMSIZE (1048576 * 80 - 4095)
+#define IPMMUI_MEMSIZE (1048576 * 100 - 4095)
 
 struct ipmmui_list {
 	struct ipmmui_list *next;
