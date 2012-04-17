@@ -1726,6 +1726,14 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			logd("Switching software readable output mode %s\n",
 			     (*(OMX_BOOL *)ComponentParameterStructure ==
 			      OMX_FALSE) ?  "off" : "on");
+
+			if (*(OMX_BOOL *)ComponentParameterStructure) {
+				OMX_U32 *AvcLevel;
+				AvcLevel = &shvpu_avcdec_Private->
+					maxVideoParameters.eVPU5AVCLevel;
+				*AvcLevel = *AvcLevel > OMX_VPU5AVCLevel4 ?
+					OMX_VPU5AVCLevel4 : *AvcLevel;
+			}
 			break;
 		}
 #ifdef ANDROID_CUSTOM
