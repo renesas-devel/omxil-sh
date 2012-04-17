@@ -1698,9 +1698,11 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			if (eError != OMX_ErrorNone)
 				break;
 			if (pMaxInst->nInstances <= MAX_COMPONENT_VIDEODEC) {
+#ifdef VPU_VERSION_5
 				if (pMaxInst->nInstances > 1)
 					shvpu_avcdec_Private->
 						enable_sync = OMX_TRUE;
+#endif
 				memcpy (&maxVPUInstances,
 					pMaxInst,
 					sizeof(OMX_PARAM_REVPU5MAXINSTANCE));
