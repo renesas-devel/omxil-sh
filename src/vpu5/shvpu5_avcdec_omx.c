@@ -46,6 +46,7 @@
 #define MAX_COMPONENT_VIDEODEC 2
 /** Counter of Video Component Instance*/
 static OMX_U32 noVideoDecInstance = 0;
+static pthread_mutex_t initMutex = PTHREAD_MUTEX_INITIALIZER;
 
 /** The output decoded color format */
 #define OUTPUT_DECODED_COLOR_FMT OMX_COLOR_FormatYUV420SemiPlanar
@@ -86,6 +87,16 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	OMX_U32 i;
 	unsigned long reg;
 	size_t memsz;
+
+	pthread_mutex_lock(&initMutex);
+
+	if (noVideoDecInstance > maxVPUInstances.nInstances)   {
+		pthread_mutex_unlock(&initMutex);
+		return OMX_ErrorInsufficientResources;
+	}
+
+	noVideoDecInstance++;
+	pthread_mutex_unlock(&initMutex);
 
 	/* initialize component private data */
 	if (!pComponent->pComponentPrivate) {
@@ -248,12 +259,6 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	shvpu_avcdec_Private->pNalSem = calloc(1, sizeof(tsem_t));
 	tsem_init(shvpu_avcdec_Private->pNalSem, 0);
 
-	noVideoDecInstance++;
-
-	if (noVideoDecInstance > maxVPUInstances.nInstances)   {
-		noVideoDecInstance--;
-		return OMX_ErrorInsufficientResources;
-	}
 
 	/* initialize a vpu uio */
 	uio_init("VPU", &reg, &shvpu_avcdec_Private->uio_start_phys, &memsz);
