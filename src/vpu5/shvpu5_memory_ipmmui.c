@@ -286,6 +286,15 @@ ipmmui_get_virt_memory(void **address, unsigned long *size) {
 	return 0;
 }
 
+int
+ipmmui_get_phys_memory(unsigned long *address, unsigned long *size) {
+	if (address)
+		*address = ipmmui_paddr;
+	if (size)
+		*size = ipmmui_size;
+	return 0;
+}
+
 /**
  *
  */
@@ -363,6 +372,7 @@ struct memory_ops ipmmui_ops = {
 	.memory_init = ipmmui_memory_init,
 	.memory_deinit = ipmmui_memory_deinit,
 	.get_virt_memory = ipmmui_get_virt_memory,
+	.get_phys_memory = ipmmui_get_phys_memory,
 	.mem_read = ipmmui_mem_read,
 	.mem_write = ipmmui_mem_write,
 	.virt_to_phys = ipmmui_virt_to_phys,

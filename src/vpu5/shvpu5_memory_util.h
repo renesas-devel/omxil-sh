@@ -46,6 +46,8 @@ struct memory_ops {
 	void (*phys_pmem_free) (unsigned long paddr, size_t size);
 	/*see shvpu5_common_uio.h*/
         int (*get_virt_memory) (void **vaddr, unsigned long *size);
+	/* return the physical offset and size of memory block */
+        int (*get_phys_memory) (unsigned long *paddr, unsigned long *size);
 	/*see shvpu5_common_uio.h*/
 	long (*mem_read) (unsigned long src, unsigned long dst, long count);
 	/*see shvpu5_common_uio.h*/

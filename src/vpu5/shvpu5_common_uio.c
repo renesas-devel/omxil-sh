@@ -183,6 +183,8 @@ uio_init(char *name, unsigned long *paddr_reg,
 			pthread_mutex_unlock(&uiomux_mutex);
 			goto memops_init_fail;
 		}
+	} else {
+		memops->get_phys_memory(paddr_pmem, size_pmem);
 	}
 	ref_cnt++;
 
@@ -423,14 +425,12 @@ uio_phys_to_virt(unsigned long paddr)
 int
 uiomem_memory_init(unsigned long *paddr_pmem, size_t *size_pmem)
 {
-	uiomux_get_mem(uiomux, VPU_UIO, paddr_pmem,
-		       (unsigned long *)size_pmem, NULL);
-	return 0;
+	return uiomem_get_phys_memory(paddr_pmem,
+			(unsigned long *)size_pmem);
 }
 
 void
 uiomem_memory_deinit() {
-
 }
 
 void *
@@ -462,6 +462,13 @@ int
 uiomem_get_virt_memory(void **address, unsigned long *size) {
 	uiomux_get_mem(uiomux, VPU_UIO, NULL,
 		       size, address);
+	return 0;
+}
+
+int
+uiomem_get_phys_memory(unsigned long *address, unsigned long *size) {
+	uiomux_get_mem(uiomux, VPU_UIO, address,
+		       size, NULL);
 	return 0;
 }
 
@@ -526,6 +533,7 @@ struct memory_ops uiomem_ops = {
 	.memory_init = uiomem_memory_init,
 	.memory_deinit = uiomem_memory_deinit,
 	.get_virt_memory = uiomem_get_virt_memory,
+	.get_phys_memory = uiomem_get_phys_memory,
 	.mem_read = uiomem_mem_read,
 	.mem_write = uiomem_mem_write,
 	.virt_to_phys = uiomem_virt_to_phys,
