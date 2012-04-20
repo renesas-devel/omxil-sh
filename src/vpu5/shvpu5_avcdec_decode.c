@@ -299,7 +299,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	pCodec->imd_info.imd_buff_size += 2048; 
 
 	vaddr = pmem_alloc(pCodec->imd_info.imd_buff_size,
-				32, &pCodec->imd_info.imd_buff_addr);
+				512, &pCodec->imd_info.imd_buff_addr);
 	logd("imd_info.imd_buff_addr = %lx\n",
 	       pCodec->imd_info.imd_buff_addr);
 	if (!vaddr)
@@ -312,7 +312,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		num_views);
 
 	pCodec->ir_info.ir_info_addr = (unsigned long)
-		pmem_alloc(pCodec->ir_info.ir_info_size, 32, &paddr);
+		pmem_alloc(pCodec->ir_info.ir_info_size, 512, &paddr);
 	logd("ir_info.ir_info_addr = %lx\n", pCodec->ir_info.ir_info_addr);
 	if (!pCodec->ir_info.ir_info_addr)
 		return -1;
@@ -324,7 +324,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		       num_views);
 
 	vaddr = pmem_alloc(pCodec->mv_info.mv_info_size,
-				32, &pCodec->mv_info.mv_info_addr);
+				512, &pCodec->mv_info.mv_info_addr);
 	logd("mv_info.mv_info_addr = %lx\n", pCodec->mv_info.mv_info_addr);
 	if (!vaddr)
 		return -1;

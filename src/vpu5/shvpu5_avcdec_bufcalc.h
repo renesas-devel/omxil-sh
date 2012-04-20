@@ -91,6 +91,6 @@ mv_info_size_calc(int width, int height, int ref_frame_cnt_plus1,
 		int num_views) {
 	int mb_width = ((width + 15) / 16) * 16 / 16;
 	int mb_height = ((height + 15) / 16) * 16 / 16;
-	return ALIGN(VPU_UNIT(64 * mb_width * ((mb_height + 3) / 4)) *
+	return ALIGN(VPU_UNIT((64 * mb_width * ((mb_height + 3) / 4)) + 512) *
 		     4 * (ref_frame_cnt_plus1 * num_views));
 }
