@@ -63,9 +63,9 @@ static int
 vaddr_hit(struct ipmmui_list *p, char *tvaddr, size_t size)
 {
 	if (tvaddr - p->vaddr < 0)
-		return (size > p->vaddr - tvaddr);
+		return (size > (size_t) (p->vaddr - tvaddr));
 	else
-		return (p->size > tvaddr - p->vaddr);
+		return (p->size > (size_t) (tvaddr - p->vaddr));
 }
 
 static void *
@@ -78,7 +78,7 @@ tryalloc(void *tvaddr, unsigned long _tpaddr, int align, size_t size,
 	tpaddr = _tpaddr;
 	tpaddr += align - 1;
 	tpaddr -= tpaddr % align;
-	tvaddr += tpaddr - _tpaddr;
+	tvaddr = (char *)tvaddr + tpaddr - _tpaddr;
 	if ((tpaddr - ipmmui_paddr) + size > ipmmui_size)
 		return NULL;
 	for (p = ipmmui_alloc; p; p = p->next) {
@@ -204,7 +204,7 @@ ipmmui_phys_pmem_free(unsigned long paddr, size_t size)
 /**
  *
  */
-void *
+int
 ipmmui_memory_init(unsigned long *paddr_pmem, size_t *size_pmem)
 {
 	FILE *fp;
@@ -341,9 +341,9 @@ ipmmui_virt_to_phys(void *addr)
 {
 	unsigned long paddr;
 
-	if (addr >= (unsigned long)ipmmui_vaddr &&
-	    addr < (unsigned long)ipmmui_vaddr + ipmmui_size)
-		paddr = addr - (unsigned long)ipmmui_vaddr + ipmmui_paddr;
+	if ((char *)addr >= ipmmui_vaddr &&
+	    (char *)addr < ipmmui_vaddr + ipmmui_size)
+		paddr = (char *)addr - ipmmui_vaddr + ipmmui_paddr;
 	else
 		paddr = 0xFFFFFFFF;
 
