@@ -61,8 +61,11 @@ malloc_aligned(size_t size, int align)
 static void *
 handle_shvpu5_interrupt(void *arg)
 {
-	MCIPH_DRV_INFO_T *pDrvInfo = arg;
 
+	MCIPH_DRV_INFO_T *pDrvInfo = arg;
+#ifdef VPU_VERSION_5HA
+	icbcache_flush(); /* noop on encode (enable bit not set) */
+#endif
 	logd("----- invoke mciph_vpu5_int_handler() -----\n");
 	mciph_vpu5_int_handler(pDrvInfo);
 	logd("----- resume from mciph_vpu5_int_handler() -----\n");

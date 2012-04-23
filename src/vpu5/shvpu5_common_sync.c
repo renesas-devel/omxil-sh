@@ -113,6 +113,9 @@ _uf_vp5_sleep(void *context, long mode, int module)
 static inline void
 _uf_vp5_start(void *context, long mode, int module)
 {
+#ifdef VPU_VERSION_5HA
+	icbcache_flush();
+#endif
 	pthread_mutex_lock(&mutex_vp5[module]);
 	status_vp5[module][mode] = 1;
 	pthread_mutex_unlock(&mutex_vp5[module]);

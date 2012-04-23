@@ -39,11 +39,13 @@ static UIOMux *uiomux = NULL;
 static const char *uio_names[] = {
 	"VPU",
 	"VPC",
+	"ICB_CACHE",
 	NULL
 };
 
 #define VPU_UIO	(1 << 0)
 #define VPC_UIO	(1 << 1)
+#define ICB_UIO	(1 << 2)
 
 static struct memory_ops *memops;
 static pthread_mutex_t uiomux_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -74,6 +76,35 @@ int vpc_clear(void) {
 	*((unsigned long *) (vpc_regs + VPCCTL)) =
 		tmp | VPCCTL_CLR;
 	return 0;
+}
+
+#define MEBUFCCNTR		(0x94)
+#define MEBUFCCNTR_CE		(1 << 27)
+#define MEBUFCCNTR_FLUSH	(1 << 31)
+#define MEBUFCCNTR_CMSA		(0x148)
+
+static uint8_t *icbcache_regs = NULL;
+
+int icbcache_init(void) {
+	uiomux_get_mmio(uiomux, ICB_UIO, NULL, NULL, &icbcache_regs);
+	*((unsigned long *) (icbcache_regs + MEBUFCCNTR)) =
+		MEBUFCCNTR_CE | MEBUFCCNTR_FLUSH | MEBUFCCNTR_CMSA;
+	return 0;
+}
+
+int icbcache_deinit(void) {
+	unsigned long tmp;
+	tmp = *((unsigned long*) (icbcache_regs + MEBUFCCNTR));
+	*((unsigned long *) (icbcache_regs + MEBUFCCNTR)) =
+		tmp & ~MEBUFCCNTR_CE;
+	return 0;
+}
+
+void icbcache_flush(void) {
+	unsigned long tmp;
+	tmp = *((unsigned long*) (icbcache_regs + MEBUFCCNTR));
+	*((unsigned long*) (icbcache_regs + MEBUFCCNTR)) =
+		tmp | MEBUFCCNTR_FLUSH;
 }
 
 int
@@ -183,6 +214,9 @@ uio_init(char *name, unsigned long *paddr_reg,
 			pthread_mutex_unlock(&uiomux_mutex);
 			goto memops_init_fail;
 		}
+#ifdef VPU_VERSION_5HA
+		icbcache_init();
+#endif
 	} else {
 		memops->get_phys_memory(paddr_pmem, size_pmem);
 	}
@@ -214,6 +248,9 @@ uio_deinit() {
 	pthread_mutex_lock(&uiomux_mutex);
 	ref_cnt--;
 	if (!ref_cnt) {
+#ifdef VPU_VERSION_5HA
+		icbcache_deinit();
+#endif
 		memops->memory_deinit();
 		uiomux_close(uiomux);
 		uiomux = NULL;

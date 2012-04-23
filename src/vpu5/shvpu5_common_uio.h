@@ -208,4 +208,8 @@ uiomux_lock_vpu();
 void
 uiomux_unlock_vpu();
 
+#ifdef VPU_VERSION_5HA
+void icbcache_flush(void);
+#endif
+
 #endif /* __UIO_H_ */
