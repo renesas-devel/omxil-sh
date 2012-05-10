@@ -162,6 +162,7 @@ encode_init(shvpu_avcenc_codec_t *pCodec)
 	num_views = pCmnProp->num_views;
 
 #endif
+	size_t fwsize;
 
 	ret = shvpu_driver_init(&pCodec->pDriver);
 	if (ret != 0)
@@ -175,7 +176,6 @@ encode_init(shvpu_avcenc_codec_t *pCodec)
 	pCmnWorkMem->wbuf_enc.work_area_size = 12000 + (1024 * num_views) +
 		(1024 * pCmnProp->max_rate_delay * num_views) + (10 * 1024);
 #endif
-	size_t fwsize;
 	pCmnWorkMem->wbuf_enc.work_area_addr =
 		malloc_aligned(pCmnWorkMem->wbuf_enc.work_area_size, 4);
 	logd("work_area_addr = %p\n", pCmnWorkMem->wbuf_enc.work_area_addr);
