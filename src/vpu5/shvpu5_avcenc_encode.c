@@ -283,13 +283,13 @@ encode_init(shvpu_avcenc_codec_t *pCodec)
 	if (pCodec->avcOptSet) {
 #if defined(VPU_VERSION_5)
 		pAvcOpt->sps_constraint_set0_flag =
-			pCodec->sps_constraint_flags[0]
+			pCodec->sps_constraint_flags[0];
 		pAvcOpt->sps_constraint_set1_flag =
-			pCodec->sps_constraint_flags[1]
+			pCodec->sps_constraint_flags[1];
 		pAvcOpt->sps_constraint_set2_flag =
-			pCodec->sps_constraint_flags[2]
+			pCodec->sps_constraint_flags[2];
 		pAvcOpt->sps_constraint_set3_flag =
-			pCodec->sps_constraint_flags[3]
+			pCodec->sps_constraint_flags[3];
 #elif defined(VPU5HA_SERIES)
 		memcpy(&pAvcOpt->sps_constraint_set_flag,
 			&pCodec->sps_constraint_flags,
