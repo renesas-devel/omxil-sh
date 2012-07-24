@@ -576,8 +576,12 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 	outPort->sPortParam.format.video.nFrameWidth =
 		ALIGN_STRIDE(inPort->sPortParam.format.video.nFrameWidth);
+	outPort->sPortParam.format.video.nStride =
+		ROUND_2POW(outPort->sPortParam.format.video.nFrameWidth,32);
 	outPort->sPortParam.format.video.nFrameHeight =
 		inPort->sPortParam.format.video.nFrameHeight;
+	outPort->sPortParam.format.video.nSliceHeight =
+		ROUND_2POW(inPort->sPortParam.format.video.nFrameHeight,16);
 	if (shvpu_avcdec_Private->features.use_buffer_mode) {
 		outPort->sPortParam.nBufferSize =
 			outPort->sPortParam.format.video.nFrameWidth *
