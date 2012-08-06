@@ -230,7 +230,7 @@ uio_init(char *name, unsigned long *paddr_reg,
 	save[0] = save[1] = save[2] = 0;
 	if (paddr_reg)
 		*paddr_reg = uio_reg_base;
-#ifdef VPU_VERSION_5HD
+#if defined(VPU_VERSION_5HD) || defined(VPU_VERSION_VCP1)
 	vpc_init();
 #endif
 	return (void *)uiomux;
