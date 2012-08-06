@@ -262,6 +262,12 @@ AS_CASE([$with_vpu5_version],
 		 VPU_CMN_LIBS="-lmciphvpu5hdcmna -lmciphvpu5ha"
 		 VPU_DEC_LIBS="-lavcdecvpu5hda -lmciphvpu5hdavcdeca \
 			       -lmciphvpu5hdcmndeca -lmcvdecvpu5hda"],
+	[VCP1],
+		[VPU_VERSION="VPU_VERSION_VCP1"
+		 VPU_SERIES="VPU5HA_SERIES"
+		 VPU_CMN_LIBS="-lmcvdecvcp1a_lx30 -lmciphvcp1a_lx30"
+		 VPU_DEC_LIBS="-lavcdecvcp1a_lx30 -lmciphvcp1cmndeca_lx30 \
+			       -lmciphvcp1avcdeca_lx30 -lmciphvcp1cmna_lx30"],
 dnl  	default
 		[with_vpu5_version=VPU5HG
 		VPU_VERSION="VPU_VERSION_5"
