@@ -1396,14 +1396,10 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		pic_size = pic_infos[0]->xpic_size *
 			(pic_infos[0]->ypic_size -
 			 pic_infos[0]->frame_crop[MCVDEC_CROP_BOTTOM]);
-		if (shvpu_avcdec_Private->features.tl_conv_mode) {
-			real_phys = ipmmui_to_phys(
-				&shvpu_avcdec_Private->ipmmui_data,
+
+		real_phys = ipmmui_to_phys(&shvpu_avcdec_Private->ipmmui_data,
 				frame->Ypic_addr,
 				shvpu_avcdec_Private->uio_start_phys);
-		} else {
-			real_phys = frame->Ypic_addr;
-		}
 		vaddr = uio_phys_to_virt(real_phys);
 		if ((pic_size / 2 * 3) > pOutBuffer->nAllocLen) {
 			loge("WARNING: shrink output size %d to %d\n",
@@ -1439,8 +1435,9 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 				- (uint8_t *)shvpu_avcdec_Private->uio_start;
 
 			pOutBuffer->pPlatformPrivate = (void *)
-				(shvpu_avcdec_Private->uio_start_phys +
-				pOutBuffer->nOffset);
+				phys_to_ipmmui(
+					&shvpu_avcdec_Private->ipmmui_data,
+					frame->Ypic_addr);
 		}
 		pOutBuffer->nFilledLen += pic_size + pic_size / 2;
 

@@ -60,7 +60,7 @@ typedef struct {
 } shvpu_ipmmui_t;
 #define init_ipmmu(a, b, c, d, e) (0)
 #define deinit_ipmmu(x)
-#define phys_to_ipmmui(x, y) (0)
-#define ipmmui_to_phys(x, y, z) (0)
+#define phys_to_ipmmui(x, y) (y)
+#define ipmmui_to_phys(x, y, z) (y)
 #endif
 #endif /*  _SHVPU5_COMMON_IPMMU_H */
