@@ -52,4 +52,14 @@ typedef struct {
 #else
 #define ALIGN_STRIDE(x) (x)
 #endif
+
+#define ROUND_NEXT_POW2(out, in) \
+	{ \
+		out = (in - 1); \
+		out |= (out >> 1); \
+		out |= (out >> 2); \
+		out |= (out >> 4); \
+		out |= (out >> 8); \
+		out++; \
+	}
 #endif /* __SIMPLE_AVCDEC_H_ */
