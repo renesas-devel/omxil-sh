@@ -277,6 +277,8 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 #ifdef TL_CONV_ENABLE
 	shvpu_avcdec_Private->features.tl_conv_mode = OMX_TRUE;
+	shvpu_avcdec_Private->features.tl_conv_tbm = LOG2_TB;
+	shvpu_avcdec_Private->features.tl_conv_vbm = LOG2_VB;
 #endif
 
 	/* initialize ippmui for buffers */

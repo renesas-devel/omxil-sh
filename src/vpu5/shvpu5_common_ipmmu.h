@@ -28,13 +28,16 @@
 #ifndef _SHVPU5_COMMON_IPMMU_H
 #define _SHVPU5_COMMON_IPMMU_H
 
+#define LOG2_TB 5 /*log2 (block width) minimum value = 4*/
+#define LOG2_VB 5 /*log2 (block height)*/
+
 #ifdef TL_CONV_ENABLE
 
 struct shvpu_ipmmui_t;
 typedef struct shvpu_ipmmui_t shvpu_ipmmui_t;
 
 shvpu_ipmmui_t *
-init_ipmmu(unsigned long phys_base, int stride);
+init_ipmmu(unsigned long phys_base, int stride, int tile_logw, int tile_logh);
 
 void
 deinit_ipmmu(shvpu_ipmmui_t *ipmmui_data);
@@ -49,7 +52,7 @@ ipmmui_to_phys(shvpu_ipmmui_t *ipmmui_data, unsigned long ipmmu,
 #else
 typedef struct {
 } shvpu_ipmmui_t;
-#define init_ipmmu(a, b) (0)
+#define init_ipmmu(a, b, c, d) (0)
 #define deinit_ipmmu(x)
 #define phys_to_ipmmui(x, y) (y)
 #define ipmmui_to_phys(x, y, z) (y)

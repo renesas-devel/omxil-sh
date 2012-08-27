@@ -42,6 +42,8 @@ typedef struct {
 	OMX_BOOL use_buffer_mode;
 	OMX_BOOL dmac_mode;
 	OMX_BOOL tl_conv_mode;
+	OMX_U32  tl_conv_vbm;
+	OMX_U32  tl_conv_tbm;
 } decode_features_t;
 
 /* ROUND_2POW rounds up to the next muliple of y,

@@ -78,8 +78,11 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		}
 		pitch = (1 << (i + next_power));
 		shvpu_avcdec_Private->ipmmui_data = init_ipmmu(
-			shvpu_avcdec_Private->uio_start_phys, pitch);
-		align_bits = i + next_power + 5;
+			shvpu_avcdec_Private->uio_start_phys, pitch,
+			shvpu_avcdec_Private->features.tl_conv_tbm,
+			shvpu_avcdec_Private->features.tl_conv_vbm);
+		align_bits = i + next_power +
+			shvpu_avcdec_Private->features.tl_conv_tbm;
 
 		fmem_x = pitch;
 		align = (1 << align_bits);

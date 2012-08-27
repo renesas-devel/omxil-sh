@@ -30,13 +30,14 @@
 #include "shvpu5_ipmmu_util.h"
 
 shvpu_ipmmui_t *
-init_ipmmu(unsigned long phys_base, int stride) {
+init_ipmmu(unsigned long phys_base, int stride, int tile_logw, int tile_logh) {
 
 	shvpu_ipmmui_t *ipmmui_data;
 	ipmmui_data = malloc (sizeof *ipmmui_data);
 	memset(ipmmui_data, 0, sizeof(*ipmmui_data));
 	if (ipmmui_data) {
-		pmb_ops->init(ipmmui_data, phys_base, stride);
+		pmb_ops->init(ipmmui_data, phys_base, stride, tile_logw,
+			tile_logh);
 		uiomux_register(ipmmui_data->ipmmui_vaddr,
 		(unsigned long) ipmmui_data->ipmmui_vaddr, (64 << 20));
 	}

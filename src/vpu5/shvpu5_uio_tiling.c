@@ -48,7 +48,9 @@ struct uio_ipmmu_priv {
 int
 init_uio_ipmmu(shvpu_ipmmui_t *ipmmui_data,
 	   unsigned long phys_base,
-	   int stride)
+	   int stride,
+	   int tile_logw,
+	   int tile_logh)
 {
 	IPMMUI_REG *reg;
 	unsigned int log2_stride;
@@ -74,7 +76,7 @@ init_uio_ipmmu(shvpu_ipmmui_t *ipmmui_data,
 	}
 	log2_stride = i;
 
-	if (log2_stride < TB)
+	if (log2_stride < tile_logw)
 		return -1;
 
 	ipmmui = priv->ipmmui = ipmmui_open();
@@ -109,8 +111,8 @@ init_uio_ipmmu(shvpu_ipmmui_t *ipmmui_data,
 		| (1 << 8));
 	ipmmui_write_pmb(ipmmui, pmb0, IMPMBD,
                 (phys_base & ipmmui_data->ipmmui_mask) |
-                (1 << 8) | ipmmui_size_code | ((VB - 1) << 20) |
-                ((log2_stride - TB - 1) << 16) | ((TB - 4) << 12)
+                (1 << 8) | ipmmui_size_code | ((tile_logh - 1) << 20) |
+                ((log2_stride - tile_logw - 1) << 16) | ((tile_logw - 4) << 12)
                 | (1 << 9));
 
 	reg = ipmmui_lock_reg(ipmmui);

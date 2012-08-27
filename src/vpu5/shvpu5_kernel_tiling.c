@@ -36,7 +36,9 @@
 static int
 init_kernel_tiling(struct shvpu_ipmmui_t *ipmmui_data,
 	   unsigned long phys_base,
-	   int stride)
+	   int stride,
+	   int tile_logw,
+	   int tile_logh)
 {
 	int fd, ret;	
 	struct ipmmu_pmb_info pmb;
@@ -55,8 +57,8 @@ init_kernel_tiling(struct shvpu_ipmmui_t *ipmmui_data,
 
 	tile.enabled = 1;
 	tile.buffer_pitch = stride;
-	tile.tile_width = (1 << TB);
-	tile.tile_height = (1 << VB);
+	tile.tile_width = (1 << tile_logw);
+	tile.tile_height = (1 << tile_logh);
 
 	ret = ioctl(fd, IPMMU_SET_PMB, &pmb);	
 	if (ret < 0)

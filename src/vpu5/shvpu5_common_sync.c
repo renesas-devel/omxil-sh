@@ -59,21 +59,21 @@ static int highest_bit(int val)
 	}
 	return i - 1;
 }
-#define VB	3	// 8 line tile
-#define TB	5	// 32 pixel tile
 #define ENABLE_TL	0x3
 #define VBITS_OFF	12
 #define HBITS_OFF	8
 #define TBITS_OFF	4
 
-static unsigned long calc_tl_params(int pitch) {
+static unsigned long calc_tl_params(int pitch,
+				    int tile_logw,
+				    int tile_logh) {
 	int log2_pitch = highest_bit(pitch);
 	if (log2_pitch < 0)
 		return 0;
 
-	return ((VB - 1) << VBITS_OFF) |
-		((log2_pitch - TB - 1) << HBITS_OFF) |
-		((TB - 4) << TBITS_OFF) |
+	return ((tile_logh - 1) << VBITS_OFF) |
+		((log2_pitch - tile_logw - 1) << HBITS_OFF) |
+		((tile_logw - 4) << TBITS_OFF) |
 		ENABLE_TL;
 }
 #endif
@@ -178,7 +178,11 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 			for (j = 0; j < MCVDEC_YC_NOEL; j++) {
 				*fmem_index->ce_img_addr.tl_param[i][j] =
 					calc_tl_params(*fmem_index->
-					ce_img_addr.fmem_x_size[i]);
+						ce_img_addr.fmem_x_size[i],
+						shvpu_avcdec_Private->features.
+							tl_conv_tbm,
+						shvpu_avcdec_Private->features.
+							tl_conv_vbm);
 			}
 		}
 #endif

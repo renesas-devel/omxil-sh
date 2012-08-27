@@ -25,9 +25,6 @@
 
 */
 
-#define TB 5 /*log2 (block width) minimum value = 4*/
-#define VB 5 /*log2 (block height)*/
-
 struct shvpu_ipmmui_t {
 	unsigned long ipmmui_vaddr;
 	unsigned long ipmmui_mask;
@@ -36,7 +33,7 @@ struct shvpu_ipmmui_t {
 
 struct ipmmu_pmb_ops {
 	struct shvpu_ipmmu_t * (*init) (struct shvpu_ipmmui_t *ipmmui_data, unsigned long phys_base,
-		int stride);
+		int stride, int tile_logw, int tile_logh);
 	void (*deinit) (struct shvpu_ipmmui_t *ipmmui_data);
 };
 
