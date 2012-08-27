@@ -334,21 +334,37 @@ AM_CONDITIONAL(USE_TDDMAC, [test "x$enable_vpu5_tddmac" != "xno"])
 dnl Disable TL_CONV setting
 AC_ARG_ENABLE(tl_conv,
 	[AC_HELP_STRING(
-		[--enable-tl_conv=[internal/ipmmu/no]],
-		[set T/L conversion support [default=ipmmu if supported]])])
+		[--enable-tl_conv=[uio/kernel/no]],
+		[set T/L conversion support [default=uio if supported]])])
 
-if test "x$enable_tl_conv" != "xno" -a "x$HAVE_VP5DECAVC" = "xyes"; then
-	AS_IF([test "x$enable_tl_conv" != "xinternal"],
-		[PKG_CHECK_MODULES([MERAM], [meram],
-			[VPU_OPTIONS="${VPU_OPTIONS}TL_CONV "],[enable_tl_conv=no])],
-		[VPU_OPTIONS="${VPU_OPTIONS}TL_CONV(internal) "])
-fi
+AS_CASE([x$enable_tl_conv],
+	[xinternal],
+		[VPU_OPTIONS="${VPU_OPTIONS}T/L Conv(internal) "],
+	[xuio],
+		[PKG_CHECK_MODULES([MERAM], [meram])
+		VPU_OPTIONS="${VPU_OPTIONS}T/L Conv(uio) "],
+	[xyes],
+		[PKG_CHECK_MODULES([MERAM], [meram])
+		VPU_OPTIONS="${VPU_OPTIONS}T/L Conv(uio) "],
+	[xkernel],
+		[VPU_OPTIONS="${VPU_OPTIONS}T/L Conv(kernel) "]);
 
 AM_CONDITIONAL(USE_TL_CONV,
-      [test "x$enable_tl_conv" != "xno" -a "x$HAVE_VP5DECAVC" = "xyes" -a "x$enable_tl_conv" != "xinternal"])
+      [test "x$enable_tl_conv" != "xno" -a "x$HAVE_VP5DECAVC" = "xyes"])
+
+AM_CONDITIONAL(USE_UIO_TL,
+      [test "x$HAVE_VP5DECAVC" = "xyes" -a \( "$enable_tl_conv" = "yes" -o "$enable_tl_conv" = "uio" \)])
+
+AM_CONDITIONAL(USE_KERNEL_TL,
+      [test "x$HAVE_VP5DECAVC" = "xyes" -a "$enable_tl_conv" = "kernel"])
+
+AC_ARG_ENABLE(tl_conv_internal,
+	[AC_HELP_STRING(
+		[--enable-tl_conv_internal],
+		[set internal T/L conversion support])])
 
 AM_CONDITIONAL(USE_TL_CONV_INT,
-      [test "x$HAVE_VP5DECAVC" = "xyes" -a "$enable_tl_conv" = "internal"])
+      [test "x$HAVE_VP5DECAVC" = "xyes" -a "x$enable_tl_conv_internal" = "xyes"])
 
 dnl Disable MERAM setting
 AC_ARG_ENABLE(meram,

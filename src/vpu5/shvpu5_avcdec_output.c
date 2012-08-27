@@ -77,11 +77,9 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			pitch >>=1;
 		}
 		pitch = (1 << (i + next_power));
-		ret = init_ipmmu(&shvpu_avcdec_Private->ipmmui_data, 0,
-			shvpu_avcdec_Private->uio_start_phys, i + next_power,
-			&align_bits);
-		if (ret)
-			loge("Cannot init IPMMUI\n");
+		shvpu_avcdec_Private->ipmmui_data = init_ipmmu(
+			shvpu_avcdec_Private->uio_start_phys, pitch);
+		align_bits = i + next_power + 5;
 
 		fmem_x = pitch;
 		align = (1 << align_bits);
@@ -127,10 +125,12 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		if (shvpu_avcdec_Private->features.tl_conv_mode == OMX_TRUE) {
 			/*alignment offset*/
 			ypic_paddr = (ypic_paddr + (align - 1)) & ~(align - 1);
+#ifndef VPU_INTERNAL_TL
 			/*access via IPMMUI*/
 			ypic_paddr = phys_to_ipmmui(
-				&shvpu_avcdec_Private->ipmmui_data,
+				shvpu_avcdec_Private->ipmmui_data,
 				ypic_paddr);
+#endif
 		}
 		cpic_paddr = ypic_paddr + fmemsize;
 		_fmem[i].Ypic_addr = ypic_paddr;

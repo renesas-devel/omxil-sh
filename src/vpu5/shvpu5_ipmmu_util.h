@@ -1,6 +1,5 @@
-
 /**
-   src/vpu5/shvpu5_avcdec_ipmmu.h
+   src/vpu5/shvpu5_ipmmu_util.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
@@ -25,33 +24,20 @@
    02110-1301 USA
 
 */
-#ifndef _SHVPU5_COMMON_IPMMU_H
-#define _SHVPU5_COMMON_IPMMU_H
 
-#ifdef TL_CONV_ENABLE
+#define TB 5 /*log2 (block width) minimum value = 4*/
+#define VB 5 /*log2 (block height)*/
 
-struct shvpu_ipmmui_t;
-typedef struct shvpu_ipmmui_t shvpu_ipmmui_t;
+struct shvpu_ipmmui_t {
+	unsigned long ipmmui_vaddr;
+	unsigned long ipmmui_mask;
+	void *private_data;
+}; 
 
-shvpu_ipmmui_t *
-init_ipmmu(unsigned long phys_base, int stride);
+struct ipmmu_pmb_ops {
+	struct shvpu_ipmmu_t * (*init) (struct shvpu_ipmmui_t *ipmmui_data, unsigned long phys_base,
+		int stride);
+	void (*deinit) (struct shvpu_ipmmui_t *ipmmui_data);
+};
 
-void
-deinit_ipmmu(shvpu_ipmmui_t *ipmmui_data);
-
-unsigned long
-phys_to_ipmmui(shvpu_ipmmui_t *ipmmui_data, unsigned long address);
-
-unsigned long
-ipmmui_to_phys(shvpu_ipmmui_t *ipmmui_data, unsigned long ipmmu,
-	unsigned long phys_base);
-
-#else
-typedef struct {
-} shvpu_ipmmui_t;
-#define init_ipmmu(a, b) (0)
-#define deinit_ipmmu(x)
-#define phys_to_ipmmui(x, y) (y)
-#define ipmmui_to_phys(x, y, z) (y)
-#endif
-#endif /*  _SHVPU5_COMMON_IPMMU_H */
+extern struct ipmmu_pmb_ops *pmb_ops;

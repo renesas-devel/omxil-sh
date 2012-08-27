@@ -1402,7 +1402,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			(pic_infos[0]->ypic_size -
 			 pic_infos[0]->frame_crop[MCVDEC_CROP_BOTTOM]);
 
-		real_phys = ipmmui_to_phys(&shvpu_avcdec_Private->ipmmui_data,
+		real_phys = ipmmui_to_phys(shvpu_avcdec_Private->ipmmui_data,
 				frame->Ypic_addr,
 				shvpu_avcdec_Private->uio_start_phys);
 		vaddr = uio_phys_to_virt(real_phys);
@@ -1441,7 +1441,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 
 			pOutBuffer->pPlatformPrivate = (void *)
 				phys_to_ipmmui(
-					&shvpu_avcdec_Private->ipmmui_data,
+					shvpu_avcdec_Private->ipmmui_data,
 					frame->Ypic_addr);
 		}
 		pOutBuffer->nFilledLen += pic_size + pic_size / 2;

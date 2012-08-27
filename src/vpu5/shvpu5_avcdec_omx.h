@@ -184,7 +184,7 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	unsigned long           uio_size;				\
 	unsigned long           uio_start_phys;				\
 	shvpu_meram_t		meram_data;				\
-	shvpu_ipmmui_t		ipmmui_data;				\
+	shvpu_ipmmui_t		*ipmmui_data;				\
 	decode_features_t	features;				\
 	android_native_t	android_native;
 ENDCLASS(shvpu_avcdec_PrivateType)
