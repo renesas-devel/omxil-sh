@@ -331,6 +331,14 @@ AS_IF([test "x$enable_vpu5_tddmac" != "xno" -a "x$enable_vpu5_mode" = "xusebuffe
 
 AM_CONDITIONAL(USE_TDDMAC, [test "x$enable_vpu5_tddmac" != "xno"])
 
+dnl Enable ICB cache setting
+AC_ARG_ENABLE(icbcache,
+	[AC_HELP_STRING(
+		[--enable-icbcache],
+		[Enable ICB Cache flushing])])
+
+AM_CONDITIONAL(ICBCACHE_FLUSH, [test "x$enable_icbcache" = "xyes"])
+
 dnl Disable TL_CONV setting
 AC_ARG_ENABLE(tl_conv,
 	[AC_HELP_STRING(

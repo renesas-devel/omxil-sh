@@ -78,6 +78,7 @@ int vpc_clear(void) {
 	return 0;
 }
 
+#ifdef ICBCACHE_FLUSH
 #define MEBUFCCNTR		(0x94)
 #define MEBUFCCNTR_CE		(1 << 27)
 #define MEBUFCCNTR_FLUSH	(1 << 31)
@@ -106,7 +107,7 @@ void icbcache_flush(void) {
 	*((unsigned long*) (icbcache_regs + MEBUFCCNTR)) =
 		tmp | MEBUFCCNTR_FLUSH;
 }
-
+#endif
 int
 uio_interrupt_clear()
 {
@@ -214,7 +215,7 @@ uio_init(char *name, unsigned long *paddr_reg,
 			pthread_mutex_unlock(&uiomux_mutex);
 			goto memops_init_fail;
 		}
-#ifdef VPU_VERSION_5HA
+#ifdef ICBCACHE_FLUSH
 		icbcache_init();
 #endif
 	} else {
@@ -248,7 +249,7 @@ uio_deinit() {
 	pthread_mutex_lock(&uiomux_mutex);
 	ref_cnt--;
 	if (!ref_cnt) {
-#ifdef VPU_VERSION_5HA
+#ifdef ICBCACHE_FLUSH
 		icbcache_deinit();
 #endif
 		memops->memory_deinit();

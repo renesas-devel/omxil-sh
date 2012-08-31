@@ -63,7 +63,7 @@ handle_shvpu5_interrupt(void *arg)
 {
 
 	MCIPH_DRV_INFO_T *pDrvInfo = arg;
-#ifdef VPU_VERSION_5HA
+#ifdef ICBCACHE_FLUSH
 	icbcache_flush(); /* noop on encode (enable bit not set) */
 #endif
 	logd("----- invoke mciph_vpu5_int_handler() -----\n");
