@@ -40,23 +40,29 @@ typedef unsigned int	uintptr_t;
 static inline unsigned char *
 extract_avcnal(unsigned char *buf0, size_t len0, unsigned char *buf1, size_t len1)
 {
-	unsigned char start_code[3], *head;
-	size_t start_code_size;
-	unsigned long start_code_mask;
+	int i, j;
+	unsigned char *buf;
+	int len;
 
-	start_code[0] = 0x00;
-	start_code[1] = 0x00;
-	start_code[2] = 0x01;
-	start_code_size = 3;
-	start_code_mask = 0U;
+	buf = buf0;
+	len = len0;
 
-	/* search start-code */
-	head = mcvdec_search_startcode(buf0, len0, buf1, len1,
-				       start_code,
-				       start_code_size,
-				       start_code_mask);
+	for (i = 0; i < 2; i++) {
+		for (j = 0; j < len - 2; j++) {
+			if (buf[j] == 0 && buf[j+1] == 0 && buf[j+2] == 1)
+				return &buf[j];
+		}
+		if (i == 0 && buf1) { // cross buffer checking
+			if (buf[j] == 0 && buf[j+1] == 0 && buf1[0] == 1)
+				return &buf[j];
+			else if (buf[j+1] == 0 && buf1[0] == 0 && buf1[1] == 1)
+				return &buf[j+1];
+		}
+		buf = buf1;
+		len = len1;
+	}
 
-	return head;
+	return NULL;
 }
 
 static inline OMX_BOOL
