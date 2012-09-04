@@ -51,7 +51,7 @@ init_kernel_tiling(struct shvpu_ipmmui_t *ipmmui_data,
 	
 	ROUND_NEXT_POW2(stride, stride);
 
-	pmb.size_mb = 64;
+	pmb.size_mb = PMB_SIZE;
 	pmb.paddr = phys_base;
 	pmb.enabled = 1;
 
@@ -72,7 +72,7 @@ init_kernel_tiling(struct shvpu_ipmmui_t *ipmmui_data,
 		return ret;
 
 	ipmmui_data->private_data = (void *)fd;
-	ipmmui_data->ipmmui_mask = ~((64 << 20) - 1);
+	ipmmui_data->ipmmui_mask = ~((PMB_SIZE << 20) - 1);
 	ipmmui_data->ipmmui_vaddr = vaddr;
 	return 0;
 }

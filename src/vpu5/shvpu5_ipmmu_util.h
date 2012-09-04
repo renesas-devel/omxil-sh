@@ -25,6 +25,8 @@
 
 */
 
+#define PMB_SIZE 128
+
 struct shvpu_ipmmui_t {
 	unsigned long ipmmui_vaddr;
 	unsigned long ipmmui_mask;
