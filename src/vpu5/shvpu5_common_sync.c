@@ -159,7 +159,7 @@ void
 mciph_uf_ce_start(void *context, long mode, void *start_info)
 {
 	logd("%s invoked.\n", __FUNCTION__);
-#if defined(VPU_VERSION_5HD) || defined(VPU_VERSION_VCP1)
+#if defined(VPC_ENABLE)
 	vpc_start_frame();
 #endif
 	if (mode == MCIPH_DEC) {

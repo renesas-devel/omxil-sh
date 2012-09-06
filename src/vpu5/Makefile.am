@@ -25,6 +25,10 @@ VPU5_LIBS += $(MERAM_LIBS)
 OPTIONAL_SOURCES += shvpu5_uio_tiling.c
 endif
 
+if USE_VPC
+VPU5_CFLAGS += -DVPC_ENABLE
+endif
+
 if USE_KERNEL_TL
 OPTIONAL_SOURCES += shvpu5_kernel_tiling.c
 endif
