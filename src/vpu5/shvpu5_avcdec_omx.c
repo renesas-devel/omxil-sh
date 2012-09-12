@@ -208,9 +208,9 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	/*OMX_PARAM_REVPU5MAXPARAM*/
 		setHeader(&shvpu_avcdec_Private->maxVideoParameters,
 			  sizeof(OMX_PARAM_REVPU5MAXPARAM));
-		shvpu_avcdec_Private->maxVideoParameters.nWidth = 1280;
-		shvpu_avcdec_Private->maxVideoParameters.nHeight = 720;
-		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel31;
+		shvpu_avcdec_Private->maxVideoParameters.nWidth = 1920;
+		shvpu_avcdec_Private->maxVideoParameters.nHeight = 1080;
+		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel41;
 		/*OMX_PARAM_REVPU5MAXINSTANCE*/
 		setHeader(&maxVPUInstances,
 			sizeof (OMX_PARAM_REVPU5MAXINSTANCE));
