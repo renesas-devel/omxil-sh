@@ -1441,10 +1441,15 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 				pOutBuffer->nOffset = ((uint8_t *)vaddr)
 				- (uint8_t *)shvpu_avcdec_Private->uio_start;
 
-			pOutBuffer->pPlatformPrivate = (void *)
-				phys_to_ipmmui(
+			if (shvpu_avcdec_Private->features.tl_conv_mode) {
+				pOutBuffer->pPlatformPrivate = (void *)
+					phys_to_ipmmui(
 					shvpu_avcdec_Private->ipmmui_data,
 					frame->Ypic_addr);
+			} else {
+				pOutBuffer->pPlatformPrivate = vaddr;
+			}
+
 		}
 		pOutBuffer->nFilledLen += pic_size + pic_size / 2;
 
