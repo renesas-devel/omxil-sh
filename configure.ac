@@ -354,6 +354,8 @@ AC_ARG_ENABLE(tl_conv,
 		[set T/L conversion support [default=uio if supported]])])
 
 AS_CASE([x$enable_tl_conv],
+	[x],
+		[enable_tl_conv=no],
 	[xinternal],
 		[VPU_OPTIONS="${VPU_OPTIONS}T/L Conv(internal) "],
 	[xuio],
