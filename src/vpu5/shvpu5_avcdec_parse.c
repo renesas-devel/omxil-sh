@@ -33,10 +33,6 @@
 #include "shvpu5_common_queue.h"
 #include "shvpu5_common_log.h"
 
-#ifndef HAVE_ANDROID_OS
-typedef unsigned int	uintptr_t;
-#endif
-
 static inline unsigned char *
 extract_avcnal(unsigned char *buf0, size_t len0, unsigned char *buf1, size_t len1)
 {
