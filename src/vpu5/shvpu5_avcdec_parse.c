@@ -33,6 +33,29 @@
 #include "shvpu5_common_queue.h"
 #include "shvpu5_common_log.h"
 
+static buffer_avcdec_metainfo_t
+save_omx_buffer_metainfo(OMX_BUFFERHEADERTYPE *pBuffer)
+{
+	buffer_avcdec_metainfo_t buffer_meta;
+
+	buffer_meta.hMarkTargetComponent = pBuffer->hMarkTargetComponent;
+	pBuffer->hMarkTargetComponent = NULL;
+	logd("%s: hMarkTargetComponent = %p\n",
+	     __FUNCTION__, buffer_meta.hMarkTargetComponent);
+	buffer_meta.pMarkData = pBuffer->pMarkData;
+	pBuffer->pMarkData = NULL;
+	logd("%s: pMarkData = %p\n", __FUNCTION__, buffer_meta.pMarkData);
+	buffer_meta.nTimeStamp = pBuffer->nTimeStamp;
+	pBuffer->nTimeStamp = 0;
+	logd("%s: nTimeStamp = %d\n", __FUNCTION__, buffer_meta.nTimeStamp);
+	buffer_meta.nFlags = pBuffer->nFlags &
+		(OMX_BUFFERFLAG_STARTTIME | OMX_BUFFERFLAG_DECODEONLY);
+	pBuffer->nFlags = 0;
+	logd("%s: nFlags = %08x\n", __FUNCTION__, buffer_meta.nFlags);
+
+	return buffer_meta;
+}
+
 static inline unsigned char *
 extract_avcnal(unsigned char *buf0, size_t len0, unsigned char *buf1, size_t len1)
 {
@@ -205,43 +228,93 @@ isInsideBuffer(void *pHead, void *pBuffer, size_t nSize)
 	return OMX_FALSE;
 }
 
-static inline int
-registerPic(queue_t *pPicQueue, tsem_t *pPicSem,
-	    queue_t *pNalQueue, tsem_t *pNalSem, OMX_BOOL hasSlice)
-{
-	pic_t *pPic;
+int
+copyNalData(pic_t *pPic, queue_t *pNalQueue,
+			tsem_t *pNalSem, OMX_BOOL hasSlice) {
 
-	pPic = calloc(1, sizeof(pic_t));
-	if (pPic == NULL)
+	phys_input_buf_t *pBuf;
+	nal_t **pNal, **pNalHead;
+	buffer_avcdec_metainfo_t buffer_meta;
+	int i,j;
+
+	pBuf = calloc(1, sizeof(*pBuf));
+	if (pBuf == NULL)
 		return -1;
 
-	pPic->n_nals = pPic->size = 0;
+	pNal = pNalHead = calloc(pNalQueue->nelem, sizeof(nal_t));
+	if (pNalHead == NULL) {
+		free (pBuf);
+		return -1;
+	}
+
 	pPic->hasSlice = hasSlice;
+
+	i = 0;
 	while (pNalSem->semval > 0) {
 		tsem_down(pNalSem);
 		if (pNalQueue->nelem > 0) {
-			pPic->pNal[pPic->n_nals] =
-				dequeue(pNalQueue);
-			if (pPic->pNal[pPic->n_nals] == NULL) {
+			(*pNal) = dequeue(pNalQueue);
+			if ((*pNal) == NULL) {
 				DEBUG(DEB_LEV_ERR,
 				      "Had NULL input nal!!\n");
 				break;
 			}
-			pPic->size += pPic->pNal[pPic->n_nals]->size;
-			pPic->n_nals++;
+			pBuf->size += (*pNal)->size;
+			pBuf->nal_sizes[i++] = (*pNal)->size;
+			pBuf->n_nals++;
+			if (((*pNal)->hasPicData)) {
+				logd("store buffer metadata\n");
+				buffer_meta = save_omx_buffer_metainfo((*pNal)->pBuffer[0]);
+			}
+			pNal++;
 		}
 	}
-	queue(pPicQueue, pPic);
-	tsem_up(pPicSem);
-	logd("a picture with %d nals queued. %d=%d\n",
-	     pPic->n_nals, pPicSem->semval, pPicQueue->nelem);
 
+	pPic->buffer_meta = buffer_meta;
+	pBuf->size = (pBuf->size + 0x200 + 0x600 + 255) / 256;
+	if ((pBuf->size % 2) == 0)
+		pBuf->size++;
+	pBuf->size *= 0x200;
+	pBuf->base_addr = pmem_alloc(pBuf->size, 256, NULL);
+	pNal = pNalHead;
+	pBuf->nal_offsets[0] = pBuf->base_addr + 256;
+	for (i = 0; i < pBuf->n_nals; i++) {
+		int size = (*pNal)->size;
+		size_t offSrc = (*pNal)->offset;
+		size_t offDst = 0;
+		for (j = 0; j < 2; j++) {
+			void *pData = (*pNal)->pBuffer[j]->pBuffer + offSrc;
+			int len = (*pNal)->pBuffer[j]->nFilledLen +
+				(*pNal)->pBuffer[j]->nOffset - offSrc;
+			if (size < len)
+				len = size;
+			memcpy(pBuf->nal_offsets[i] + offDst, pData, len);
+			size -= len;
+			(*pNal)->pBuffer[j]->nFilledLen -= len;
+			(*pNal)->pBuffer[j]->nOffset += len;
+			offDst += len;
+			if (size <= 0)
+				break;
+			offSrc = 0;
+		}
+		if (i < (pBuf->n_nals-1)) {
+			pBuf->nal_offsets[i + 1] =
+				pBuf->nal_offsets[i] + (*pNal)->size;
+		}
+		free(*pNal);
+		pNal++;
+	}
+	free(pNalHead);
+	pPic->pBufs[pPic->n_bufs++] = pBuf;
+	pPic->size += pBuf->size;
+	pPic->n_nals += pBuf->n_nals;
 	return 0;
 }
 
 nal_t *
 parseBuffer(OMX_COMPONENTTYPE * pComponent,
 	    nal_t *pPrevNal,
+	    pic_t **pPic,
 	    OMX_BOOL * pIsInBufferNeeded)
 {
 	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
@@ -255,6 +328,7 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 	size_t nRemainSize, nSizeSub;
 	OMX_BOOL splitBuffer, hasSlice;
 	int which, cur = 0;
+	pic_t *pActivePic = *pPic;
 
 	/* error check */
 	if (!pPrevNal) {
@@ -289,6 +363,10 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 			}
 
 			*pIsInBufferNeeded = OMX_TRUE;
+			if (pNalQueue->nelem > 0) {
+				copyNalData(pActivePic, pNalQueue, pNalSem, 0);
+			}
+
 			break;
 		}
 
@@ -320,11 +398,18 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 		queue(pNalQueue, pNal[cur ^ 1]);
 		tsem_up(pNalSem);
 
+		if (!pActivePic) {
+			pActivePic = *pPic = calloc(1, sizeof(pic_t));
+		}
+
 		/* check picture boundary and
 		   associate queued nals with a picture */
 		if (isSubsequentPic(pNal, cur ^ 1, &hasSlice)) {
-			registerPic(pPicQueue, pPicSem,
-				    pNalQueue, pNalSem, hasSlice);
+			copyNalData(pActivePic, pNalQueue, pNalSem,
+					hasSlice);
+			queue(pPicQueue, pActivePic);
+			tsem_up(pPicSem);
+			pActivePic = *pPic = NULL;
 			return pNal[cur];
 		}
 

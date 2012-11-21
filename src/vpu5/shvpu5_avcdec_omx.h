@@ -75,11 +75,21 @@ typedef	struct {
 	OMX_U32			nFlags;
 } buffer_avcdec_metainfo_t;
 
+typedef struct {
+	void*			base_addr;
+	size_t			size;
+	int 			n_nals;
+	size_t			nal_sizes[16];
+	void*			nal_offsets[16];
+} phys_input_buf_t;
+
 typedef	struct {
-	nal_t*			pNal[16];
+	phys_input_buf_t*	pBufs[16];
+	int			n_bufs;
 	int			n_nals;
 	size_t			size;
 	OMX_BOOL		hasSlice;
+	buffer_avcdec_metainfo_t buffer_meta;
 } pic_t;
 
 typedef struct {
@@ -270,6 +280,7 @@ skipFirstPadding(OMX_BUFFERHEADERTYPE *pInBuffer);
 nal_t *
 parseBuffer(OMX_COMPONENTTYPE * pComponent,
 	    nal_t *pPrevNal,
+	    pic_t **pPic,
 	    OMX_BOOL * pIsInBufferNeeded);
 long
 decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);

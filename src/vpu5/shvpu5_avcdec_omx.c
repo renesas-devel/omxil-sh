@@ -990,6 +990,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
 	queue_t processInBufQueue;
 	nal_t *pNal = NULL;
+	pic_t *pPic = NULL;
 	int ret;
 
 	shvpu_avcdec_Private->bellagioThreads->nThreadBufferMngtID =
@@ -1053,6 +1054,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 		    (shvpu_avcdec_Private->bIsEOSReached == OMX_FALSE))
 			pNal = parseBuffer(pComponent,
 					   pNal,
+					   &pPic,
 					   &isInBufferNeeded);
 
 		/*When we have input buffer to process then get
