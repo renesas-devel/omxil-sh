@@ -184,7 +184,9 @@ isSubsequentPic(nal_t *pNal[], int former, OMX_BOOL *pHasSlice)
 		case 11:
 			logd("%d:EoStr\n", i);
 			has_eos = 1;
-			return OMX_TRUE;
+			if (*pHasSlice)
+				return OMX_TRUE;
+			break;
 		case 12:
 			logd("%d:Filler data\n", i);
 			if (*pHasSlice)
