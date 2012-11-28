@@ -20,8 +20,28 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(omxil-sh, 0.7.0, [dhobsong@igel.co.jp])
+AC_INIT(omxil-sh, 0.9.0, [dhobsong@igel.co.jp])
 AM_INIT_AUTOMAKE
+
+################################################################################
+# Set the shared versioning info, according to section 7.3 of the libtool info #
+# pages. CURRENT:REVISION:AGE must be updated immediately before each release: #
+#                                                                              #
+#   * If the library source code has changed at all since the last             #
+#     update, then increment REVISION (`C:R:A' becomes `C:r+1:A').             #
+#                                                                              #
+#   * If any interfaces have been added, removed, or changed since the         #
+#     last update, increment CURRENT, and set REVISION to 0.                   #
+#                                                                              #
+#   * If any interfaces have been added since the last public release,         #
+#     then increment AGE.                                                      #
+#                                                                              #
+#   * If any interfaces have been removed or changed since the last public     #
+#     release then set AGE to 0.                                               #
+#                                                                              #
+################################################################################
+SHARED_VERSION_INFO="0:0:0"
+
 AC_CONFIG_SRCDIR([src/vpu/library_entry_point.c])
 AC_CONFIG_HEADER([config.h])
 

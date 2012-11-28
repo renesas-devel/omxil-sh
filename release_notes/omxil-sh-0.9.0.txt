@@ -1,0 +1,17 @@
+omxil-sh
+========
+
+omxil-sh: A collection of OpenMAX IL components for SH-Mobile,
+using the Bellagio OpenMAX IL project framework.
+
+Copyright (C) 2009 Renesas Technology Corp.
+Copyright (C) 2010-2012 Igel Co., Ltd.
+
+
+New in this release
+-------------------
+
+Addition of support for SPU (Sound Processing Unit) and VPU5 (Video Processing Unit)
+series.  These two devices require propietery middleware libraries from Renesas
+Electronics Corporation.
+
