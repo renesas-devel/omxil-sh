@@ -564,6 +564,11 @@ uiomem_phys_to_virt(unsigned long paddr)
 	return NULL;
 }
 
+void
+uiomux_register_memory(void *vaddr, unsigned long paddr, int size) {
+	uiomux_register(vaddr, paddr, size);
+}
+
 struct memory_ops uiomem_ops = {
 	.pmem_alloc = uiomem_pmem_alloc,
 	.pmem_free = uiomem_pmem_free,

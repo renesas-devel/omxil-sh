@@ -38,7 +38,7 @@ init_ipmmu(unsigned long phys_base, int stride, int tile_logw, int tile_logh) {
 	if (ipmmui_data) {
 		pmb_ops->init(ipmmui_data, phys_base, stride, tile_logw,
 			tile_logh);
-		uiomux_register(ipmmui_data->ipmmui_vaddr,
+		uiomux_register_memory(ipmmui_data->ipmmui_vaddr,
 		(unsigned long) ipmmui_data->ipmmui_vaddr, (PMB_SIZE << 20));
 	}
 	return ipmmui_data;

@@ -208,6 +208,12 @@ uiomux_lock_vpu();
 void
 uiomux_unlock_vpu();
 
+/** Register a buffer with UIOMux
+  *
+  */
+void
+uiomux_register_memory(void *vaddr, unsigned long paddr, int size);
+
 #ifdef VPU_VERSION_5HA
 void icbcache_flush(void);
 #endif
