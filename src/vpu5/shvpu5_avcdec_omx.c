@@ -62,6 +62,22 @@ static pthread_mutex_t initMutex = PTHREAD_MUTEX_INITIALIZER;
 
 #define INPUT_BUFFER_COUNT 6
 #define INPUT_BUFFER_SIZE (1024 * 1024)
+
+#define LOG2_TB_DEFAULT 5 /*log2 (block width) minimum value = 4*/
+#define LOG2_VB_DEFAULT 5 /*log2 (block height)*/
+
+#ifdef TL_TILE_WIDTH_LOG2
+#define LOG2_TB TL_TILE_WIDTH_LOG2
+#else
+#define LOG2_TB LOG2_TB_DEFAULT
+#endif
+
+#ifdef TL_TILE_HEIGHT_LOG2
+#define LOG2_VB TL_TILE_HEIGHT_LOG2
+#else
+#define LOG2_VB LOG2_VB_DEFAULT
+#endif
+
 /** The Constructor of the video decoder component
  * @param pComponent the component handle to be constructed
  * @param cComponentName is the name of the constructed component

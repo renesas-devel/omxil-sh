@@ -404,6 +404,24 @@ AC_ARG_ENABLE(tl_conv_internal,
 AM_CONDITIONAL(USE_TL_CONV_INT,
       [test "x$HAVE_VP5DECAVC" = "xyes" -a "x$enable_tl_conv_internal" = "xyes"])
 
+AC_ARG_WITH(tl_conv_width_log2,
+	[AC_HELP_STRING(
+		[--with-tl_conv_width_log2],
+		[set T/L tile width log base 2 pixels (default 5=32 pix)])],
+	[TL_CONV_WIDTH=$withval],
+	[TL_CONV_WIDTH=no])
+AC_SUBST(TL_CONV_WIDTH)
+AM_CONDITIONAL(SET_TL_WIDTH, test $TL_CONV_WIDTH != no)
+
+AC_ARG_WITH(tl_conv_height_log2,
+	[AC_HELP_STRING(
+		[--with-tl_conv_height_log2],
+		[set T/L tile height log base 2 pixels (default 5=32 pix)])],
+	[TL_CONV_HEIGHT=$withval],
+	[TL_CONV_HEIGHT=no])
+AC_SUBST(TL_CONV_HEIGHT)
+AM_CONDITIONAL(SET_TL_HEIGHT, test $TL_CONV_HEIGHT != no)
+
 dnl Disable MERAM setting
 AC_ARG_ENABLE(meram,
 	[AC_HELP_STRING(

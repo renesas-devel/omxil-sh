@@ -74,6 +74,14 @@ ifeq ($(VPU_DECODER_COMPONENT),true)
 		shvpu5_avcdec_input.c
 	LOCAL_CFLAGS += -DDECODER_COMPONENT
 endif
+
+ifneq ($(VPU_TL_TILE_WIDTH_LOG2),)
+	LOCAL_CFLAGS += -DTL_TILE_WIDTH_LOG2=$(VPU_TL_TILE_WIDTH_LOG2)
+endif
+ifneq ($(VPU_TL_TILE_HEIGHT_LOG2),)
+	LOCAL_CFLAGS += -DTL_TILE_HEIGHT_LOG2=$(VPU_TL_TILE_HEIGHT_LOG2)
+endif
+
 ifeq ($(VPU_ENCODER_COMPONENT),true)
 	LOCAL_SRC_FILES += \
 		shvpu5_avcenc_encode.c \

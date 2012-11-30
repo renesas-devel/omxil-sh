@@ -28,9 +28,6 @@
 #ifndef _SHVPU5_COMMON_IPMMU_H
 #define _SHVPU5_COMMON_IPMMU_H
 
-#define LOG2_TB 5 /*log2 (block width) minimum value = 4*/
-#define LOG2_VB 5 /*log2 (block height)*/
-
 #ifdef TL_CONV_ENABLE
 
 struct shvpu_ipmmui_t;
