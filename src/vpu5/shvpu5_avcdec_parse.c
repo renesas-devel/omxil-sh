@@ -264,15 +264,16 @@ copyNalData(pic_t *pPic, queue_t *pNalQueue,
 			pBuf->size += (*pNal)->size;
 			pBuf->nal_sizes[i++] = (*pNal)->size;
 			pBuf->n_nals++;
-			if (((*pNal)->hasPicData)) {
+			if (!pPic->has_meta && ((*pNal)->hasPicData)) {
 				logd("store buffer metadata\n");
 				buffer_meta = save_omx_buffer_metainfo((*pNal)->pBuffer[0]);
+				pPic->buffer_meta = buffer_meta;
+				pPic->has_meta = 1;
 			}
 			pNal++;
 		}
 	}
 
-	pPic->buffer_meta = buffer_meta;
 	pBuf->size = (pBuf->size + 0x200 + 0x600 + 255) / 256;
 	if ((pBuf->size % 2) == 0)
 		pBuf->size++;
@@ -402,6 +403,7 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 
 		if (!pActivePic) {
 			pActivePic = *pPic = calloc(1, sizeof(pic_t));
+			memset(pActivePic, 0, sizeof(pic_t));
 		}
 
 		/* check picture boundary and

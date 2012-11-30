@@ -90,6 +90,7 @@ typedef	struct {
 	size_t			size;
 	OMX_BOOL		hasSlice;
 	buffer_avcdec_metainfo_t buffer_meta;
+	int			has_meta;
 } pic_t;
 
 typedef struct {
