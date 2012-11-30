@@ -214,7 +214,7 @@ uiomux_unlock_vpu();
 void
 uiomux_register_memory(void *vaddr, unsigned long paddr, int size);
 
-#ifdef VPU_VERSION_5HA
+#ifdef ICBCACHE_FLUSH
 void icbcache_flush(void);
 #endif
 
