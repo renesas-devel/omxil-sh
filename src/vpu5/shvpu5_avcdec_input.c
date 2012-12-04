@@ -49,9 +49,9 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 			 MCVDEC_ERROR_INFO_T *error_info,
 			 long imd_size)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *)context->user_info;
-	shvpu_avcdec_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		(shvpu_decode_PrivateType *)context->user_info;
+	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	queue_t *pSIQueue = pCodec->pSIQueue;
 	si_element_t *si;
 	int i;
@@ -154,13 +154,13 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 			 MCVDEC_INPUT_STRM_T *input_strm,
 			 void *pic_option)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *)context->user_info;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		(shvpu_decode_PrivateType *)context->user_info;
 	int i, j, cnt;
 	MCVDEC_STRM_INFO_T *pStrmInfo;
-	shvpu_avcdec_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
-	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
-	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
+	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
+	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
+	queue_t *pPicQueue = shvpu_decode_Private->pPicQueue;
 	queue_t *pSIQueue = pCodec->pSIQueue;
 	int *pFrameCount = &pCodec->frameCount;
 	pic_t *pPic;
@@ -175,7 +175,7 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 	logd("%s invoked.\n", __FUNCTION__);
 
 	if (pPicSem->semval == 0) {
-		if (shvpu_avcdec_Private->bIsEOSReached) {
+		if (shvpu_decode_Private->bIsEOSReached) {
 			logd("%s: EOS!\n", __FUNCTION__);
 			if (pCodec->has_eos == 0) {
 				pCodec->has_eos = 1;

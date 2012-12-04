@@ -320,12 +320,12 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 	    pic_t **pPic,
 	    OMX_BOOL * pIsInBufferNeeded)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *) pComponent->pComponentPrivate;
-	tsem_t *pNalSem = shvpu_avcdec_Private->pNalSem;
-	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
-	queue_t *pNalQueue = shvpu_avcdec_Private->pNalQueue;
-	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		(shvpu_decode_PrivateType *) pComponent->pComponentPrivate;
+	tsem_t *pNalSem = shvpu_decode_Private->pNalSem;
+	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
+	queue_t *pNalQueue = shvpu_decode_Private->pNalQueue;
+	queue_t *pPicQueue = shvpu_decode_Private->pPicQueue;
 	nal_t *pNal[2] = { NULL, NULL };
 	void *pHead, *pStart, *pStartSub;
 	size_t nRemainSize, nSizeSub;
@@ -361,7 +361,7 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 		if (pHead == NULL) {
 			if (pStartSub) {
 				logd("it must be the final\n");
-				shvpu_avcdec_Private->bIsEOSReached = OMX_TRUE;
+				shvpu_decode_Private->bIsEOSReached = OMX_TRUE;
 				goto register_nal;
 			}
 
@@ -423,11 +423,11 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 	return pNal[cur ^ 1];
 }
 
-void free_remaining_pictures(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
-	tsem_t *pNalSem = shvpu_avcdec_Private->pNalSem;
-	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
-	queue_t *pNalQueue = shvpu_avcdec_Private->pNalQueue;
-	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
+void free_remaining_pictures(shvpu_decode_PrivateType *shvpu_decode_Private) {
+	tsem_t *pNalSem = shvpu_decode_Private->pNalSem;
+	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
+	queue_t *pNalQueue = shvpu_decode_Private->pNalQueue;
+	queue_t *pPicQueue = shvpu_decode_Private->pPicQueue;
 	pic_t *pPic;
 	nal_t *nal;
 

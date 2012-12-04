@@ -29,15 +29,15 @@ extern "C" {
 #include "shvpu5_avcdec_omx.h"
 #include "shvpu5_avcenc_omx.h"
 OMX_ERRORTYPE shvpu_avcdec_UseAndroidNativeBuffer(
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure);
 
 OMX_ERRORTYPE shvpu_avcdec_AndroidNativeBufferEnable(
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure);
 
 OMX_ERRORTYPE shvpu_avcdec_GetNativeBufferUsage(
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure);
 
 OMX_ERRORTYPE shvpu_avcenc_SetMetaDataInBuffers(

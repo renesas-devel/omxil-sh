@@ -34,9 +34,9 @@
 long
 notify_buffering(MCVDEC_CONTEXT_T *context, long status)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *)context->user_info;
-	shvpu_avcdec_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		(shvpu_decode_PrivateType *)context->user_info;
+	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
 
 	logd("%s(%ld) invoked.\n", __FUNCTION__, status);
 	pthread_mutex_lock(&pCodec->mutex_buffering);
@@ -44,7 +44,7 @@ notify_buffering(MCVDEC_CONTEXT_T *context, long status)
 	pthread_cond_broadcast(&pCodec->cond_buffering);
 	pthread_mutex_unlock(&pCodec->mutex_buffering);
 	if (pCodec->enoughHeaders) {
-		if (shvpu_avcdec_Private->enable_sync)
+		if (shvpu_decode_Private->enable_sync)
 			pCodec->codecMode = MCVDEC_MODE_SYNC;
 		else
 			pCodec->codecMode = MCVDEC_MODE_MAIN;

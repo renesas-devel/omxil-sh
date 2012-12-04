@@ -85,10 +85,10 @@ long header_processed_callback( MCVDEC_CONTEXT_T *context,
 				void 	*api_data,
 				long	data_id,
 				long 	status) {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
+	shvpu_decode_PrivateType *shvpu_decode_Private;
 	OMX_VIDEO_PARAM_PROFILELEVELTYPE *pProfile;
-	shvpu_avcdec_Private = (shvpu_avcdec_PrivateType *)context->user_info;
-	pProfile = &shvpu_avcdec_Private->pVideoCurrentProfile;
+	shvpu_decode_Private = (shvpu_decode_PrivateType *)context->user_info;
+	pProfile = &shvpu_decode_Private->pVideoCurrentProfile;
 	if (status)
 		return -1;
 	switch (data_type) {
@@ -156,7 +156,7 @@ long header_processed_callback( MCVDEC_CONTEXT_T *context,
 	   an 8-bytes aligned region. */
 
 long
-decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
+decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 {
 	extern const MCVDEC_API_T avcdec_api_tbl;
 	shvpu_avcdec_codec_t *pCodec;
@@ -271,16 +271,16 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 
 	pCodec->cprop.codec_params = &pCodec->avcdec_params;
 	/* Initilize intrinsic header callbacks*/
-	memset(shvpu_avcdec_Private->intrinsic, 0, sizeof (void *) *
+	memset(shvpu_decode_Private->intrinsic, 0, sizeof (void *) *
 		AVCDEC_INTRINSIC_ID_CNT);
-	shvpu_avcdec_Private->intrinsic[0] =
+	shvpu_decode_Private->intrinsic[0] =
 		malloc_aligned(sizeof(AVCDEC_SPS_SYNTAX_T), 1);
 
 	logd("----- invoke mcvdec_init_decoder() -----\n");
 	ret = mcvdec_init_decoder((MCVDEC_API_T *)&avcdec_api_tbl,
 				  &pCodec->cprop,
 				  &pCodec->wbuf_dec,
-				  &pCodec->fw, shvpu_avcdec_Private->intrinsic,
+				  &pCodec->fw, shvpu_decode_Private->intrinsic,
 				  pCodec->pDriver->pDrvInfo, &pContext);
 	logd("----- resume from mcvdec_init_decoder() -----\n");
 	if (ret != MCIPH_NML_END)
@@ -291,9 +291,9 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	unsigned long paddr;
 
 	pCodec->imd_info.imd_buff_size = inb_buf_size_calc(
-		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel,
-		shvpu_avcdec_Private->maxVideoParameters.nWidth,
-		shvpu_avcdec_Private->maxVideoParameters.nHeight,
+		shvpu_decode_Private->maxVideoParameters.eVPU5AVCLevel,
+		shvpu_decode_Private->maxVideoParameters.nWidth,
+		shvpu_decode_Private->maxVideoParameters.nHeight,
 		num_views);
 	/* VPU may access more 2048 bytes over the buffer.*/
 	pCodec->imd_info.imd_buff_size += 2048; 
@@ -307,7 +307,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	pCodec->imd_info.imd_buff_mode = MCVDEC_MODE_NOMAL;
 
         pCodec->ir_info.ir_info_size = ir_info_size_calc(
-		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel,
+		shvpu_decode_Private->maxVideoParameters.eVPU5AVCLevel,
 		pCodec->cprop.max_slice_cnt,
 		num_views);
 
@@ -318,8 +318,8 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 		return -1;
 
         pCodec->mv_info.mv_info_size = mv_info_size_calc(
-                       shvpu_avcdec_Private->maxVideoParameters.nWidth,
-                       shvpu_avcdec_Private->maxVideoParameters.nHeight,
+                       shvpu_decode_Private->maxVideoParameters.nWidth,
+                       shvpu_decode_Private->maxVideoParameters.nHeight,
                        pCodec->avcdec_params.max_num_ref_frames_plus1,
 		       num_views);
 
@@ -343,7 +343,7 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	logd("----- resume from mcvdec_set_play_mode() -----\n");
 
 	pCodec->frameCount = pCodec->bufferingCount = 0;
-	if (shvpu_avcdec_Private->enable_sync) {
+	if (shvpu_decode_Private->enable_sync) {
 		pCodec->codecMode = MCVDEC_MODE_SYNC;
 		pCodec->outMode = MCVDEC_OUTMODE_PULL;
 	} else {
@@ -355,33 +355,33 @@ decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private)
 	pCodec->enoughHeaders = pCodec->enoughPreprocess = OMX_FALSE;
 	pthread_cond_init(&pCodec->cond_buffering, NULL);
 	pthread_mutex_init(&pCodec->mutex_buffering, NULL);
-	pContext->user_info = (void *)shvpu_avcdec_Private;
-	shvpu_avcdec_Private->avCodec = pCodec;
-	shvpu_avcdec_Private->avCodecContext = pContext;
+	pContext->user_info = (void *)shvpu_decode_Private;
+	shvpu_decode_Private->avCodec = pCodec;
+	shvpu_decode_Private->avCodecContext = pContext;
 
 	return ret;
 }
 
 void
-decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
+decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	buffer_avcdec_metainfo_t *pBMI;
 
-	if (shvpu_avcdec_Private) {
-		shvpu_avcdec_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
-		decode_finalize(shvpu_avcdec_Private->avCodecContext);
-		if (shvpu_avcdec_Private->intrinsic)
-			free(shvpu_avcdec_Private->intrinsic[0]);
-		if (shvpu_avcdec_Private->avCodec && 
-			shvpu_avcdec_Private->avCodec->fmem) {
-			int i, bufs = shvpu_avcdec_Private->avCodec->fmem_size;
+	if (shvpu_decode_Private) {
+		shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
+		decode_finalize(shvpu_decode_Private->avCodecContext);
+		if (shvpu_decode_Private->intrinsic)
+			free(shvpu_decode_Private->intrinsic[0]);
+		if (shvpu_decode_Private->avCodec && 
+			shvpu_decode_Private->avCodec->fmem) {
+			int i, bufs = shvpu_decode_Private->avCodec->fmem_size;
 
-			shvpu_fmem_data *outbuf = shvpu_avcdec_Private->avCodec->fmem;
+			shvpu_fmem_data *outbuf = shvpu_decode_Private->avCodec->fmem;
 			for (i = 0 ; i < bufs; i++) {
 				phys_pmem_free(outbuf->fmem_start,
 						outbuf->fmem_len);
 				outbuf++;
 			}
-			free(shvpu_avcdec_Private->avCodec->fmem);
+			free(shvpu_decode_Private->avCodec->fmem);
 		}
 
 		phys_pmem_free(pCodec->mv_info.mv_info_addr,
@@ -404,12 +404,12 @@ decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
 		free(pCodec->pSIQueue);
 
 #ifdef MERAM_ENABLE
-		close_meram(&shvpu_avcdec_Private->meram_data);
+		close_meram(&shvpu_decode_Private->meram_data);
 #endif
 
 		free(pCodec);
 
-		shvpu_avcdec_Private->avCodec = NULL;
+		shvpu_decode_Private->avCodec = NULL;
 	}
 }
 

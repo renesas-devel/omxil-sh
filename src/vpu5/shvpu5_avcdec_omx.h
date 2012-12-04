@@ -137,8 +137,8 @@ typedef struct {
 } android_native_t;
 /** Video Decoder component private structure.
   */
-DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
-#define shvpu_avcdec_PrivateType_FIELDS omx_base_filter_PrivateType_FIELDS \
+DERIVEDCLASS(shvpu_decode_PrivateType, omx_base_filter_PrivateType)
+#define shvpu_decode_PrivateType_FIELDS omx_base_filter_PrivateType_FIELDS \
 	/** @param avCodec pointer to the VPU5HG video decoder */	\
 	shvpu_avcdec_codec_t *avCodec;						\
 	/** @param avCodecContext pointer to VPU5HG decoder context  */ \
@@ -198,7 +198,7 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	shvpu_ipmmui_t		*ipmmui_data;				\
 	decode_features_t	features;				\
 	android_native_t	android_native;
-ENDCLASS(shvpu_avcdec_PrivateType)
+ENDCLASS(shvpu_decode_PrivateType)
 
 /* Component private entry points declaration */
 OMX_ERRORTYPE shvpu_avcdec_Constructor(OMX_COMPONENTTYPE *openmaxStandComp,OMX_STRING cComponentName);
@@ -284,10 +284,10 @@ parseBuffer(OMX_COMPONENTTYPE * pComponent,
 	    pic_t **pPic,
 	    OMX_BOOL * pIsInBufferNeeded);
 long
-decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);
+decode_init(shvpu_decode_PrivateType *shvpu_decode_Private);
 
 void
-decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);
+decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private);
 
-void free_remaining_pictures(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);
+void free_remaining_pictures(shvpu_decode_PrivateType *shvpu_decode_Private);
 #endif

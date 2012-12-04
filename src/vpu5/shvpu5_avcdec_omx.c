@@ -98,7 +98,7 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 {
 
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
+	shvpu_decode_PrivateType *shvpu_decode_Private;
 	omx_base_video_PortType *inPort, *outPort;
 	OMX_U32 i;
 	unsigned long reg;
@@ -119,7 +119,7 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 		DEBUG(DEB_LEV_FUNCTION_NAME, "In %s, allocating component\n",
 		      __func__);
 		pComponent->pComponentPrivate =
-			calloc(1, sizeof(shvpu_avcdec_PrivateType));
+			calloc(1, sizeof(shvpu_decode_PrivateType));
 		if (pComponent->pComponentPrivate == NULL) {
 			return OMX_ErrorInsufficientResources;
 		}
@@ -129,43 +129,43 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 		      __func__, (int)pComponent->pComponentPrivate);
 	}
 
-	shvpu_avcdec_Private = pComponent->pComponentPrivate;
-	shvpu_avcdec_Private->ports = NULL;
+	shvpu_decode_Private = pComponent->pComponentPrivate;
+	shvpu_decode_Private->ports = NULL;
 
 	/* construct base filter */
 	eError = omx_base_filter_Constructor(pComponent, cComponentName);
 
-	shvpu_avcdec_Private->
+	shvpu_decode_Private->
 		sPortTypesParam[OMX_PortDomainVideo].nStartPortNumber = 0;
-	shvpu_avcdec_Private->sPortTypesParam[OMX_PortDomainVideo].nPorts = 2;
+	shvpu_decode_Private->sPortTypesParam[OMX_PortDomainVideo].nPorts = 2;
 
 	/** Allocate Ports and call port constructor. */
-	if (shvpu_avcdec_Private->sPortTypesParam[OMX_PortDomainVideo].nPorts
-	    && !shvpu_avcdec_Private->ports) {
-		shvpu_avcdec_Private->ports =
-			calloc(shvpu_avcdec_Private->sPortTypesParam
+	if (shvpu_decode_Private->sPortTypesParam[OMX_PortDomainVideo].nPorts
+	    && !shvpu_decode_Private->ports) {
+		shvpu_decode_Private->ports =
+			calloc(shvpu_decode_Private->sPortTypesParam
 			       [OMX_PortDomainVideo].nPorts,
 			       sizeof(omx_base_PortType *));
-		if (!shvpu_avcdec_Private->ports) {
+		if (!shvpu_decode_Private->ports) {
 			return OMX_ErrorInsufficientResources;
 		}
 		for (i = 0;
 		     i <
-			     shvpu_avcdec_Private->
+			     shvpu_decode_Private->
 			     sPortTypesParam[OMX_PortDomainVideo].nPorts; i++) {
-			shvpu_avcdec_Private->ports[i] =
+			shvpu_decode_Private->ports[i] =
 				calloc(1, sizeof(omx_base_video_PortType));
-			if (!shvpu_avcdec_Private->ports[i]) {
+			if (!shvpu_decode_Private->ports[i]) {
 				return OMX_ErrorInsufficientResources;
 			}
 		}
 	}
 
 	base_video_port_Constructor(pComponent,
-				    &shvpu_avcdec_Private->ports[0], 0,
+				    &shvpu_decode_Private->ports[0], 0,
 				    OMX_TRUE);
 	base_video_port_Constructor(pComponent,
-				    &shvpu_avcdec_Private->ports[1], 1,
+				    &shvpu_decode_Private->ports[1], 1,
 				    OMX_FALSE);
 
 	/** here we can override whatever defaults the base_component
@@ -179,7 +179,7 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	//common parameters related to input port
 	inPort =
 		(omx_base_video_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 	inPort->sPortParam.nBufferSize = INPUT_BUFFER_SIZE; //max NAL /2 *DHG*/
 	inPort->sPortParam.nBufferCountMin = INPUT_BUFFER_COUNT;
 	inPort->sPortParam.nBufferCountActual = INPUT_BUFFER_COUNT;
@@ -191,7 +191,7 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	//common parameters related to output port
 	outPort =
 		(omx_base_video_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 	outPort->sPortParam.format.video.eColorFormat =
 		OUTPUT_DECODED_COLOR_FMT;
 	outPort->sPortParam.nBufferSize = DEFAULT_VIDEO_OUTPUT_BUF_SIZE;
@@ -203,12 +203,12 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 	/** now it's time to know the video coding type of the component */
 	if (!strcmp(cComponentName, VIDEO_DEC_MPEG4_NAME)) {
-		shvpu_avcdec_Private->video_coding_type =
+		shvpu_decode_Private->video_coding_type =
 			OMX_VIDEO_CodingMPEG4;
 	} else if (!strcmp(cComponentName, VIDEO_DEC_H264_NAME)) {
-		shvpu_avcdec_Private->video_coding_type = OMX_VIDEO_CodingAVC;
+		shvpu_decode_Private->video_coding_type = OMX_VIDEO_CodingAVC;
 	} else if (!strcmp(cComponentName, VIDEO_DEC_BASE_NAME)) {
-		shvpu_avcdec_Private->video_coding_type =
+		shvpu_decode_Private->video_coding_type =
 			OMX_VIDEO_CodingUnused;
 	} else {
 		// IL client specified an invalid component name
@@ -222,24 +222,24 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	SetInternalVideoParameters(pComponent);
 
 	/*OMX_PARAM_REVPU5MAXPARAM*/
-		setHeader(&shvpu_avcdec_Private->maxVideoParameters,
+		setHeader(&shvpu_decode_Private->maxVideoParameters,
 			  sizeof(OMX_PARAM_REVPU5MAXPARAM));
-		shvpu_avcdec_Private->maxVideoParameters.nWidth = 1920;
-		shvpu_avcdec_Private->maxVideoParameters.nHeight = 1080;
-		shvpu_avcdec_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel41;
+		shvpu_decode_Private->maxVideoParameters.nWidth = 1920;
+		shvpu_decode_Private->maxVideoParameters.nHeight = 1080;
+		shvpu_decode_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel41;
 		/*OMX_PARAM_REVPU5MAXINSTANCE*/
 		setHeader(&maxVPUInstances,
 			sizeof (OMX_PARAM_REVPU5MAXINSTANCE));
 
-	shvpu_avcdec_Private->eOutFramePixFmt = 0;
+	shvpu_decode_Private->eOutFramePixFmt = 0;
 
-	if (shvpu_avcdec_Private->video_coding_type ==
+	if (shvpu_decode_Private->video_coding_type ==
 	    OMX_VIDEO_CodingMPEG4) {
-		shvpu_avcdec_Private->
+		shvpu_decode_Private->
 			ports[OMX_BASE_FILTER_INPUTPORT_INDEX]->sPortParam.format.
 			video.eCompressionFormat = OMX_VIDEO_CodingMPEG4;
 	} else {
-		shvpu_avcdec_Private->
+		shvpu_decode_Private->
 			ports[OMX_BASE_FILTER_INPUTPORT_INDEX]->sPortParam.format.
 			video.eCompressionFormat = OMX_VIDEO_CodingAVC;
 	}
@@ -247,18 +247,18 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	/** general configuration irrespective of any video formats
 	 * setting other parameters of shvpu_avcdec_private
 	 */
-	shvpu_avcdec_Private->avCodec = NULL;
-	shvpu_avcdec_Private->avCodecContext = NULL;
-	shvpu_avcdec_Private->avcodecReady = OMX_FALSE;
-	shvpu_avcdec_Private->extradata = NULL;
-	shvpu_avcdec_Private->extradata_size = 0;
+	shvpu_decode_Private->avCodec = NULL;
+	shvpu_decode_Private->avCodecContext = NULL;
+	shvpu_decode_Private->avcodecReady = OMX_FALSE;
+	shvpu_decode_Private->extradata = NULL;
+	shvpu_decode_Private->extradata_size = 0;
 
 	/** initializing the codec context etc that was done earlier
 	    by vpulibinit function */
-	shvpu_avcdec_Private->BufferMgmtFunction =
+	shvpu_decode_Private->BufferMgmtFunction =
 		shvpu_avcdec_BufferMgmtFunction;
-	shvpu_avcdec_Private->messageHandler = shvpu_avcdec_MessageHandler;
-	shvpu_avcdec_Private->destructor = shvpu_avcdec_Destructor;
+	shvpu_decode_Private->messageHandler = shvpu_avcdec_MessageHandler;
+	shvpu_decode_Private->destructor = shvpu_avcdec_Destructor;
 	pComponent->SetParameter = shvpu_avcdec_SetParameter;
 	pComponent->GetParameter = shvpu_avcdec_GetParameter;
 	pComponent->GetConfig = shvpu_avcdec_GetConfig;
@@ -266,42 +266,42 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	pComponent->GetExtensionIndex = shvpu_avcdec_GetExtensionIndex;
 	pComponent->SendCommand = shvpu_avcdec_SendCommand;
 
-	shvpu_avcdec_Private->pPicQueue = calloc(1, sizeof(queue_t));
-	queue_init(shvpu_avcdec_Private->pPicQueue);
-	shvpu_avcdec_Private->pPicSem = calloc(1, sizeof(tsem_t));
-	tsem_init(shvpu_avcdec_Private->pPicSem, 0);
-	shvpu_avcdec_Private->pNalQueue = calloc(1, sizeof(queue_t));
-	queue_init(shvpu_avcdec_Private->pNalQueue);
-	shvpu_avcdec_Private->pNalSem = calloc(1, sizeof(tsem_t));
-	tsem_init(shvpu_avcdec_Private->pNalSem, 0);
+	shvpu_decode_Private->pPicQueue = calloc(1, sizeof(queue_t));
+	queue_init(shvpu_decode_Private->pPicQueue);
+	shvpu_decode_Private->pPicSem = calloc(1, sizeof(tsem_t));
+	tsem_init(shvpu_decode_Private->pPicSem, 0);
+	shvpu_decode_Private->pNalQueue = calloc(1, sizeof(queue_t));
+	queue_init(shvpu_decode_Private->pNalQueue);
+	shvpu_decode_Private->pNalSem = calloc(1, sizeof(tsem_t));
+	tsem_init(shvpu_decode_Private->pNalSem, 0);
 
 
 	/* initialize a vpu uio */
-	uio_init("VPU", &reg, &shvpu_avcdec_Private->uio_start_phys, &memsz);
-	uio_get_virt_memory(&shvpu_avcdec_Private->uio_start,
-			&shvpu_avcdec_Private->uio_size);
+	uio_init("VPU", &reg, &shvpu_decode_Private->uio_start_phys, &memsz);
+	uio_get_virt_memory(&shvpu_decode_Private->uio_start,
+			&shvpu_decode_Private->uio_size);
 
 	loge("reg = %x, mem = %x, memsz = %d\n",
-	     reg, shvpu_avcdec_Private->uio_start_phys, memsz);
+	     reg, shvpu_decode_Private->uio_start_phys, memsz);
 
 #ifdef USE_BUFFER_MODE
-	shvpu_avcdec_Private->features.use_buffer_mode = OMX_TRUE;
+	shvpu_decode_Private->features.use_buffer_mode = OMX_TRUE;
 #ifdef DMAC_MODE
-	shvpu_avcdec_Private->features.dmac_mode = OMX_TRUE;
+	shvpu_decode_Private->features.dmac_mode = OMX_TRUE;
 #endif
 #endif
 
 #ifdef TL_CONV_ENABLE
-	shvpu_avcdec_Private->features.tl_conv_mode = OMX_TRUE;
-	shvpu_avcdec_Private->features.tl_conv_tbm = LOG2_TB;
-	shvpu_avcdec_Private->features.tl_conv_vbm = LOG2_VB;
+	shvpu_decode_Private->features.tl_conv_mode = OMX_TRUE;
+	shvpu_decode_Private->features.tl_conv_tbm = LOG2_TB;
+	shvpu_decode_Private->features.tl_conv_vbm = LOG2_VB;
 #endif
 
 	/* initialize ippmui for buffers */
-	if (!shvpu_avcdec_Private->features.use_buffer_mode)
+	if (!shvpu_decode_Private->features.use_buffer_mode)
 		return eError;
 
-	if (!shvpu_avcdec_Private->features.dmac_mode)
+	if (!shvpu_decode_Private->features.dmac_mode)
 		return eError;
 
 	if (ipmmui_buffer_init() < 0)
@@ -318,29 +318,29 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
  */
 OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+	shvpu_decode_PrivateType *shvpu_decode_Private =
 		pComponent->pComponentPrivate;
 	OMX_U32 i;
 
 	shvpu_avcdec_Deinit(pComponent);
 
-	if (shvpu_avcdec_Private->extradata) {
-		free(shvpu_avcdec_Private->extradata);
-		shvpu_avcdec_Private->extradata = NULL;
+	if (shvpu_decode_Private->extradata) {
+		free(shvpu_decode_Private->extradata);
+		shvpu_decode_Private->extradata = NULL;
 	}
 
 	/* frees port/s */
-	if (shvpu_avcdec_Private->ports) {
+	if (shvpu_decode_Private->ports) {
 		for (i = 0;
-		     i < shvpu_avcdec_Private->
+		     i < shvpu_decode_Private->
 			     sPortTypesParam[OMX_PortDomainVideo].nPorts; i++) {
-			if (shvpu_avcdec_Private->ports[i])
-				shvpu_avcdec_Private->
+			if (shvpu_decode_Private->ports[i])
+				shvpu_decode_Private->
 					ports[i]->PortDestructor
-					(shvpu_avcdec_Private->ports[i]);
+					(shvpu_decode_Private->ports[i]);
 		}
-		free(shvpu_avcdec_Private->ports);
-		shvpu_avcdec_Private->ports = NULL;
+		free(shvpu_decode_Private->ports);
+		shvpu_decode_Private->ports = NULL;
 	}
 
 	DEBUG(DEB_LEV_FUNCTION_NAME,
@@ -349,18 +349,18 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 	/*remove any remaining picutre elements if they haven't
           already been remover (i.e. premature decode cancel)*/
 
-	free_remaining_pictures(shvpu_avcdec_Private);
-	free(shvpu_avcdec_Private->pNalSem);
-	free(shvpu_avcdec_Private->pNalQueue);
-	free(shvpu_avcdec_Private->pPicSem);
-	free(shvpu_avcdec_Private->pPicQueue);
+	free_remaining_pictures(shvpu_decode_Private);
+	free(shvpu_decode_Private->pNalSem);
+	free(shvpu_decode_Private->pNalQueue);
+	free(shvpu_decode_Private->pPicSem);
+	free(shvpu_decode_Private->pPicQueue);
 
 	omx_base_filter_Destructor(pComponent);
 	noVideoDecInstance--;
 
 	uio_deinit();
 
-	if(shvpu_avcdec_Private->features.dmac_mode) {
+	if(shvpu_decode_Private->features.dmac_mode) {
 		DMAC_deinit();
 		ipmmui_buffer_deinit();
 	}
@@ -372,7 +372,7 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
     of type specified by IL client
 */
 OMX_ERRORTYPE
-shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
+shvpu_avcdec_vpuLibInit(shvpu_decode_PrivateType * shvpu_decode_Private)
 {
 	int ret;
 
@@ -380,7 +380,7 @@ shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
 
 	uiomux_lock_vpu();
 	/* initialize the decoder middleware */
-	ret = decode_init(shvpu_avcdec_Private);
+	ret = decode_init(shvpu_decode_Private);
 	if (ret != MCVDEC_NML_END) {
 		loge("decode_init() failed (%ld)\n", ret);
 		return OMX_ErrorInsufficientResources;
@@ -394,14 +394,14 @@ shvpu_avcdec_vpuLibInit(shvpu_avcdec_PrivateType * shvpu_avcdec_Private)
     decoder of selected coding type
 */
 void
-shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_PrivateType *
-			  shvpu_avcdec_Private)
+shvpu_avcdec_vpuLibDeInit(shvpu_decode_PrivateType *
+			  shvpu_decode_Private)
 {
-	shvpu_driver_t *pDriver = shvpu_avcdec_Private->avCodec->pDriver;
+	shvpu_driver_t *pDriver = shvpu_decode_Private->avCodec->pDriver;
 
-	if (shvpu_avcdec_Private) {
+	if (shvpu_decode_Private) {
 		uiomux_lock_vpu();
-		decode_deinit(shvpu_avcdec_Private);
+		decode_deinit(shvpu_decode_Private);
 		uiomux_unlock_vpu();
 		/* decode_deinit() frees region of avCodec,
 		   but pDriver still exists. */
@@ -416,125 +416,125 @@ static void
 SetInternalVideoParameters(OMX_COMPONENTTYPE * pComponent)
 {
 
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
+	shvpu_decode_PrivateType *shvpu_decode_Private;
 	omx_base_video_PortType *inPort;
 
-	shvpu_avcdec_Private = pComponent->pComponentPrivate;;
+	shvpu_decode_Private = pComponent->pComponentPrivate;;
 
-	if (shvpu_avcdec_Private->video_coding_type == OMX_VIDEO_CodingMPEG4) {
-		strcpy(shvpu_avcdec_Private->ports
+	if (shvpu_decode_Private->video_coding_type == OMX_VIDEO_CodingMPEG4) {
+		strcpy(shvpu_decode_Private->ports
 		       [OMX_BASE_FILTER_INPUTPORT_INDEX]->sPortParam.format.
 		       video.cMIMEType, "video/mpeg4");
-		shvpu_avcdec_Private->
+		shvpu_decode_Private->
 			ports[OMX_BASE_FILTER_INPUTPORT_INDEX]->sPortParam.format.
 			video.eCompressionFormat = OMX_VIDEO_CodingMPEG4;
 
-		setHeader(&shvpu_avcdec_Private->pVideoMpeg4,
+		setHeader(&shvpu_decode_Private->pVideoMpeg4,
 			  sizeof(OMX_VIDEO_PARAM_MPEG4TYPE));
-		shvpu_avcdec_Private->pVideoMpeg4.nPortIndex = 0;
-		shvpu_avcdec_Private->pVideoMpeg4.nSliceHeaderSpacing = 0;
-		shvpu_avcdec_Private->pVideoMpeg4.bSVH = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoMpeg4.bGov = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoMpeg4.nPFrames = 0;
+		shvpu_decode_Private->pVideoMpeg4.nPortIndex = 0;
+		shvpu_decode_Private->pVideoMpeg4.nSliceHeaderSpacing = 0;
+		shvpu_decode_Private->pVideoMpeg4.bSVH = OMX_FALSE;
+		shvpu_decode_Private->pVideoMpeg4.bGov = OMX_FALSE;
+		shvpu_decode_Private->pVideoMpeg4.nPFrames = 0;
 
-		shvpu_avcdec_Private->pVideoMpeg4.nBFrames = 0;
-		shvpu_avcdec_Private->pVideoMpeg4.nIDCVLCThreshold = 0;
-		shvpu_avcdec_Private->pVideoMpeg4.bACPred = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoMpeg4.nMaxPacketSize = 0;
-		shvpu_avcdec_Private->pVideoMpeg4.nTimeIncRes = 0;
-		shvpu_avcdec_Private->pVideoMpeg4.eProfile =
+		shvpu_decode_Private->pVideoMpeg4.nBFrames = 0;
+		shvpu_decode_Private->pVideoMpeg4.nIDCVLCThreshold = 0;
+		shvpu_decode_Private->pVideoMpeg4.bACPred = OMX_FALSE;
+		shvpu_decode_Private->pVideoMpeg4.nMaxPacketSize = 0;
+		shvpu_decode_Private->pVideoMpeg4.nTimeIncRes = 0;
+		shvpu_decode_Private->pVideoMpeg4.eProfile =
 			OMX_VIDEO_MPEG4ProfileSimple;
-		shvpu_avcdec_Private->pVideoMpeg4.eLevel =
+		shvpu_decode_Private->pVideoMpeg4.eLevel =
 			OMX_VIDEO_MPEG4Level0;
-		shvpu_avcdec_Private->pVideoMpeg4.nAllowedPictureTypes = 0;
-		shvpu_avcdec_Private->pVideoMpeg4.nHeaderExtension = 0;
-		shvpu_avcdec_Private->pVideoMpeg4.bReversibleVLC = OMX_FALSE;
+		shvpu_decode_Private->pVideoMpeg4.nAllowedPictureTypes = 0;
+		shvpu_decode_Private->pVideoMpeg4.nHeaderExtension = 0;
+		shvpu_decode_Private->pVideoMpeg4.bReversibleVLC = OMX_FALSE;
 
 		inPort =
 			(omx_base_video_PortType *)
-			shvpu_avcdec_Private->ports
+			shvpu_decode_Private->ports
 			[OMX_BASE_FILTER_INPUTPORT_INDEX];
 		inPort->sVideoParam.eCompressionFormat =
 			OMX_VIDEO_CodingMPEG4;
 
-	} else if (shvpu_avcdec_Private->video_coding_type ==
+	} else if (shvpu_decode_Private->video_coding_type ==
 		   OMX_VIDEO_CodingAVC) {
-		strcpy(shvpu_avcdec_Private->ports
+		strcpy(shvpu_decode_Private->ports
 		       [OMX_BASE_FILTER_INPUTPORT_INDEX]->sPortParam.format.
 		       video.cMIMEType, "video/avc(h264)");
-		shvpu_avcdec_Private->
+		shvpu_decode_Private->
 			ports[OMX_BASE_FILTER_INPUTPORT_INDEX]->sPortParam.format.
 			video.eCompressionFormat = OMX_VIDEO_CodingAVC;
 
-		setHeader(&shvpu_avcdec_Private->pVideoAvc,
+		setHeader(&shvpu_decode_Private->pVideoAvc,
 			  sizeof(OMX_VIDEO_PARAM_AVCTYPE));
-		shvpu_avcdec_Private->pVideoAvc.nPortIndex = 0;
-		shvpu_avcdec_Private->pVideoAvc.nSliceHeaderSpacing = 0;
-		shvpu_avcdec_Private->pVideoAvc.bUseHadamard = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.nRefFrames = 2;
-		shvpu_avcdec_Private->pVideoAvc.nPFrames = 0;
-		shvpu_avcdec_Private->pVideoAvc.nBFrames = 0;
-		shvpu_avcdec_Private->pVideoAvc.bUseHadamard = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.nRefFrames = 2;
-		shvpu_avcdec_Private->pVideoAvc.eProfile =
+		shvpu_decode_Private->pVideoAvc.nPortIndex = 0;
+		shvpu_decode_Private->pVideoAvc.nSliceHeaderSpacing = 0;
+		shvpu_decode_Private->pVideoAvc.bUseHadamard = OMX_FALSE;
+		shvpu_decode_Private->pVideoAvc.nRefFrames = 2;
+		shvpu_decode_Private->pVideoAvc.nPFrames = 0;
+		shvpu_decode_Private->pVideoAvc.nBFrames = 0;
+		shvpu_decode_Private->pVideoAvc.bUseHadamard = OMX_FALSE;
+		shvpu_decode_Private->pVideoAvc.nRefFrames = 2;
+		shvpu_decode_Private->pVideoAvc.eProfile =
 			OMX_VIDEO_AVCProfileBaseline;
-		shvpu_avcdec_Private->pVideoAvc.eLevel = OMX_VIDEO_AVCLevel1;
-		shvpu_avcdec_Private->pVideoAvc.nAllowedPictureTypes = 0;
-		shvpu_avcdec_Private->pVideoAvc.bFrameMBsOnly = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.nRefIdx10ActiveMinus1 = 0;
-		shvpu_avcdec_Private->pVideoAvc.nRefIdx11ActiveMinus1 = 0;
-		shvpu_avcdec_Private->pVideoAvc.bEnableUEP = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.bEnableFMO = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.bEnableASO = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.bEnableRS = OMX_FALSE;
+		shvpu_decode_Private->pVideoAvc.eLevel = OMX_VIDEO_AVCLevel1;
+		shvpu_decode_Private->pVideoAvc.nAllowedPictureTypes = 0;
+		shvpu_decode_Private->pVideoAvc.bFrameMBsOnly = OMX_FALSE;
+		shvpu_decode_Private->pVideoAvc.nRefIdx10ActiveMinus1 = 0;
+		shvpu_decode_Private->pVideoAvc.nRefIdx11ActiveMinus1 = 0;
+		shvpu_decode_Private->pVideoAvc.bEnableUEP = OMX_FALSE;
+		shvpu_decode_Private->pVideoAvc.bEnableFMO = OMX_FALSE;
+		shvpu_decode_Private->pVideoAvc.bEnableASO = OMX_FALSE;
+		shvpu_decode_Private->pVideoAvc.bEnableRS = OMX_FALSE;
 
-		shvpu_avcdec_Private->pVideoAvc.bMBAFF = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.bEntropyCodingCABAC =
+		shvpu_decode_Private->pVideoAvc.bMBAFF = OMX_FALSE;
+		shvpu_decode_Private->pVideoAvc.bEntropyCodingCABAC =
 			OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.bWeightedPPrediction =
+		shvpu_decode_Private->pVideoAvc.bWeightedPPrediction =
 			OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.nWeightedBipredicitonMode = 0;
-		shvpu_avcdec_Private->pVideoAvc.bconstIpred = OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.bDirect8x8Inference =
+		shvpu_decode_Private->pVideoAvc.nWeightedBipredicitonMode = 0;
+		shvpu_decode_Private->pVideoAvc.bconstIpred = OMX_FALSE;
+		shvpu_decode_Private->pVideoAvc.bDirect8x8Inference =
 			OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.bDirectSpatialTemporal =
+		shvpu_decode_Private->pVideoAvc.bDirectSpatialTemporal =
 			OMX_FALSE;
-		shvpu_avcdec_Private->pVideoAvc.nCabacInitIdc = 0;
-		shvpu_avcdec_Private->pVideoAvc.eLoopFilterMode =
+		shvpu_decode_Private->pVideoAvc.nCabacInitIdc = 0;
+		shvpu_decode_Private->pVideoAvc.eLoopFilterMode =
 			OMX_VIDEO_AVCLoopFilterDisable;
 
 	/*OMX_VIDEO_PARAM_PROFILELEVELTYPE*/
-		setHeader(&shvpu_avcdec_Private->pVideoProfile[0],
+		setHeader(&shvpu_decode_Private->pVideoProfile[0],
 			  sizeof(OMX_VIDEO_PARAM_PROFILELEVELTYPE));
-		shvpu_avcdec_Private->pVideoProfile[0].eProfile =
+		shvpu_decode_Private->pVideoProfile[0].eProfile =
 			OMX_VIDEO_AVCProfileBaseline;
-		shvpu_avcdec_Private->pVideoProfile[0].eLevel =
+		shvpu_decode_Private->pVideoProfile[0].eLevel =
 			OMX_VIDEO_AVCLevel3;
-		shvpu_avcdec_Private->pVideoProfile[0].nProfileIndex = 0;
+		shvpu_decode_Private->pVideoProfile[0].nProfileIndex = 0;
 
-		setHeader(&shvpu_avcdec_Private->pVideoProfile[1],
+		setHeader(&shvpu_decode_Private->pVideoProfile[1],
 			  sizeof(OMX_VIDEO_PARAM_PROFILELEVELTYPE));
-		shvpu_avcdec_Private->pVideoProfile[1].eProfile =
+		shvpu_decode_Private->pVideoProfile[1].eProfile =
 			OMX_VIDEO_AVCProfileMain;
-		shvpu_avcdec_Private->pVideoProfile[1].eLevel =
+		shvpu_decode_Private->pVideoProfile[1].eLevel =
 			OMX_VIDEO_AVCLevel41;
-		shvpu_avcdec_Private->pVideoProfile[1].nProfileIndex = 1;
+		shvpu_decode_Private->pVideoProfile[1].nProfileIndex = 1;
 
-		setHeader(&shvpu_avcdec_Private->pVideoProfile[2],
+		setHeader(&shvpu_decode_Private->pVideoProfile[2],
 			  sizeof(OMX_VIDEO_PARAM_PROFILELEVELTYPE));
-		shvpu_avcdec_Private->pVideoProfile[2].eProfile =
+		shvpu_decode_Private->pVideoProfile[2].eProfile =
 			OMX_VIDEO_AVCProfileHigh;
-		shvpu_avcdec_Private->pVideoProfile[2].eLevel =
+		shvpu_decode_Private->pVideoProfile[2].eLevel =
 			OMX_VIDEO_AVCLevel31;
-		shvpu_avcdec_Private->pVideoProfile[2].nProfileIndex = 2;
+		shvpu_decode_Private->pVideoProfile[2].nProfileIndex = 2;
 
-		memcpy(&shvpu_avcdec_Private->pVideoCurrentProfile,
-			&shvpu_avcdec_Private->pVideoProfile[0],
+		memcpy(&shvpu_decode_Private->pVideoCurrentProfile,
+			&shvpu_decode_Private->pVideoProfile[0],
 			sizeof (OMX_VIDEO_PARAM_PROFILELEVELTYPE));
 
 		inPort =
 			(omx_base_video_PortType *)
-			shvpu_avcdec_Private->ports
+			shvpu_decode_Private->ports
 			[OMX_BASE_FILTER_INPUTPORT_INDEX];
 		inPort->sVideoParam.eCompressionFormat = OMX_VIDEO_CodingAVC;
 	}
@@ -546,15 +546,15 @@ OMX_ERRORTYPE
 shvpu_avcdec_Init(OMX_COMPONENTTYPE * pComponent)
 {
 
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+	shvpu_decode_PrivateType *shvpu_decode_Private =
 		pComponent->pComponentPrivate;
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
 
 	/** Temporary First Output buffer size */
-	shvpu_avcdec_Private->inputCurrBuffer = NULL;
-	shvpu_avcdec_Private->inputCurrLength = 0;
-	shvpu_avcdec_Private->isFirstBuffer = OMX_TRUE;
-	shvpu_avcdec_Private->isNewBuffer = 1;
+	shvpu_decode_Private->inputCurrBuffer = NULL;
+	shvpu_decode_Private->inputCurrLength = 0;
+	shvpu_decode_Private->isFirstBuffer = OMX_TRUE;
+	shvpu_decode_Private->isNewBuffer = 1;
 
 	return eError;
 }
@@ -565,13 +565,13 @@ OMX_ERRORTYPE
 shvpu_avcdec_Deinit(OMX_COMPONENTTYPE * pComponent)
 {
 
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+	shvpu_decode_PrivateType *shvpu_decode_Private =
 		pComponent->pComponentPrivate;
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
 
-	if (shvpu_avcdec_Private->avcodecReady) {
-		shvpu_avcdec_vpuLibDeInit(shvpu_avcdec_Private);
-		shvpu_avcdec_Private->avcodecReady = OMX_FALSE;
+	if (shvpu_decode_Private->avcodecReady) {
+		shvpu_avcdec_vpuLibDeInit(shvpu_decode_Private);
+		shvpu_decode_Private->avcodecReady = OMX_FALSE;
 	}
 
 	return eError;
@@ -584,15 +584,15 @@ static inline void
 UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 {
 	int pg_mask;
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+	shvpu_decode_PrivateType *shvpu_decode_Private =
 		pComponent->pComponentPrivate;
 	omx_base_video_PortType *outPort =
 		(omx_base_video_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 	omx_base_video_PortType *inPort =
 		(omx_base_video_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
-	if (shvpu_avcdec_Private->features.tl_conv_mode) {
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+	if (shvpu_decode_Private->features.tl_conv_mode) {
 		ROUND_NEXT_POW2(outPort->sPortParam.format.video.nStride,
 			inPort->sPortParam.format.video.nFrameWidth);
 	} else {
@@ -605,7 +605,7 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 		inPort->sPortParam.format.video.nFrameHeight;
 	outPort->sPortParam.format.video.nSliceHeight =
 		ROUND_2POW(inPort->sPortParam.format.video.nFrameHeight,16);
-	if (shvpu_avcdec_Private->features.use_buffer_mode) {
+	if (shvpu_decode_Private->features.use_buffer_mode) {
 		outPort->sPortParam.nBufferSize =
 			outPort->sPortParam.format.video.nFrameWidth *
 			outPort->sPortParam.format.video.nFrameHeight * 3 / 2;
@@ -614,7 +614,7 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 		outPort->sPortParam.nBufferSize &= ~pg_mask;
 	} else {
 		outPort->sPortParam.nBufferSize =
-			shvpu_avcdec_Private->uio_size;
+			shvpu_decode_Private->uio_size;
 	}
 #if 0
 	switch (outPort->sVideoParam.eColorFormat) {
@@ -640,7 +640,7 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 }
 
 static inline void
-handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 		    OMX_BOOL *pIsInBufferNeeded,
 		    OMX_BOOL *pIsOutBufferNeeded,
 		    int *pInBufExchanged, int *pOutBufExchanged,
@@ -651,20 +651,20 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 	omx_base_PortType *pOutPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 	tsem_t *pInputSem = pInPort->pBufferSem;
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
-	shvpu_avcdec_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	buffer_avcdec_metainfo_t *pBMI;
 
-	pthread_mutex_lock(&shvpu_avcdec_Private->flush_mutex);
+	pthread_mutex_lock(&shvpu_decode_Private->flush_mutex);
 	while (PORT_IS_BEING_FLUSHED(pInPort) ||
 	       PORT_IS_BEING_FLUSHED(pOutPort)) {
 		pthread_mutex_unlock
-			(&shvpu_avcdec_Private->flush_mutex);
+			(&shvpu_decode_Private->flush_mutex);
 
 		DEBUG(DEB_LEV_FULL_SEQ,
 		      "In %s 1 signalling flush all cond iE=%d,"
@@ -708,15 +708,15 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 
 
 			/*Flush out Pic and Nal queues*/
-			free_remaining_pictures(shvpu_avcdec_Private);
+			free_remaining_pictures(shvpu_decode_Private);
 
 			logd("Resetting play mode");
 			/*Flush buffers inside VPU5*/
 			mcvdec_set_play_mode(
-				shvpu_avcdec_Private->avCodecContext,
+				shvpu_decode_Private->avCodecContext,
 				MCVDEC_PLAY_FORWARD, 0, 0);
 
-			mcvdec_flush_buff(shvpu_avcdec_Private->avCodecContext,
+			mcvdec_flush_buff(shvpu_decode_Private->avCodecContext,
 				MCVDEC_FLMODE_CLEAR);
 
 			pCodec->releaseBufCount = pCodec->bufferingCount = 0;
@@ -727,7 +727,7 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 				pCodec->codecMode = MCVDEC_MODE_BUFFERING;
 			}
 
-			shvpu_avcdec_Private->isFirstBuffer = OMX_TRUE;
+			shvpu_decode_Private->isFirstBuffer = OMX_TRUE;
 		}
 
 		DEBUG(DEB_LEV_FULL_SEQ,
@@ -737,44 +737,44 @@ handle_buffer_flush(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 		      *pOutBufExchanged, *pIsOutBufferNeeded,
 		      pInputSem->semval, pOutputSem->semval);
 
-		tsem_up(shvpu_avcdec_Private->flush_all_condition);
-		tsem_down(shvpu_avcdec_Private->flush_condition);
-		pthread_mutex_lock(&shvpu_avcdec_Private->
+		tsem_up(shvpu_decode_Private->flush_all_condition);
+		tsem_down(shvpu_decode_Private->flush_condition);
+		pthread_mutex_lock(&shvpu_decode_Private->
 				   flush_mutex);
 	}
-	pthread_mutex_unlock(&shvpu_avcdec_Private->flush_mutex);
+	pthread_mutex_unlock(&shvpu_decode_Private->flush_mutex);
 
 	return;
 }
 
 static inline int
-waitBuffers(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+waitBuffers(shvpu_decode_PrivateType *shvpu_decode_Private,
 	     OMX_BOOL isInBufferNeeded, OMX_BOOL isOutBufferNeeded)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 	omx_base_PortType *pOutPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
-	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
 	tsem_t *pInputSem = pInPort->pBufferSem;
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
 
 	if ((isInBufferNeeded == OMX_TRUE &&
 	     pPicSem->semval == 0 && pInputSem->semval == 0) &&
-	    (shvpu_avcdec_Private->state != OMX_StateLoaded &&
-	     shvpu_avcdec_Private->state != OMX_StateInvalid)) {
+	    (shvpu_decode_Private->state != OMX_StateLoaded &&
+	     shvpu_decode_Private->state != OMX_StateInvalid)) {
 		//Signalled from EmptyThisBuffer or
 		//FillThisBuffer or some thing else
 		DEBUG(DEB_LEV_FULL_SEQ,
 		      "Waiting for next input/output buffer\n");
-		tsem_down(shvpu_avcdec_Private->bMgmtSem);
+		tsem_down(shvpu_decode_Private->bMgmtSem);
 
 	}
 
-	if (shvpu_avcdec_Private->state == OMX_StateLoaded
-	    || shvpu_avcdec_Private->state == OMX_StateInvalid) {
+	if (shvpu_decode_Private->state == OMX_StateLoaded
+	    || shvpu_decode_Private->state == OMX_StateInvalid) {
 		DEBUG(DEB_LEV_SIMPLE_SEQ,
 		      "In %s Buffer Management Thread is exiting\n",
 		      __func__);
@@ -783,20 +783,20 @@ waitBuffers(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 
 	if ((isOutBufferNeeded == OMX_TRUE &&
 	     pOutputSem->semval == 0) &&
-	    (shvpu_avcdec_Private->state != OMX_StateLoaded &&
-	     shvpu_avcdec_Private->state != OMX_StateInvalid) &&
+	    (shvpu_decode_Private->state != OMX_StateLoaded &&
+	     shvpu_decode_Private->state != OMX_StateInvalid) &&
 	    !(PORT_IS_BEING_FLUSHED(pInPort) ||
 	      PORT_IS_BEING_FLUSHED(pOutPort))) {
 		//Signalled from EmptyThisBuffer or
 		//FillThisBuffer or some thing else
 		DEBUG(DEB_LEV_FULL_SEQ,
 		      "Waiting for next input/output buffer\n");
-		tsem_down(shvpu_avcdec_Private->bMgmtSem);
+		tsem_down(shvpu_decode_Private->bMgmtSem);
 
 	}
 
-	if (shvpu_avcdec_Private->state == OMX_StateLoaded ||
-	    shvpu_avcdec_Private->state == OMX_StateInvalid) {
+	if (shvpu_decode_Private->state == OMX_StateLoaded ||
+	    shvpu_decode_Private->state == OMX_StateInvalid) {
 		DEBUG(DEB_LEV_SIMPLE_SEQ,
 		      "In %s Buffer Management Thread is exiting\n",
 		      __func__);
@@ -807,13 +807,13 @@ waitBuffers(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 }
 
 static inline OMX_BOOL
-getInBuffer(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+getInBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 	    OMX_BUFFERHEADERTYPE **ppInBuffer,
 	    int *pInBufExchanged, queue_t *pProcessInBufQueue)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 	tsem_t *pInputSem = pInPort->pBufferSem;
 	queue_t *pInputQueue = pInPort->pBufferQueue;
 
@@ -852,13 +852,13 @@ getInBuffer(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
 }
 
 static inline OMX_BOOL
-takeOutBuffer(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+takeOutBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 	      OMX_BUFFERHEADERTYPE **ppOutBuffer,
 	      int *pOutBufExchanged)
 {
 	omx_base_PortType *pOutPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
 	queue_t *pOutputQueue = pOutPort->pBufferQueue;
 
@@ -887,14 +887,14 @@ static inline void
 handleEventMark(OMX_COMPONENTTYPE *pComponent,
 	     OMX_BUFFERHEADERTYPE *pInBuffer)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *) pComponent->pComponentPrivate;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		(shvpu_decode_PrivateType *) pComponent->pComponentPrivate;
 
 	if ((OMX_COMPONENTTYPE *)pInBuffer->hMarkTargetComponent ==
 	    (OMX_COMPONENTTYPE *)pComponent) {
 		/*Clear the mark and generate an event */
-		(*(shvpu_avcdec_Private->callbacks->EventHandler))
-			(pComponent, shvpu_avcdec_Private->callbackData,
+		(*(shvpu_decode_Private->callbacks->EventHandler))
+			(pComponent, shvpu_decode_Private->callbackData,
 			 OMX_EventMark,	/* The command was completed */
 			 1,		/* The commands was a
 				   	   OMX_CommandStateSet */
@@ -903,9 +903,9 @@ handleEventMark(OMX_COMPONENTTYPE *pComponent,
 			 pInBuffer->pMarkData);
 	} else {
 		/*If this is not the target component then pass the mark */
-		shvpu_avcdec_Private->pMark.hMarkTargetComponent =
+		shvpu_decode_Private->pMark.hMarkTargetComponent =
 			pInBuffer->hMarkTargetComponent;
-		shvpu_avcdec_Private->pMark.pMarkData =
+		shvpu_decode_Private->pMark.pMarkData =
 			pInBuffer->pMarkData;
 	}
 	pInBuffer->hMarkTargetComponent = NULL;
@@ -919,11 +919,11 @@ checkFillDone(OMX_COMPONENTTYPE * pComponent,
 		int *pOutBufExchanged,
 		OMX_BOOL *pIsOutBufferNeeded)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+	shvpu_decode_PrivateType *shvpu_decode_Private =
 		pComponent->pComponentPrivate;
 	omx_base_PortType *pOutPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 
 	/*If EOS and Input buffer Filled Len Zero
 	  then Return output buffer immediately */
@@ -932,9 +932,9 @@ checkFillDone(OMX_COMPONENTTYPE * pComponent,
 		return;
 
 	if ((*ppOutBuffer)->nFlags & OMX_BUFFERFLAG_EOS) {
-	        (*(shvpu_avcdec_Private->callbacks->EventHandler))
+	        (*(shvpu_decode_Private->callbacks->EventHandler))
 			(pComponent,
-			 shvpu_avcdec_Private->callbackData,
+			 shvpu_decode_Private->callbackData,
 			 OMX_EventBufferFlag, /* The command was completed */
 			 1, /* The commands was a OMX_CommandStateSet */
 			 (*ppOutBuffer)->nFlags,
@@ -950,12 +950,12 @@ checkFillDone(OMX_COMPONENTTYPE * pComponent,
 }
 
 static inline void
-checkEmptyDone(shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+checkEmptyDone(shvpu_decode_PrivateType *shvpu_decode_Private,
 	       queue_t *pInBufQueue, int *pInBufExchanged)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 	OMX_BUFFERHEADERTYPE *pInBuffer;
 	int n;
 
@@ -988,14 +988,14 @@ static void *
 shvpu_avcdec_BufferMgmtFunction(void *param)
 {
 	OMX_COMPONENTTYPE *pComponent = (OMX_COMPONENTTYPE *) param;
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *) pComponent->pComponentPrivate;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		(shvpu_decode_PrivateType *) pComponent->pComponentPrivate;
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 	omx_base_PortType *pOutPort =
 		(omx_base_PortType *)
-		shvpu_avcdec_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+		shvpu_decode_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
  	tsem_t *pInputSem = pInPort->pBufferSem;
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
 	OMX_BUFFERHEADERTYPE *pOutBuffer = NULL;
@@ -1003,31 +1003,31 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 	OMX_BOOL isInBufferNeeded = OMX_TRUE,
 		isOutBufferNeeded = OMX_TRUE;
 	int inBufExchanged = 0, outBufExchanged = 0;
-	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
+	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
 	queue_t processInBufQueue;
 	nal_t *pNal = NULL;
 	pic_t *pPic = NULL;
 	int ret;
 
-	shvpu_avcdec_Private->bellagioThreads->nThreadBufferMngtID =
+	shvpu_decode_Private->bellagioThreads->nThreadBufferMngtID =
 		(long int)syscall(__NR_gettid);
 	DEBUG(DEB_LEV_FUNCTION_NAME, "In %s of component %x\n", __func__,
 	      (int)pComponent);
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "In %s the thread ID is %i\n", __func__,
-	      (int)shvpu_avcdec_Private->bellagioThreads->
+	      (int)shvpu_decode_Private->bellagioThreads->
 	      nThreadBufferMngtID);
 
 	queue_init(&processInBufQueue);
 
 	DEBUG(DEB_LEV_FUNCTION_NAME, "In %s\n", __func__);
-	while (shvpu_avcdec_Private->state == OMX_StateIdle
-	       || shvpu_avcdec_Private->state == OMX_StateExecuting
-	       || shvpu_avcdec_Private->state == OMX_StatePause
-	       || shvpu_avcdec_Private->transientState ==
+	while (shvpu_decode_Private->state == OMX_StateIdle
+	       || shvpu_decode_Private->state == OMX_StateExecuting
+	       || shvpu_decode_Private->state == OMX_StatePause
+	       || shvpu_decode_Private->transientState ==
 	       OMX_TransStateLoadedToIdle) {
 
 		/*Wait till the ports are being flushed */
-		handle_buffer_flush(shvpu_avcdec_Private,
+		handle_buffer_flush(shvpu_decode_Private,
 				    &isInBufferNeeded,
 				    &isOutBufferNeeded,
 				    &inBufExchanged, &outBufExchanged,
@@ -1035,7 +1035,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 				    &pNal);
 
 		/*No buffer to process. So wait here */
-		ret = waitBuffers(shvpu_avcdec_Private,
+		ret = waitBuffers(shvpu_decode_Private,
 				   isInBufferNeeded,
 				   isOutBufferNeeded);
 		if (ret < 0)
@@ -1044,7 +1044,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 		if ((isInBufferNeeded == OMX_TRUE) &&
 		    (pInputSem->semval > 0)) {
 			pInBuffer[1] = pInBuffer[0];
-			getInBuffer(shvpu_avcdec_Private,
+			getInBuffer(shvpu_decode_Private,
 				    &pInBuffer[0],
 				    &inBufExchanged, &processInBufQueue);
 			/* TODO: error check for pInBuffer[0] */
@@ -1067,7 +1067,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 
 		/* Split the input buffer into NALs and pictures */
 		if (pNal && (pPicSem->semval == 0) &&
-		    (shvpu_avcdec_Private->bIsEOSReached == OMX_FALSE))
+		    (shvpu_decode_Private->bIsEOSReached == OMX_FALSE))
 			pNal = parseBuffer(pComponent,
 					   pNal,
 					   &pPic,
@@ -1078,15 +1078,15 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 		if ((isOutBufferNeeded == OMX_TRUE) &&
 		    (pOutputSem->semval > 0))
 			isOutBufferNeeded =
-				takeOutBuffer(shvpu_avcdec_Private,
+				takeOutBuffer(shvpu_decode_Private,
 					      &pOutBuffer,
 					      &outBufExchanged);
 
 		if (((pPicSem->semval > 0) ||
-		     shvpu_avcdec_Private->bIsEOSReached) &&
+		     shvpu_decode_Private->bIsEOSReached) &&
 		    (isOutBufferNeeded == OMX_FALSE)) {
 
-			if (shvpu_avcdec_Private->state ==
+			if (shvpu_decode_Private->state ==
 			    OMX_StateExecuting) {
 				shvpu_avcdec_DecodePicture(pComponent,
 							   pOutBuffer);
@@ -1097,16 +1097,16 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 				      "In %s Received Buffer in non-"
 				      "Executing State(%x)\n",
 				      __func__,
-				      (int)shvpu_avcdec_Private->state);
+				      (int)shvpu_decode_Private->state);
 			} else if (pInBuffer[0]) {
 				pInBuffer[0]->nFilledLen = 0;
 			}
 
-			if (shvpu_avcdec_Private->state == OMX_StatePause
+			if (shvpu_decode_Private->state == OMX_StatePause
 			    && !(PORT_IS_BEING_FLUSHED(pInPort)
 				 || PORT_IS_BEING_FLUSHED(pOutPort))) {
 				/*Waiting at paused state */
-				tsem_wait(shvpu_avcdec_Private->bStateSem);
+				tsem_wait(shvpu_decode_Private->bStateSem);
 			}
 
 			checkFillDone(pComponent,
@@ -1115,15 +1115,15 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 					&isOutBufferNeeded);
 		}
 
-		if (shvpu_avcdec_Private->state == OMX_StatePause
+		if (shvpu_decode_Private->state == OMX_StatePause
 		    && !(PORT_IS_BEING_FLUSHED(pInPort)
 			 || PORT_IS_BEING_FLUSHED(pOutPort))) {
 			/*Waiting at paused state */
-			tsem_wait(shvpu_avcdec_Private->bStateSem);
+			tsem_wait(shvpu_decode_Private->bStateSem);
 		}
 
 		if (inBufExchanged > 0)
-			checkEmptyDone(shvpu_avcdec_Private,
+			checkEmptyDone(shvpu_decode_Private,
 				       &processInBufQueue,
 				       &inBufExchanged);
 	}
@@ -1187,21 +1187,21 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 {
 	MCVDEC_CMN_PICINFO_T *pic_infos[2];
 	MCVDEC_FMEM_INFO_T *frame;
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private;
+	shvpu_decode_PrivateType *shvpu_decode_Private;
 	shvpu_avcdec_codec_t *pCodec;
 	MCVDEC_CONTEXT_T *pCodecContext;
 	OMX_ERRORTYPE err = OMX_ErrorNone;
 	long ret, hdr_ready;
 
-	shvpu_avcdec_Private = pComponent->pComponentPrivate;
+	shvpu_decode_Private = pComponent->pComponentPrivate;
 	hdr_ready = MCVDEC_ON;
-	pCodec = shvpu_avcdec_Private->avCodec;
-	pCodecContext = shvpu_avcdec_Private->avCodecContext;
+	pCodec = shvpu_decode_Private->avCodec;
+	pCodecContext = shvpu_decode_Private->avCodecContext;
 
-	if (shvpu_avcdec_Private->bIsEOSReached &&
+	if (shvpu_decode_Private->bIsEOSReached &&
 	    (pCodec->bufferingCount <= 0)) {
 		logd("finalize\n");
-		shvpu_avcdec_Private->bIsEOSReached = OMX_FALSE;
+		shvpu_decode_Private->bIsEOSReached = OMX_FALSE;
 		pOutBuffer->nFlags |= OMX_BUFFERFLAG_EOS;
 		return;
 	}
@@ -1209,7 +1209,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	logd("----- invoke mcvdec_decode_picture() -----\n");
 	uiomux_lock_vpu();
 	ret = mcvdec_decode_picture(pCodecContext,
-				    &shvpu_avcdec_Private->avPicInfo,
+				    &shvpu_decode_Private->avPicInfo,
 				    pCodec->codecMode,
 				    &hdr_ready);
 	uiomux_unlock_vpu();
@@ -1232,7 +1232,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	case MCVDEC_CONCEALED_2:
 		loge("Warning: a recoverable error (%d) "
 		     "for frame-%d\n", ret,
-		     shvpu_avcdec_Private->avPicInfo->strm_id);
+		     shvpu_decode_Private->avPicInfo->strm_id);
 		show_error(pCodecContext);
 		break;
 	case MCVDEC_UNSUPPORT:
@@ -1246,7 +1246,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		return;
 	case MCVDEC_NO_STRM:
 	case MCVDEC_INPUT_END:
-		if (!shvpu_avcdec_Private->bIsEOSReached) {
+		if (!shvpu_decode_Private->bIsEOSReached) {
 			err = OMX_ErrorUnderflow;
 			loge("nothing to decode (%d)\n", ret);
 		}
@@ -1284,41 +1284,41 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	}
 
 	if (err != OMX_ErrorNone) {
-		(*(shvpu_avcdec_Private->callbacks->EventHandler))
-			(pComponent, shvpu_avcdec_Private->callbackData,
+		(*(shvpu_decode_Private->callbacks->EventHandler))
+			(pComponent, shvpu_decode_Private->callbackData,
 			OMX_EventError, // An error occured
 			err, 		// Error code
 			0, NULL);
 		if (err == OMX_ErrorInvalidState)
-			shvpu_avcdec_Private->state = OMX_StateInvalid;
+			shvpu_decode_Private->state = OMX_StateInvalid;
 	}
 
-	if ((err == OMX_ErrorNone) && shvpu_avcdec_Private->avPicInfo) {
+	if ((err == OMX_ErrorNone) && shvpu_decode_Private->avPicInfo) {
 		/* update port status */
 		omx_base_video_PortType *inPort =
 			(omx_base_video_PortType *)
-			shvpu_avcdec_Private->
+			shvpu_decode_Private->
 			ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
 		unsigned long xpic, ypic;
-		xpic = shvpu_avcdec_Private->avPicInfo->xpic_size -
-			shvpu_avcdec_Private->avPicInfo->
+		xpic = shvpu_decode_Private->avPicInfo->xpic_size -
+			shvpu_decode_Private->avPicInfo->
 			frame_crop[MCVDEC_CROP_LEFT] -
-			shvpu_avcdec_Private->avPicInfo->
+			shvpu_decode_Private->avPicInfo->
 			frame_crop[MCVDEC_CROP_RIGHT];
-		ypic = shvpu_avcdec_Private->avPicInfo->ypic_size -
-			shvpu_avcdec_Private->avPicInfo->
+		ypic = shvpu_decode_Private->avPicInfo->ypic_size -
+			shvpu_decode_Private->avPicInfo->
 			frame_crop[MCVDEC_CROP_TOP] -
-			shvpu_avcdec_Private->avPicInfo->
+			shvpu_decode_Private->avPicInfo->
 			frame_crop[MCVDEC_CROP_BOTTOM];
 		if((inPort->sPortParam.format.video.nFrameWidth != xpic) ||
 		   (inPort->sPortParam.format.video.nFrameHeight != ypic)) {
-			if ((xpic > shvpu_avcdec_Private->
+			if ((xpic > shvpu_decode_Private->
 					maxVideoParameters.nWidth) || (ypic >
-					shvpu_avcdec_Private->
+					shvpu_decode_Private->
 					maxVideoParameters.nHeight) ) {
 
-			    (*(shvpu_avcdec_Private->callbacks->EventHandler))
-			    (pComponent, shvpu_avcdec_Private->callbackData,
+			    (*(shvpu_decode_Private->callbacks->EventHandler))
+			    (pComponent, shvpu_decode_Private->callbackData,
 			    OMX_EventError, // An error occured
 			    OMX_ErrorStreamCorrupt, // Error code
 			    0, NULL);
@@ -1326,7 +1326,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 
 			DEBUG(DEB_LEV_SIMPLE_SEQ, "Sending Port Settings Change Event in video decoder\n");
 
-			switch(shvpu_avcdec_Private->video_coding_type) {
+			switch(shvpu_decode_Private->video_coding_type) {
 			case OMX_VIDEO_CodingMPEG4 :
 			case OMX_VIDEO_CodingAVC :
 				inPort->sPortParam.format.video.nFrameWidth =
@@ -1335,7 +1335,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 					ypic;
 				break;
 			default :
-				shvpu_avcdec_Private->state = OMX_StateInvalid;
+				shvpu_decode_Private->state = OMX_StateInvalid;
 				DEBUG(DEB_LEV_ERR, "Video formats other than MPEG-4 AVC not supported\nCodec not found\n");
 				err = OMX_ErrorFormatNotDetected;
 				break;
@@ -1344,9 +1344,9 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			UpdateFrameSize (pComponent);
 
 			/** Send Port Settings changed call back */
-			(*(shvpu_avcdec_Private->callbacks->EventHandler))
+			(*(shvpu_decode_Private->callbacks->EventHandler))
 				(pComponent,
-				 shvpu_avcdec_Private->callbackData,
+				 shvpu_decode_Private->callbackData,
 				 OMX_EventPortSettingsChanged, // The command was completed
 				 0,  //to adjust the file pointer to resume the correct decode process
 				 0, // This is the input port index
@@ -1358,7 +1358,7 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		if (hdr_ready == MCVDEC_ON) {
 			pCodec->enoughHeaders = OMX_TRUE;
 			if (pCodec->enoughPreprocess) {
-				if (shvpu_avcdec_Private->enable_sync) {
+				if (shvpu_decode_Private->enable_sync) {
 					pCodec->codecMode = MCVDEC_MODE_SYNC;
 					pCodec->outMode = MCVDEC_OUTMODE_PULL;
 				} else {
@@ -1385,13 +1385,13 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	}
 
 	if (err != OMX_ErrorNone) {
-		(*(shvpu_avcdec_Private->callbacks->EventHandler))
-			(pComponent, shvpu_avcdec_Private->callbackData,
+		(*(shvpu_decode_Private->callbacks->EventHandler))
+			(pComponent, shvpu_decode_Private->callbackData,
 			OMX_EventError, // An error occured
 			err, 		// Error code
 			0, NULL);
 		if (err == OMX_ErrorInvalidState)
-			shvpu_avcdec_Private->state = OMX_StateInvalid;
+			shvpu_decode_Private->state = OMX_StateInvalid;
 	}
 
 	if ((ret == MCVDEC_NML_END) && pic_infos[0] && frame) {
@@ -1421,17 +1421,17 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			(pic_infos[0]->ypic_size -
 			 pic_infos[0]->frame_crop[MCVDEC_CROP_BOTTOM]);
 
-		real_phys = ipmmui_to_phys(shvpu_avcdec_Private->ipmmui_data,
+		real_phys = ipmmui_to_phys(shvpu_decode_Private->ipmmui_data,
 				frame->Ypic_addr,
-				shvpu_avcdec_Private->uio_start_phys);
+				shvpu_decode_Private->uio_start_phys);
 		vaddr = uio_phys_to_virt(real_phys);
 		if ((pic_size / 2 * 3) > pOutBuffer->nAllocLen) {
 			loge("WARNING: shrink output size %d to %d\n",
 			     pic_size / 2 * 3, pOutBuffer->nAllocLen);
 			pic_size = pOutBuffer->nAllocLen / 3 * 2;
 		}
-		if (shvpu_avcdec_Private->features.use_buffer_mode) {
-			if (shvpu_avcdec_Private->features.dmac_mode) {
+		if (shvpu_decode_Private->features.use_buffer_mode) {
+			if (shvpu_decode_Private->features.dmac_mode) {
 				pOutBuffer->nOffset = 0;
 				DMAC_copy_buffer((unsigned long)
 						pOutBuffer->pPlatformPrivate,
@@ -1452,16 +1452,16 @@ shvpu_avcdec_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 			}
 		} else {
 			if ((unsigned long) vaddr < (unsigned long)
-				shvpu_avcdec_Private->uio_start)
+				shvpu_decode_Private->uio_start)
 				pOutBuffer->nOffset = 0;
 			else
 				pOutBuffer->nOffset = ((uint8_t *)vaddr)
-				- (uint8_t *)shvpu_avcdec_Private->uio_start;
+				- (uint8_t *)shvpu_decode_Private->uio_start;
 
-			if (shvpu_avcdec_Private->features.tl_conv_mode) {
+			if (shvpu_decode_Private->features.tl_conv_mode) {
 				pOutBuffer->pPlatformPrivate = (void *)
 					phys_to_ipmmui(
-					shvpu_avcdec_Private->ipmmui_data,
+					shvpu_decode_Private->ipmmui_data,
 					frame->Ypic_addr);
 			} else {
 				pOutBuffer->pPlatformPrivate = vaddr;
@@ -1500,7 +1500,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 	/* Check which structure we are being fed and
 	   make control its header */
 	OMX_COMPONENTTYPE *pComponent = hComponent;
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+	shvpu_decode_PrivateType *shvpu_decode_Private =
 		pComponent->pComponentPrivate;
 	omx_base_video_PortType *port;
 	if (ComponentParameterStructure == NULL) {
@@ -1522,7 +1522,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			UpdateFrameSize(pComponent);
 			portIndex = pPortDef->nPortIndex;
 			port = (omx_base_video_PortType *)
-				shvpu_avcdec_Private->ports[portIndex];
+				shvpu_decode_Private->ports[portIndex];
 			port->sVideoParam.eColorFormat =
 				port->sPortParam.format.video.
 				eColorFormat;
@@ -1547,11 +1547,11 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		}
 		if (portIndex <= 1) {
 			port = (omx_base_video_PortType *)
-				shvpu_avcdec_Private->ports[portIndex];
+				shvpu_decode_Private->ports[portIndex];
 			memcpy(&port->sVideoParam, pVideoPortFormat,
 			       sizeof
 			       (OMX_VIDEO_PARAM_PORTFORMATTYPE));
-			shvpu_avcdec_Private->
+			shvpu_decode_Private->
 				ports[portIndex]->sPortParam.format.video.
 				eColorFormat =
 				port->sVideoParam.eColorFormat;
@@ -1560,28 +1560,28 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 				switch (port->sVideoParam.
 					eColorFormat) {
 				case OMX_COLOR_Format24bitRGB888:
-					shvpu_avcdec_Private->eOutFramePixFmt = 0;
+					shvpu_decode_Private->eOutFramePixFmt = 0;
 					break;
 				case OMX_COLOR_Format24bitBGR888:
-					shvpu_avcdec_Private->eOutFramePixFmt = 1;
+					shvpu_decode_Private->eOutFramePixFmt = 1;
 					break;
 				case OMX_COLOR_Format32bitBGRA8888:
-					shvpu_avcdec_Private->eOutFramePixFmt = 2;
+					shvpu_decode_Private->eOutFramePixFmt = 2;
 					break;
 				case OMX_COLOR_Format32bitARGB8888:
-					shvpu_avcdec_Private->eOutFramePixFmt = 3;
+					shvpu_decode_Private->eOutFramePixFmt = 3;
 					break;
 				case OMX_COLOR_Format16bitARGB1555:
-					shvpu_avcdec_Private->eOutFramePixFmt = 4;
+					shvpu_decode_Private->eOutFramePixFmt = 4;
 					break;
 				case OMX_COLOR_Format16bitRGB565:
-					shvpu_avcdec_Private->eOutFramePixFmt = 5;
+					shvpu_decode_Private->eOutFramePixFmt = 5;
 					break;
 				case OMX_COLOR_Format16bitBGR565:
-					shvpu_avcdec_Private->eOutFramePixFmt = 6;
+					shvpu_decode_Private->eOutFramePixFmt = 6;
 					break;
 				default:
-					shvpu_avcdec_Private->eOutFramePixFmt = 7;
+					shvpu_decode_Private->eOutFramePixFmt = 7;
 					break;
 				}
 				UpdateFrameSize(pComponent);
@@ -1606,7 +1606,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			      __func__, eError);
 			break;
 		}
-		memcpy(&shvpu_avcdec_Private->pVideoAvc, pVideoAvc,
+		memcpy(&shvpu_decode_Private->pVideoAvc, pVideoAvc,
 		       sizeof(OMX_VIDEO_PARAM_AVCTYPE));
 		break;
 	}
@@ -1614,12 +1614,12 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 	{
 		OMX_PARAM_COMPONENTROLETYPE *pComponentRole;
 		pComponentRole = ComponentParameterStructure;
-		if (shvpu_avcdec_Private->state != OMX_StateLoaded
-		    && shvpu_avcdec_Private->state !=
+		if (shvpu_decode_Private->state != OMX_StateLoaded
+		    && shvpu_decode_Private->state !=
 		    OMX_StateWaitForResources) {
 			DEBUG(DEB_LEV_ERR,
 			      "In %s Incorrect State=%x lineno=%d\n",
-			      __func__, shvpu_avcdec_Private->state,
+			      __func__, shvpu_decode_Private->state,
 			      __LINE__);
 			return OMX_ErrorIncorrectStateOperation;
 		}
@@ -1634,13 +1634,13 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		if (!strcmp
 		    ((char *)pComponentRole->cRole,
 		     VIDEO_DEC_MPEG4_ROLE)) {
-			shvpu_avcdec_Private->video_coding_type =
+			shvpu_decode_Private->video_coding_type =
 				OMX_VIDEO_CodingMPEG4;
 		} else
 			if (!strcmp
 			    ((char *)pComponentRole->cRole,
 			     VIDEO_DEC_H264_ROLE)) {
-				shvpu_avcdec_Private->video_coding_type =
+				shvpu_decode_Private->video_coding_type =
 					OMX_VIDEO_CodingAVC;
 			} else {
 				return OMX_ErrorBadParameter;
@@ -1664,7 +1664,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			break;
 		}
 		if (pVideoMpeg4->nPortIndex == 0) {
-			memcpy(&shvpu_avcdec_Private->pVideoMpeg4,
+			memcpy(&shvpu_decode_Private->pVideoMpeg4,
 			       pVideoMpeg4,
 			       sizeof(OMX_VIDEO_PARAM_MPEG4TYPE));
 		} else {
@@ -1677,7 +1677,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		case OMX_IndexParamVPUMaxOutputSetting:
 		{
 			OMX_PARAM_REVPU5MAXPARAM *pMaxVals;
-			if (shvpu_avcdec_Private->state != OMX_StateLoaded)
+			if (shvpu_decode_Private->state != OMX_StateLoaded)
 				return OMX_ErrorIncorrectStateOperation;
 			pMaxVals = ComponentParameterStructure;
 			eError = checkHeader(pMaxVals,
@@ -1686,7 +1686,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			if (eError != OMX_ErrorNone)
 				break;
 
-			memcpy (&shvpu_avcdec_Private->maxVideoParameters,
+			memcpy (&shvpu_decode_Private->maxVideoParameters,
 				pMaxVals,
 				sizeof(OMX_PARAM_REVPU5MAXPARAM));
 			break;
@@ -1694,7 +1694,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		case OMX_IndexParamVPUMaxInstance:
 		{
 			OMX_PARAM_REVPU5MAXINSTANCE *pMaxInst;
-			if (shvpu_avcdec_Private->state != OMX_StateLoaded)
+			if (shvpu_decode_Private->state != OMX_StateLoaded)
 				return OMX_ErrorIncorrectStateOperation;
 			pMaxInst = ComponentParameterStructure;
 			eError = checkHeader(pMaxInst,
@@ -1705,7 +1705,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			if (pMaxInst->nInstances <= MAX_COMPONENT_VIDEODEC) {
 #ifdef VPU_VERSION_5
 				if (pMaxInst->nInstances > 1)
-					shvpu_avcdec_Private->
+					shvpu_decode_Private->
 						enable_sync = OMX_TRUE;
 #endif
 				memcpy (&maxVPUInstances,
@@ -1719,14 +1719,14 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		case OMX_IndexParamSoftwareRenderMode:
 		{
 #ifdef TL_CONV_ENABLE
-			shvpu_avcdec_Private->features.tl_conv_mode =
+			shvpu_decode_Private->features.tl_conv_mode =
 				!(*(OMX_BOOL *)ComponentParameterStructure);
 #endif
 #ifdef DMAC_MODE
-			shvpu_avcdec_Private->features.dmac_mode =
+			shvpu_decode_Private->features.dmac_mode =
 				!(*(OMX_BOOL *)ComponentParameterStructure);
 #endif
-			shvpu_avcdec_Private->enable_sync = OMX_TRUE;
+			shvpu_decode_Private->enable_sync = OMX_TRUE;
 
 			logd("Switching software readable output mode %s\n",
 			     (*(OMX_BOOL *)ComponentParameterStructure ==
@@ -1734,7 +1734,7 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 
 			if (*(OMX_BOOL *)ComponentParameterStructure) {
 				OMX_U32 *AvcLevel;
-				AvcLevel = &shvpu_avcdec_Private->
+				AvcLevel = &shvpu_decode_Private->
 					maxVideoParameters.eVPU5AVCLevel;
 				*AvcLevel = *AvcLevel > OMX_VPU5AVCLevel4 ?
 					OMX_VPU5AVCLevel4 : *AvcLevel;
@@ -1747,17 +1747,17 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 			OMX_BOOL enable;
 			omx_base_video_PortType *outPort;
 			outPort = (omx_base_video_PortType *)
-				shvpu_avcdec_Private->ports[
+				shvpu_decode_Private->ports[
 					OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 
 			eError = shvpu_avcdec_AndroidNativeBufferEnable(
-				shvpu_avcdec_Private,
+				shvpu_decode_Private,
 				ComponentParameterStructure);
 
 			if (eError)
 				break;
 
-			enable = shvpu_avcdec_Private->
+			enable = shvpu_decode_Private->
 					android_native.native_buffer_enable;
 
 			logd("Switching android native mode %s\n",
@@ -1772,17 +1772,17 @@ shvpu_avcdec_SetParameter(OMX_HANDLETYPE hComponent,
 		}
 		case OMX_IndexAndroidUseNativeBuffer:
 		{
-			if (shvpu_avcdec_Private->state != OMX_StateLoaded
-				&& shvpu_avcdec_Private->state !=
+			if (shvpu_decode_Private->state != OMX_StateLoaded
+				&& shvpu_decode_Private->state !=
 				OMX_StateWaitForResources) {
 				DEBUG(DEB_LEV_ERR,
 					"In %s Incorrect State=%x lineno=%d\n",
-					__func__, shvpu_avcdec_Private->state,
+					__func__, shvpu_decode_Private->state,
 					__LINE__);
 				return OMX_ErrorIncorrectStateOperation;
 			}
 			eError = shvpu_avcdec_UseAndroidNativeBuffer(
-				shvpu_avcdec_Private,
+				shvpu_decode_Private,
 				ComponentParameterStructure);
 			break;
 		}
@@ -1807,7 +1807,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 	OMX_ERRORTYPE eError = OMX_ErrorNone;
 
 	OMX_COMPONENTTYPE *pComponent = hComponent;
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
+	shvpu_decode_PrivateType *shvpu_decode_Private =
 		pComponent->pComponentPrivate;
 	if (ComponentParameterStructure == NULL) {
 		return OMX_ErrorBadParameter;
@@ -1823,7 +1823,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 			break;
 		}
 		memcpy(ComponentParameterStructure,
-		       &shvpu_avcdec_Private->sPortTypesParam
+		       &shvpu_decode_Private->sPortTypesParam
 		       [OMX_PortDomainVideo], sizeof(OMX_PORT_PARAM_TYPE));
 		break;
 	case OMX_IndexParamVideoPortFormat:
@@ -1841,7 +1841,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 			if (pVideoPortFormat->nIndex > 0)
 				return OMX_ErrorNoMore;
 			port = (omx_base_video_PortType *)
-				shvpu_avcdec_Private->ports
+				shvpu_decode_Private->ports
 				[pVideoPortFormat->nPortIndex];
 			memcpy(pVideoPortFormat, &port->sVideoParam,
 			       sizeof
@@ -1864,7 +1864,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		    OMX_ErrorNone) {
 			break;
 		}
-		memcpy(pVideoAvc, &shvpu_avcdec_Private->pVideoAvc,
+		memcpy(pVideoAvc, &shvpu_decode_Private->pVideoAvc,
 		       sizeof(OMX_VIDEO_PARAM_AVCTYPE));
 		break;
 	}
@@ -1882,7 +1882,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		}
 		if (pAVCProfile->nProfileIndex < AVC_PROFILE_COUNT) {
 			memcpy(pAVCProfile,
-				&shvpu_avcdec_Private->pVideoProfile[pAVCProfile->nProfileIndex],
+				&shvpu_decode_Private->pVideoProfile[pAVCProfile->nProfileIndex],
 				sizeof (OMX_VIDEO_PARAM_PROFILELEVELTYPE));
 		} else {
 			return OMX_ErrorNoMore;
@@ -1902,7 +1902,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 			return OMX_ErrorBadPortIndex;
 		}
 		memcpy(pAVCProfile,
-			&shvpu_avcdec_Private->pVideoCurrentProfile,
+			&shvpu_decode_Private->pVideoCurrentProfile,
 				sizeof (OMX_VIDEO_PARAM_PROFILELEVELTYPE));
 		break;
 	}
@@ -1916,11 +1916,11 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		    != OMX_ErrorNone) {
 			break;
 		}
-		if (shvpu_avcdec_Private->video_coding_type ==
+		if (shvpu_decode_Private->video_coding_type ==
 		    OMX_VIDEO_CodingMPEG4) {
 			strcpy((char *)pComponentRole->cRole,
 			       VIDEO_DEC_MPEG4_ROLE);
-		} else if (shvpu_avcdec_Private->video_coding_type ==
+		} else if (shvpu_decode_Private->video_coding_type ==
 			   OMX_VIDEO_CodingAVC) {
 			strcpy((char *)pComponentRole->cRole,
 			       VIDEO_DEC_H264_ROLE);
@@ -1942,7 +1942,7 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 				break;
 
 			memcpy (pMaxVals,
-				&shvpu_avcdec_Private->maxVideoParameters,
+				&shvpu_decode_Private->maxVideoParameters,
 				sizeof(OMX_PARAM_REVPU5MAXPARAM));
 			break;
 		}
@@ -1979,14 +1979,14 @@ shvpu_avcdec_GetParameter(OMX_HANDLETYPE hComponent,
 		case OMX_IndexParamSoftwareRenderMode:
 		{
 			*(OMX_BOOL *)ComponentParameterStructure =
-				!shvpu_avcdec_Private->features.tl_conv_mode;
+				!shvpu_decode_Private->features.tl_conv_mode;
 			break;
 		}
 #ifdef ANDROID_CUSTOM
 		case OMX_IndexAndroidGetNativeBufferUsage:
 		{
 			eError = shvpu_avcdec_GetNativeBufferUsage(
-				shvpu_avcdec_Private,
+				shvpu_decode_Private,
 				ComponentParameterStructure);
 			break;
 		}
@@ -2025,17 +2025,17 @@ OMX_ERRORTYPE
 shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE * pComponent,
 			    internalRequestMessageType * message)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *) pComponent->pComponentPrivate;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		(shvpu_decode_PrivateType *) pComponent->pComponentPrivate;
 	OMX_ERRORTYPE err;
 
 	DEBUG(DEB_LEV_FUNCTION_NAME, "In %s\n", __func__);
 
 	if (message->messageType == OMX_CommandStateSet) {
-		switch(shvpu_avcdec_Private->state) {
+		switch(shvpu_decode_Private->state) {
 		case OMX_StateIdle:
 			if (message->messageParam == OMX_StateExecuting) {
-				shvpu_avcdec_Private->isFirstBuffer = OMX_TRUE;
+				shvpu_decode_Private->isFirstBuffer = OMX_TRUE;
 			} else if (message->messageParam == OMX_StateLoaded) {
 				err = shvpu_avcdec_Deinit(pComponent);
 				if (err != OMX_ErrorNone) {
@@ -2061,7 +2061,7 @@ shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE * pComponent,
 						__func__, err);
 					return err;
 				}
-				shvpu_avcdec_Private->avcodecReady = OMX_TRUE;
+				shvpu_decode_Private->avcodecReady = OMX_TRUE;
 				return err;
 			}
 			break;
@@ -2097,29 +2097,29 @@ shvpu_avcdec_SendCommand(
   OMX_PTR pCmdData) {
   OMX_ERRORTYPE err;
   OMX_COMPONENTTYPE* pComponent = (OMX_COMPONENTTYPE*)hComponent;
-  shvpu_avcdec_PrivateType* shvpu_avcdec_Private =
+  shvpu_decode_PrivateType* shvpu_decode_Private =
 		pComponent->pComponentPrivate;
   if ((Cmd == OMX_CommandStateSet) && (nParam == OMX_StateIdle) &&
-      (shvpu_avcdec_Private->state == OMX_StateLoaded)) {
-    err = shvpu_avcdec_vpuLibInit(shvpu_avcdec_Private);
+      (shvpu_decode_Private->state == OMX_StateLoaded)) {
+    err = shvpu_avcdec_vpuLibInit(shvpu_decode_Private);
     if (err != OMX_ErrorNone) {
 	DEBUG(DEB_LEV_ERR, "In %s shvpu_avcdec_vpuLibInit Failed\n", __func__);
         return err;
     }
   }
   if ((Cmd == OMX_CommandStateSet) && (nParam == OMX_StateExecuting) &&
-      (shvpu_avcdec_Private->state == OMX_StateIdle) &&
-      (shvpu_avcdec_Private->features.dmac_mode)) {
+      (shvpu_decode_Private->state == OMX_StateIdle) &&
+      (shvpu_decode_Private->features.dmac_mode)) {
 
     /* Input port holds the dimensions of the input data stream, while the
        output port has its size adjusted to meet requirements of downstream
        components/devices */
     omx_base_video_PortType *inPort =
                (omx_base_video_PortType *)
-               shvpu_avcdec_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+               shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
     DMAC_setup_buffers(inPort->sPortParam.format.video.nFrameWidth,
 	   inPort->sPortParam.format.video.nFrameHeight,
-	   shvpu_avcdec_Private->features.tl_conv_mode);
+	   shvpu_decode_Private->features.tl_conv_mode);
   }
   return omx_base_component_SendCommand(hComponent, Cmd, nParam, pCmdData);
 }
@@ -2134,7 +2134,7 @@ shvpu_avcdec_port_AllocateOutBuffer(
 
   unsigned int i;
   OMX_COMPONENTTYPE* pComponent = pPort->standCompContainer;
-  shvpu_avcdec_PrivateType* shvpu_avcdec_Private =
+  shvpu_decode_PrivateType* shvpu_decode_Private =
 		pComponent->pComponentPrivate;
   DEBUG(DEB_LEV_FUNCTION_NAME, "In %s for port %x\n", __func__, (int)pPort);
 
@@ -2142,7 +2142,7 @@ shvpu_avcdec_port_AllocateOutBuffer(
     return OMX_ErrorBadPortIndex;
   }
 
-  if (shvpu_avcdec_Private->transientState != OMX_TransStateLoadedToIdle){
+  if (shvpu_decode_Private->transientState != OMX_TransStateLoadedToIdle){
     if (!pPort->bIsTransientToEnabled) {
       DEBUG(DEB_LEV_ERR, "In %s: The port is not allowed to receive buffers\n",
 		__func__);
@@ -2159,14 +2159,14 @@ shvpu_avcdec_port_AllocateOutBuffer(
       setHeader(pPort->pInternalBufferStorage[i], sizeof(OMX_BUFFERHEADERTYPE));
       /* allocate the buffer */
       pPort->pInternalBufferStorage[i]->pBuffer =
-		shvpu_avcdec_Private->uio_start;
+		shvpu_decode_Private->uio_start;
      if(pPort->pInternalBufferStorage[i]->pBuffer == NULL) {
         return OMX_ErrorInsufficientResources;
       }
       pPort->pInternalBufferStorage[i]->nAllocLen =
-		shvpu_avcdec_Private->uio_size;
+		shvpu_decode_Private->uio_size;
       pPort->pInternalBufferStorage[i]->pPlatformPrivate =
-		(void *)shvpu_avcdec_Private->uio_start_phys;
+		(void *)shvpu_decode_Private->uio_start_phys;
       pPort->pInternalBufferStorage[i]->pAppPrivate = pAppPrivate;
       *pBuffer = pPort->pInternalBufferStorage[i];
       pPort->bBufferStateAllocated[i] = BUFFER_ALLOCATED;
@@ -2206,7 +2206,7 @@ OMX_ERRORTYPE shvpu_avcdec_port_UseBuffer(
 
  unsigned int i;
   OMX_COMPONENTTYPE* omxComponent = outPort->standCompContainer;
-  shvpu_avcdec_PrivateType* shvpu_avcdec_Private =
+  shvpu_decode_PrivateType* shvpu_decode_Private =
 		omxComponent->pComponentPrivate;
 
   DEBUG(DEB_LEV_FUNCTION_NAME, "In %s for port %x\n", __func__,
@@ -2216,10 +2216,10 @@ OMX_ERRORTYPE shvpu_avcdec_port_UseBuffer(
     return OMX_ErrorBadPortIndex;
   }
 
-  if (shvpu_avcdec_Private->transientState != OMX_TransStateLoadedToIdle) {
+  if (shvpu_decode_Private->transientState != OMX_TransStateLoadedToIdle) {
     if (!outPort->bIsTransientToEnabled) {
       DEBUG(DEB_LEV_ERR, "In %s: The port of Comp %s is not allowed to"
-		" receive buffers\n", __func__,shvpu_avcdec_Private->name);
+		" receive buffers\n", __func__,shvpu_decode_Private->name);
       return OMX_ErrorIncorrectStateTransition;
     }
   }
@@ -2243,7 +2243,7 @@ OMX_ERRORTYPE shvpu_avcdec_port_UseBuffer(
 
       outPort->pInternalBufferStorage[i]->pBuffer = pBuffer;
       outPort->pInternalBufferStorage[i]->nAllocLen = nSizeBytes;
-      if (shvpu_avcdec_Private->features.dmac_mode) {
+      if (shvpu_decode_Private->features.dmac_mode) {
           ipmmui_buffer_map_vaddr(pBuffer, nSizeBytes,
 		(unsigned long *)&outPort->pInternalBufferStorage[i]->
 		pPlatformPrivate);
@@ -2287,19 +2287,19 @@ shvpu_avcdec_port_FreeBuffer(
   OMX_BUFFERHEADERTYPE* pBuffer) {
   unsigned int i;
   OMX_COMPONENTTYPE* omxComponent = pPort->standCompContainer;
-  shvpu_avcdec_PrivateType* shvpu_avcdec_Private = (shvpu_avcdec_PrivateType*)omxComponent->pComponentPrivate;
+  shvpu_decode_PrivateType* shvpu_decode_Private = (shvpu_decode_PrivateType*)omxComponent->pComponentPrivate;
   DEBUG(DEB_LEV_FUNCTION_NAME, "In %s for port %x\n", __func__, (int)pPort);
 
   if (nPortIndex != pPort->sPortParam.nPortIndex) {
     return OMX_ErrorBadPortIndex;
   }
 
-  if (shvpu_avcdec_Private->transientState != OMX_TransStateIdleToLoaded) {
+  if (shvpu_decode_Private->transientState != OMX_TransStateIdleToLoaded) {
     if (!pPort->bIsTransientToDisabled) {
       DEBUG(DEB_LEV_FULL_SEQ, "In %s: The port is not allowed to free the buffers\n", __func__);
-      (*(shvpu_avcdec_Private->callbacks->EventHandler))
+      (*(shvpu_decode_Private->callbacks->EventHandler))
         (omxComponent,
-        shvpu_avcdec_Private->callbackData,
+        shvpu_decode_Private->callbackData,
         OMX_EventError, /* The command was completed */
         OMX_ErrorPortUnpopulated, /* The commands was a OMX_CommandStateSet */
         nPortIndex, /* The state has been changed in message->messageParam2 */
@@ -2312,7 +2312,7 @@ shvpu_avcdec_port_FreeBuffer(
       if(pPort->bBufferStateAllocated[i] & BUFFER_ALLOCATED)
         pBuffer->pBuffer = NULL; /* we don't actually allocate anything */
       else if (pPort->bBufferStateAllocated[i] & BUFFER_ASSIGNED)
-	if (shvpu_avcdec_Private->features.dmac_mode)
+	if (shvpu_decode_Private->features.dmac_mode)
 	    ipmmui_buffer_unmap_vaddr(pBuffer->pBuffer);
       if(pPort->bBufferStateAllocated[i] & HEADER_ALLOCATED) {
         free(pPort->pInternalBufferStorage[i]);

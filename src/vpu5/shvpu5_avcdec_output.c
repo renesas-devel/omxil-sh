@@ -51,14 +51,14 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	void *ypic_vaddr;
 	unsigned long ypic_paddr, cpic_paddr;
 	unsigned long align, alloc_size;
-        shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-                (shvpu_avcdec_PrivateType *)context->user_info;
+        shvpu_decode_PrivateType *shvpu_decode_Private =
+                (shvpu_decode_PrivateType *)context->user_info;
 
 	logd("%s(%d, %d, %d, %d) invoked.\n",
 	       __FUNCTION__, xpic_size, ypic_size,
 	       required_fmem_cnt, nsampling);
 
-	if (shvpu_avcdec_Private->features.tl_conv_mode == OMX_FALSE) {
+	if (shvpu_decode_Private->features.tl_conv_mode == OMX_FALSE) {
 		fmem_x = ROUND_2POW(xpic_size, 32);
 		align = 32;
 		fmemsize = fmem_x * (ROUND_2POW(ypic_size, 16));
@@ -77,12 +77,12 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			pitch >>=1;
 		}
 		pitch = (1 << (i + next_power));
-		shvpu_avcdec_Private->ipmmui_data = init_ipmmu(
-			shvpu_avcdec_Private->uio_start_phys, pitch,
-			shvpu_avcdec_Private->features.tl_conv_tbm,
-			shvpu_avcdec_Private->features.tl_conv_vbm);
+		shvpu_decode_Private->ipmmui_data = init_ipmmu(
+			shvpu_decode_Private->uio_start_phys, pitch,
+			shvpu_decode_Private->features.tl_conv_tbm,
+			shvpu_decode_Private->features.tl_conv_vbm);
 		align_bits = i + next_power +
-			shvpu_avcdec_Private->features.tl_conv_tbm;
+			shvpu_decode_Private->features.tl_conv_tbm;
 
 		fmem_x = pitch;
 		align = (1 << align_bits);
@@ -91,12 +91,12 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		alloc_size += align;
 	}
 #ifdef MERAM_ENABLE
-	open_meram(&shvpu_avcdec_Private->meram_data);
-	setup_icb(&shvpu_avcdec_Private->meram_data,
-		&shvpu_avcdec_Private->meram_data.decY_icb,
+	open_meram(&shvpu_decode_Private->meram_data);
+	setup_icb(&shvpu_decode_Private->meram_data,
+		&shvpu_decode_Private->meram_data.decY_icb,
 		fmem_x, ROUND_2POW(ypic_size, 16), 128, 0xD, 1, 21);
-	setup_icb(&shvpu_avcdec_Private->meram_data,
-		&shvpu_avcdec_Private->meram_data.decC_icb,
+	setup_icb(&shvpu_decode_Private->meram_data,
+		&shvpu_decode_Private->meram_data.decC_icb,
 		fmem_x, ROUND_2POW(ypic_size, 16) / 2, 64, 0xC, 1, 22);
 #endif
 
@@ -106,16 +106,16 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	   A simple heuristic solution is one extra buffer chunk
 	   prepared.
 	*/
-	if (shvpu_avcdec_Private->avCodec->codecMode == MCVDEC_MODE_SYNC)
+	if (shvpu_decode_Private->avCodec->codecMode == MCVDEC_MODE_SYNC)
 		required_fmem_cnt += 1;
 
-	shvpu_avcdec_Private->avCodec->fmem = (shvpu_fmem_data *)
+	shvpu_decode_Private->avCodec->fmem = (shvpu_fmem_data *)
 		calloc (required_fmem_cnt, sizeof(shvpu_fmem_data));
 
 	_fmem = *fmem = (MCVDEC_FMEM_INFO_T *)
 		calloc(required_fmem_cnt, sizeof(MCVDEC_FMEM_INFO_T));
-	shvpu_avcdec_Private->avCodec->fmem_size = required_fmem_cnt;
-	if (*fmem == NULL || shvpu_avcdec_Private->avCodec->fmem == NULL)
+	shvpu_decode_Private->avCodec->fmem_size = required_fmem_cnt;
+	if (*fmem == NULL || shvpu_decode_Private->avCodec->fmem == NULL)
 		return MCVDEC_FMEM_SKIP_BY_USER;
 
 
@@ -123,15 +123,15 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		ypic_vaddr = pmem_alloc(alloc_size, align, &ypic_paddr);
 		if (ypic_vaddr == NULL)
 			break;
-		shvpu_avcdec_Private->avCodec->fmem[i].fmem_start = ypic_paddr;
-		shvpu_avcdec_Private->avCodec->fmem[i].fmem_len = alloc_size;
-		if (shvpu_avcdec_Private->features.tl_conv_mode == OMX_TRUE) {
+		shvpu_decode_Private->avCodec->fmem[i].fmem_start = ypic_paddr;
+		shvpu_decode_Private->avCodec->fmem[i].fmem_len = alloc_size;
+		if (shvpu_decode_Private->features.tl_conv_mode == OMX_TRUE) {
 			/*alignment offset*/
 			ypic_paddr = (ypic_paddr + (align - 1)) & ~(align - 1);
 #ifndef VPU_INTERNAL_TL
 			/*access via IPMMUI*/
 			ypic_paddr = phys_to_ipmmui(
-				shvpu_avcdec_Private->ipmmui_data,
+				shvpu_decode_Private->ipmmui_data,
 				ypic_paddr);
 #endif
 		}

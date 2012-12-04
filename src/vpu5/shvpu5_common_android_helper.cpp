@@ -46,7 +46,7 @@ using android::GraphicBufferMapper;
 using android::Rect;
 extern "C" {
 OMX_ERRORTYPE shvpu_avcdec_UseAndroidNativeBuffer(
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure) {
 
 	OMX_ERRORTYPE eError;
@@ -67,7 +67,7 @@ OMX_ERRORTYPE shvpu_avcdec_UseAndroidNativeBuffer(
         if (eError != OMX_ErrorNone)
 		return eError;
         port = (omx_base_PortType *)
-		shvpu_avcdec_Private->ports[portIndex];
+		shvpu_decode_Private->ports[portIndex];
 	bufsize = pBuffer->nativeBuffer->stride *
 		pBuffer->nativeBuffer->height;
 
@@ -90,20 +90,20 @@ OMX_ERRORTYPE shvpu_avcdec_UseAndroidNativeBuffer(
                 (OMX_U8*) dst);
 }
 OMX_ERRORTYPE shvpu_avcdec_AndroidNativeBufferEnable(
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure) {
 
 	struct EnableAndroidNativeBuffersParams *pEnable;
 	pEnable = (struct EnableAndroidNativeBuffersParams *)
 		ComponentParameterStructure;
-	shvpu_avcdec_Private->
+	shvpu_decode_Private->
 		android_native.native_buffer_enable =
 		pEnable->enable;
 
 	return OMX_ErrorNone;
 }
 OMX_ERRORTYPE shvpu_avcdec_GetNativeBufferUsage(
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private,
+	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure) {
 
 	struct GetAndroidNativeBufferUsageParams *pUsage;
