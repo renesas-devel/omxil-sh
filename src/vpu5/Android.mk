@@ -68,6 +68,7 @@ LOCAL_SRC_FILES := 	\
 
 ifeq ($(VPU_DECODER_COMPONENT),true)
 	LOCAL_SRC_FILES += \
+		shvpu5_decode.c \
 		shvpu5_avcdec_decode.c \
 		shvpu5_avcdec_notify.c \
 		shvpu5_avcdec_omx.c \

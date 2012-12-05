@@ -45,6 +45,7 @@
 #include "shvpu5_common_queue.h"
 #include "shvpu5_common_uio.h"
 #include "shvpu5_common_log.h"
+#include "shvpu5_decode_api.h"
 
 #ifndef BUFFERING_COUNT
 #define BUFFERING_COUNT 15
@@ -80,7 +81,7 @@ typedef enum {
 #define VP5_IRQ_ENB 0x10
 #define VP5_IRQ_STA 0x14
 
-long header_processed_callback( MCVDEC_CONTEXT_T *context,
+static long header_processed_callback( MCVDEC_CONTEXT_T *context,
 				long 	data_type,
 				void 	*api_data,
 				long	data_id,
@@ -152,38 +153,82 @@ long header_processed_callback( MCVDEC_CONTEXT_T *context,
 	logd("Got a header callback\n");
 	return 0;
 }
-	/* malloc() on 32bit environment must allocate
-	   an 8-bytes aligned region. */
 
-long
-decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
-{
-	extern const MCVDEC_API_T avcdec_api_tbl;
-	shvpu_avcdec_codec_t *pCodec;
-	MCVDEC_CONTEXT_T *pContext;
-	unsigned long ce_firmware_addr;
-	int num_views;
-	long ret;
-	int zero = 0;
-	unsigned long reg_base;
+static int
+avcCodec_init_instrinsic(void ***intrinsic) {
+	/* Initilize intrinsic header callbacks*/
+	*intrinsic = calloc(AVCDEC_INTRINSIC_ID_CNT, sizeof (void *));
+	if (!*intrinsic)
+		return -1;
+	memset(*intrinsic, 0, sizeof (void *) * AVCDEC_INTRINSIC_ID_CNT);
+	**intrinsic =
+		malloc_aligned(sizeof(AVCDEC_SPS_SYNTAX_T), 1);
+	if (!**intrinsic)
+		return -1;
+	return 0;
+}
 
-	/*** allocate memory ***/
-	pCodec = (shvpu_avcdec_codec_t *)
-			calloc(1, sizeof(shvpu_avcdec_codec_t));
-	if (pCodec == NULL)
-		return -1L;
-	memset((void *)pCodec, 0, sizeof(shvpu_avcdec_codec_t));
+static void
+avcCodec_deinit_instrinsic(void **intrinsic) {
+	free(*intrinsic);
+	free(intrinsic);
+}
 
-	/*** workaround clear VP5_IRQ_ENB and VPU5_IRQ_STA ***/
-	reg_base = uio_register_base();
-	vpu5_mmio_write(reg_base + VP5_IRQ_ENB, (unsigned long) &zero, 1);
-	vpu5_mmio_write(reg_base + VP5_IRQ_STA, (unsigned long) &zero, 1);
+static unsigned int
+avcCodec_ir_buf_size(int num_views, shvpu_decode_PrivateType *privType,
+		     shvpu_avcdec_codec_t *pCodec) {
+        return ir_info_size_calc(
+		privType->maxVideoParameters.eVPU5AVCLevel,
+		pCodec->cprop.max_slice_cnt,
+		num_views);
+}
 
+static unsigned int
+avcCodec_imd_buf_size(int num_views, shvpu_decode_PrivateType *privType,
+		      shvpu_avcdec_codec_t *pCodec) {
+	OMX_PARAM_REVPU5MAXPARAM *max_param = &privType->maxVideoParameters;
+	return inb_buf_size_calc(
+		max_param->eVPU5AVCLevel,
+		max_param->nWidth,
+		max_param->nHeight, num_views) + 2048;
+}
 
-	/*** initialize driver ***/
-	ret = shvpu_driver_init(&pCodec->pDriver);
-	if (ret != MCIPH_NML_END)
-		return ret;
+static unsigned int
+avcCodec_mv_buf_size(int num_views, shvpu_decode_PrivateType *privType,
+		      shvpu_avcdec_codec_t *pCodec)  {
+	OMX_PARAM_REVPU5MAXPARAM *max_param = &privType->maxVideoParameters;
+	AVCDEC_PARAMS_T *avcdec_params = pCodec->vpu_codec_params.codec_params;
+        return mv_info_size_calc(
+                       max_param->nWidth,
+                       max_param->nHeight,
+                       avcdec_params->max_num_ref_frames_plus1,
+		       num_views);
+}
+
+static void
+avcCodec_buf_sizes (int num_views, shvpu_decode_PrivateType *priv,
+			shvpu_avcdec_codec_t *pCodec,
+			long *imd_size,
+			long *ir_size,
+			long *mv_size) {
+	*imd_size = avcCodec_imd_buf_size(num_views, priv, pCodec);
+	*ir_size = avcCodec_ir_buf_size(num_views, priv, pCodec);
+	*mv_size = avcCodec_mv_buf_size(num_views, priv, pCodec);
+}
+
+static struct codec_init_ops avc_ops = {
+	.init_intrinsic_array = avcCodec_init_instrinsic,
+	.deinit_intrinsic_array = avcCodec_deinit_instrinsic,
+	.calc_buf_sizes = avcCodec_buf_sizes,
+	.intrinsic_func_callback = header_processed_callback,
+};
+
+int
+avcCodec_init(shvpu_codec_params_t *vpu_codec_params) {
+	shvpu_codec_params_t *pCodec = vpu_codec_params;
+	AVCDEC_PARAMS_T *avcdec_params;
+	static char ce_file[] = VPU5HG_FIRMWARE_PATH "/p264d_h.bin";
+	static char vlc_file[] = VPU5HG_FIRMWARE_PATH "/s264d.bin";
 
 	/*** initialize decoder ***/
 	static const AVCDEC_PARAMS_T _avcdec_params_def = {
@@ -205,222 +250,23 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 		.post_filter_mode = MCVDEC_NA,
 #endif
 	};
-	extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
-	extern long notify_buffering(MCVDEC_CONTEXT_T *, long);
-	extern long notify_userdata(MCVDEC_CONTEXT_T *,
-				    MCVDEC_USERDATA_T *, long);
-	static const MCVDEC_CMN_PROPERTY_T _cprop_def = {
-		.stream_type		= MCVDEC_H264,
-		.max_slice_cnt		= 16,
-		.fmem_alloc_mode	= MCVDEC_ALLOC_FRAME_OR_FIELD,
-		.output_unit		= MCVDEC_UNIT_FRAME,
-		.fmem_notice_mode	= MCVDEC_FMEM_INDEX_ENABLE,
-		.first_hdr_enable	= MCVDEC_OFF,
-		.ec_mode		= MCVDEC_ECMODE_TYPE1,
-		.max_imd_ratio_10	= 80,
-		.func_get_intrinsic_header	= header_processed_callback,
-		.func_userdata_callback		= notify_userdata,
-		.func_imd_buffering_ready	= notify_buffering,
-		.virt_to_phys_func		= uio_virt_to_phys,
-#if defined(VPU5HA_SERIES)
-		.buffering_pic_cnt		= BUFFERING_COUNT,
-		.ce_config		= MCVDEC_2CE,
-		.num_views		= 1,
-#endif
-	};
-	static const MCVDEC_WORK_INFO_T _wbuf_dec_def = {
-#if defined(VPU_VERSION_5)
-		.work_area_size = 0xea000,  /* 104 + 832KiB */
-#elif defined(VPU5HA_SERIES)
-		.work_area_size = 0x190000,  /* 2048 + 915KiB + 630KiB */
-#endif
-	};
 
-	pCodec->avcdec_params = _avcdec_params_def;
-	pCodec->avcdec_params.slice_buffer_addr =
-		malloc_aligned(pCodec->avcdec_params.
+#if defined(VPU_VERSION_5)
+	pCodec->wbuf_size = 0xea000;
+#elif defined(VPU5HA_SERIES)
+	pCodec->wbuf_size = 0x190000;
+#endif
+
+	pCodec->ce_firmware_name = ce_file;
+	pCodec->vlc_firmware_name = vlc_file;
+	avcdec_params = pCodec->codec_params =
+		calloc(1, sizeof(AVCDEC_PARAMS_T));
+	memcpy(avcdec_params, &_avcdec_params_def, sizeof(AVCDEC_PARAMS_T));
+	avcdec_params->slice_buffer_addr =
+		malloc_aligned(avcdec_params->
 			       slice_buffer_size, 4);
 	logd("slice_buffer_addr = %p\n",
-	     pCodec->avcdec_params.slice_buffer_addr);
-
-	pCodec->wbuf_dec = _wbuf_dec_def;
-	pCodec->wbuf_dec.work_area_addr =
-		malloc_aligned(pCodec->wbuf_dec.work_area_size, 4);
-	logd("work_area_addr = %p\n",
-	     pCodec->wbuf_dec.work_area_addr);
-	ce_firmware_addr =
-		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/p264d_h.bin",
-			&pCodec->fw_size.ce_firmware_size);
-
-	logd("ce_firmware_addr = %lx\n", ce_firmware_addr);
-	pCodec->fw.vlc_firmware_addr =
-		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/s264d.bin",
-			&pCodec->fw_size.vlc_firmware_size);
-	logd("vlc_firmware_addr = %lx\n",
-	     pCodec->fw.vlc_firmware_addr);
-
-	pCodec->cprop = _cprop_def;
-
-#if defined(VPU_VERSION_5)
-	pCodec->fw.ce_firmware_addr = ce_firmware_addr;
-	num_views = 1;
-#elif defined(VPU5HA_SERIES)
-	pCodec->fw.ce_firmware_addr[0] = ce_firmware_addr;
-	num_views = pCodec->cprop.num_views;
-#endif
-
-	pCodec->cprop.codec_params = &pCodec->avcdec_params;
-	/* Initilize intrinsic header callbacks*/
-	memset(shvpu_decode_Private->intrinsic, 0, sizeof (void *) *
-		AVCDEC_INTRINSIC_ID_CNT);
-	shvpu_decode_Private->intrinsic[0] =
-		malloc_aligned(sizeof(AVCDEC_SPS_SYNTAX_T), 1);
-
-	logd("----- invoke mcvdec_init_decoder() -----\n");
-	ret = mcvdec_init_decoder((MCVDEC_API_T *)&avcdec_api_tbl,
-				  &pCodec->cprop,
-				  &pCodec->wbuf_dec,
-				  &pCodec->fw, shvpu_decode_Private->intrinsic,
-				  pCodec->pDriver->pDrvInfo, &pContext);
-	logd("----- resume from mcvdec_init_decoder() -----\n");
-	if (ret != MCIPH_NML_END)
-		return ret;
-
-	/*** initialize work area ***/
-	void *vaddr;
-	unsigned long paddr;
-
-	pCodec->imd_info.imd_buff_size = inb_buf_size_calc(
-		shvpu_decode_Private->maxVideoParameters.eVPU5AVCLevel,
-		shvpu_decode_Private->maxVideoParameters.nWidth,
-		shvpu_decode_Private->maxVideoParameters.nHeight,
-		num_views);
-	/* VPU may access more 2048 bytes over the buffer.*/
-	pCodec->imd_info.imd_buff_size += 2048; 
-
-	vaddr = pmem_alloc(pCodec->imd_info.imd_buff_size,
-				512, &pCodec->imd_info.imd_buff_addr);
-	logd("imd_info.imd_buff_addr = %lx\n",
-	       pCodec->imd_info.imd_buff_addr);
-	if (!vaddr)
-		return -1;
-	pCodec->imd_info.imd_buff_mode = MCVDEC_MODE_NOMAL;
-
-        pCodec->ir_info.ir_info_size = ir_info_size_calc(
-		shvpu_decode_Private->maxVideoParameters.eVPU5AVCLevel,
-		pCodec->cprop.max_slice_cnt,
-		num_views);
-
-	pCodec->ir_info.ir_info_addr = (unsigned long)
-		pmem_alloc(pCodec->ir_info.ir_info_size, 512, &paddr);
-	logd("ir_info.ir_info_addr = %lx\n", pCodec->ir_info.ir_info_addr);
-	if (!pCodec->ir_info.ir_info_addr)
-		return -1;
-
-        pCodec->mv_info.mv_info_size = mv_info_size_calc(
-                       shvpu_decode_Private->maxVideoParameters.nWidth,
-                       shvpu_decode_Private->maxVideoParameters.nHeight,
-                       pCodec->avcdec_params.max_num_ref_frames_plus1,
-		       num_views);
-
-	vaddr = pmem_alloc(pCodec->mv_info.mv_info_size,
-				512, &pCodec->mv_info.mv_info_addr);
-	logd("mv_info.mv_info_addr = %lx\n", pCodec->mv_info.mv_info_addr);
-	if (!vaddr)
-		return -1;
-
-	logd("----- invoke mcvdec_set_vpu5_work_area() -----\n");
-	ret = mcvdec_set_vpu5_work_area(pContext, &pCodec->imd_info,
-					&pCodec->ir_info,
-					&pCodec->mv_info);
-	logd("----- resume from mcvdec_set_vpu5_work_area() -----\n");
-	if (ret != MCIPH_NML_END)
-		return ret;
-
-	/*** set play mode ***/
-	logd("----- invoke mcvdec_set_play_mode() -----\n");
-	ret = mcvdec_set_play_mode(pContext, MCVDEC_PLAY_FORWARD, 0, 0);
-	logd("----- resume from mcvdec_set_play_mode() -----\n");
-
-	pCodec->frameCount = pCodec->bufferingCount = 0;
-	if (shvpu_decode_Private->enable_sync) {
-		pCodec->codecMode = MCVDEC_MODE_SYNC;
-		pCodec->outMode = MCVDEC_OUTMODE_PULL;
-	} else {
-		pCodec->codecMode = MCVDEC_MODE_BUFFERING;
-		pCodec->outMode = MCVDEC_OUTMODE_PUSH;
-	}
-	pCodec->pSIQueue = calloc(1, sizeof(queue_t));
-	shvpu_queue_init(pCodec->pSIQueue);
-	pCodec->enoughHeaders = pCodec->enoughPreprocess = OMX_FALSE;
-	pthread_cond_init(&pCodec->cond_buffering, NULL);
-	pthread_mutex_init(&pCodec->mutex_buffering, NULL);
-	pContext->user_info = (void *)shvpu_decode_Private;
-	shvpu_decode_Private->avCodec = pCodec;
-	shvpu_decode_Private->avCodecContext = pContext;
-
-	return ret;
-}
-
-void
-decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
-	buffer_avcdec_metainfo_t *pBMI;
-
-	if (shvpu_decode_Private) {
-		shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
-		decode_finalize(shvpu_decode_Private->avCodecContext);
-		if (shvpu_decode_Private->intrinsic)
-			free(shvpu_decode_Private->intrinsic[0]);
-		if (shvpu_decode_Private->avCodec && 
-			shvpu_decode_Private->avCodec->fmem) {
-			int i, bufs = shvpu_decode_Private->avCodec->fmem_size;
-
-			shvpu_fmem_data *outbuf = shvpu_decode_Private->avCodec->fmem;
-			for (i = 0 ; i < bufs; i++) {
-				phys_pmem_free(outbuf->fmem_start,
-						outbuf->fmem_len);
-				outbuf++;
-			}
-			free(shvpu_decode_Private->avCodec->fmem);
-		}
-
-		phys_pmem_free(pCodec->mv_info.mv_info_addr,
-			pCodec->mv_info.mv_info_size);
-		pmem_free((void *)pCodec->ir_info.ir_info_addr,
-			pCodec->ir_info.ir_info_size);
-		phys_pmem_free(pCodec->imd_info.imd_buff_addr,
-			pCodec->imd_info.imd_buff_size);
-#if defined(VPU_VERSION_5)
-		phys_pmem_free(pCodec->fw.ce_firmware_addr,
-			pCodec->fw_size.ce_firmware_size);
-#elif defined(VPU5HA_SERIES)
-		phys_pmem_free(pCodec->fw.ce_firmware_addr[0],
-			pCodec->fw_size.ce_firmware_size);
-#endif
-		phys_pmem_free(pCodec->fw.vlc_firmware_addr,
-			pCodec->fw_size.vlc_firmware_size);
-
-		free_remaining_streams(pCodec->pSIQueue);
-		free(pCodec->pSIQueue);
-
-#ifdef MERAM_ENABLE
-		close_meram(&shvpu_decode_Private->meram_data);
-#endif
-
-		free(pCodec);
-
-		shvpu_decode_Private->avCodec = NULL;
-	}
-}
-
-int
-decode_finalize(void *context)
-{
-	int ret;
-
-	logd("----- invoke mcvdec_end_decoder() -----\n");
-	ret = mcvdec_end_decoder(context);
-	logd("----- resume from mcvdec_end_decoder() -----\n");
-
-	return ret;
+	     avcdec_params->slice_buffer_addr);
+	pCodec->ops = &avc_ops;
+	return 0;
 }

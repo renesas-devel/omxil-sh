@@ -104,12 +104,20 @@ typedef struct {
 } shvpu_fmem_data;
 
 typedef struct {
+	void			*codec_params;
+	long			wbuf_size;
+	char 			*ce_firmware_name;
+	char 			*vlc_firmware_name;
+	struct codec_init_ops	*ops;
+} shvpu_codec_params_t;
+
+typedef struct {
 	shvpu_driver_t		*pDriver;
 
 	/** @param mode for VPU5HG video decoder */
 	long 			codecMode;
 	long 			outMode;
-	AVCDEC_PARAMS_T		avcdec_params;
+	shvpu_codec_params_t	vpu_codec_params;
 	MCVDEC_WORK_INFO_T	wbuf_dec;
 	MCVDEC_FIRMWARE_INFO_T	fw;
 	MCVDEC_CMN_PROPERTY_T	cprop;
@@ -180,7 +188,7 @@ DERIVEDCLASS(shvpu_decode_PrivateType, omx_base_filter_PrivateType)
 	/** @param extradata_size extradata size*/			\
 	OMX_U32 extradata_size;						\
 	/** @param hdr_data array to hold pointers to AVC header data*/ \
-	void *intrinsic[AVCDEC_INTRINSIC_ID_CNT]; \
+	void **intrinsic; \
 	/** @param pVideoProfile reference to supported profiles*/  \
 	OMX_VIDEO_PARAM_PROFILELEVELTYPE pVideoProfile[AVC_PROFILE_COUNT]; \
 	/** @param pVideoProfile reference to current profile*/  \
