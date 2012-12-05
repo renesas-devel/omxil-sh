@@ -164,7 +164,6 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 	queue_t *pSIQueue = pCodec->pSIQueue;
 	int *pFrameCount = &pCodec->frameCount;
 	pic_t *pPic;
-	nal_t *nal;
 	buffer_avcdec_metainfo_t buffer_meta;
 	size_t size, len, uioBufSize;
 	OMX_U32 offDst, offSrc;

@@ -32,6 +32,7 @@
 #include "shvpu5_common_queue.h"
 #include "shvpu5_common_2ddmac.h"
 #include "shvpu5_common_log.h"
+#include "shvpu5_parse_api.h"
 #include <OMX_Video.h>
 #define _GNU_SOURCE
 #include <stdint.h>
@@ -270,10 +271,6 @@ shvpu_avcdec_Constructor(OMX_COMPONENTTYPE * pComponent,
 	queue_init(shvpu_decode_Private->pPicQueue);
 	shvpu_decode_Private->pPicSem = calloc(1, sizeof(tsem_t));
 	tsem_init(shvpu_decode_Private->pPicSem, 0);
-	shvpu_decode_Private->pNalQueue = calloc(1, sizeof(queue_t));
-	queue_init(shvpu_decode_Private->pNalQueue);
-	shvpu_decode_Private->pNalSem = calloc(1, sizeof(tsem_t));
-	tsem_init(shvpu_decode_Private->pNalSem, 0);
 
 
 	/* initialize a vpu uio */
@@ -349,9 +346,7 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 	/*remove any remaining picutre elements if they haven't
           already been remover (i.e. premature decode cancel)*/
 
-	free_remaining_pictures(shvpu_decode_Private);
-	free(shvpu_decode_Private->pNalSem);
-	free(shvpu_decode_Private->pNalQueue);
+	shvpu_decode_Private->avCodec->pops->parserDeinit(shvpu_decode_Private);
 	free(shvpu_decode_Private->pPicSem);
 	free(shvpu_decode_Private->pPicQueue);
 
@@ -386,7 +381,12 @@ shvpu_avcdec_vpuLibInit(shvpu_decode_PrivateType * shvpu_decode_Private)
 		return OMX_ErrorInsufficientResources;
 	}
 	uiomux_unlock_vpu();
-
+	switch(shvpu_decode_Private->video_coding_type) {
+	case OMX_VIDEO_CodingMPEG4:
+	case OMX_VIDEO_CodingAVC:
+		initAvcParser(shvpu_decode_Private);
+		break;
+	}
 	return OMX_ErrorNone;
 }
 
@@ -646,8 +646,7 @@ handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 		    int *pInBufExchanged, int *pOutBufExchanged,
 		    OMX_BUFFERHEADERTYPE *pInBuffer[],
 		    OMX_BUFFERHEADERTYPE **ppOutBuffer,
-		    queue_t *pInBufQueue,
-		    nal_t **pNal)
+		    queue_t *pInBufQueue)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
@@ -688,8 +687,6 @@ handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 		if (PORT_IS_BEING_FLUSHED(pInPort)) {
 
 			pInBuffer[0] = pInBuffer[1] = NULL;
-			free(*pNal);
-			*pNal = NULL;
 
 			OMX_BUFFERHEADERTYPE *pFlushInBuffer;
 			int n;
@@ -708,7 +705,7 @@ handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 
 			/*Flush out Pic and Nal queues*/
-			free_remaining_pictures(shvpu_decode_Private);
+			pCodec->pops->parserFlush(shvpu_decode_Private);
 
 			logd("Resetting play mode");
 			/*Flush buffers inside VPU5*/
@@ -990,6 +987,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 	OMX_COMPONENTTYPE *pComponent = (OMX_COMPONENTTYPE *) param;
 	shvpu_decode_PrivateType *shvpu_decode_Private =
 		(shvpu_decode_PrivateType *) pComponent->pComponentPrivate;
+	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
 		shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
@@ -1005,7 +1003,6 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 	int inBufExchanged = 0, outBufExchanged = 0;
 	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
 	queue_t processInBufQueue;
-	nal_t *pNal = NULL;
 	pic_t *pPic = NULL;
 	int ret;
 
@@ -1031,8 +1028,7 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 				    &isInBufferNeeded,
 				    &isOutBufferNeeded,
 				    &inBufExchanged, &outBufExchanged,
-				    pInBuffer, &pOutBuffer, &processInBufQueue,
-				    &pNal);
+				    pInBuffer, &pOutBuffer, &processInBufQueue);
 
 		/*No buffer to process. So wait here */
 		ret = waitBuffers(shvpu_decode_Private,
@@ -1043,21 +1039,9 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 
 		if ((isInBufferNeeded == OMX_TRUE) &&
 		    (pInputSem->semval > 0)) {
-			pInBuffer[1] = pInBuffer[0];
 			getInBuffer(shvpu_decode_Private,
 				    &pInBuffer[0],
 				    &inBufExchanged, &processInBufQueue);
-			/* TODO: error check for pInBuffer[0] */
-			if (pNal) {
-				pNal->pBuffer[1] = pInBuffer[0];
-			} else {
-				pNal = calloc(1, sizeof(nal_t));
-				skipFirstPadding(pInBuffer[0]);
-				pNal->pBuffer[0] = pInBuffer[0];
-				pNal->pBuffer[1] = NULL;
-				pNal->offset = pInBuffer[0]->nOffset;
-				pNal->size = pInBuffer[0]->nFilledLen;
-			}
 			isInBufferNeeded = OMX_FALSE;
 		}
 
@@ -1065,13 +1049,23 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 		    (pInBuffer[0]->hMarkTargetComponent != NULL))
 			handleEventMark(pComponent, pInBuffer[0]);
 
-		/* Split the input buffer into NALs and pictures */
-		if (pNal && (pPicSem->semval == 0) &&
-		    (shvpu_decode_Private->bIsEOSReached == OMX_FALSE))
-			pNal = parseBuffer(pComponent,
-					   pNal,
-					   &pPic,
-					   &isInBufferNeeded);
+		/* Split the input buffer into pictures */
+		if ((pPicSem->semval == 0) && (isInBufferNeeded == OMX_FALSE) &&
+		    (shvpu_decode_Private->bIsEOSReached == OMX_FALSE)) {
+			OMX_BOOL pic_done;
+			if (!pPic)
+				pPic = calloc(1, sizeof (pic_t));
+			pic_done = pCodec->pops->parseBuffer(shvpu_decode_Private,
+				   pInBuffer[0],
+				   (pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS),
+				   pPic,
+				   &isInBufferNeeded);
+			if (pic_done) {
+				queue(shvpu_decode_Private->pPicQueue, pPic);
+				tsem_up(pPicSem);
+				pPic = NULL;
+			}
+		}
 
 		/*When we have input buffer to process then get
 		  one output buffer */
@@ -1127,9 +1121,6 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 				       &processInBufQueue,
 				       &inBufExchanged);
 	}
-
-	if (pNal)
-		free(pNal);
 
 	DEBUG(DEB_LEV_FUNCTION_NAME, "Out of %s of component %x\n", __func__,
 	      (int)pComponent);

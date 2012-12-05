@@ -61,13 +61,6 @@
 #define BMI_ENTRIES_SIZE 300
 
 typedef	struct {
-	OMX_BUFFERHEADERTYPE*	pBuffer[2];
-	OMX_U32			offset;
-	size_t			size;
-	OMX_BOOL		hasPicData;
-} nal_t;
-
-typedef	struct {
 	long			id;
 	OMX_HANDLETYPE		hMarkTargetComponent;
 	OMX_PTR			pMarkData;
@@ -138,6 +131,9 @@ typedef struct {
 	shvpu_fmem_data		*fmem;
 	shvpu_firmware_size_t	fw_size;
 	int 			fmem_size;
+	/** @param private data used for codec specific processing */
+	struct input_parse_ops	*pops;
+	void			*codec_priv;
 } shvpu_avcdec_codec_t;
 
 typedef struct {
@@ -283,14 +279,6 @@ shvpu_avcdec_SendCommand(
  *take structures defined in this file as arguments.
  *They are placed here temporarily, but should be refactored
  *into shvpu5_avcdec.h when time permits*/
-void
-skipFirstPadding(OMX_BUFFERHEADERTYPE *pInBuffer);
-
-nal_t *
-parseBuffer(OMX_COMPONENTTYPE * pComponent,
-	    nal_t *pPrevNal,
-	    pic_t **pPic,
-	    OMX_BOOL * pIsInBufferNeeded);
 long
 decode_init(shvpu_decode_PrivateType *shvpu_decode_Private);
 
