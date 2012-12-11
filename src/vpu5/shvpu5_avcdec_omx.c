@@ -346,7 +346,6 @@ OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE * pComponent)
 	/*remove any remaining picutre elements if they haven't
           already been remover (i.e. premature decode cancel)*/
 
-	shvpu_decode_Private->avCodec->pops->parserDeinit(shvpu_decode_Private);
 	free(shvpu_decode_Private->pPicSem);
 	free(shvpu_decode_Private->pPicQueue);
 
@@ -400,6 +399,8 @@ shvpu_avcdec_vpuLibDeInit(shvpu_decode_PrivateType *
 	shvpu_driver_t *pDriver = shvpu_decode_Private->avCodec->pDriver;
 
 	if (shvpu_decode_Private) {
+		shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
+		pCodec->pops->parserDeinit(shvpu_decode_Private);
 		uiomux_lock_vpu();
 		decode_deinit(shvpu_decode_Private);
 		uiomux_unlock_vpu();
@@ -1064,6 +1065,10 @@ shvpu_avcdec_BufferMgmtFunction(void *param)
 				queue(shvpu_decode_Private->pPicQueue, pPic);
 				tsem_up(pPicSem);
 				pPic = NULL;
+			} else if (pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS) {
+			/* EOS flag and no further pictures indicates the last
+			   buffer */
+				shvpu_decode_Private->bIsEOSReached = OMX_TRUE;
 			}
 		}
 

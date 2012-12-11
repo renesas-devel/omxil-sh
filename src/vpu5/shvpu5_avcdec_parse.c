@@ -339,14 +339,15 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 
 	while (nRemainSize > 3) {
-		logd("pstart = %x, pStartSub = %x\n", pStart, pStartSub);
-		pHead = extract_avcnal((unsigned char *)pStart + 3, nRemainSize - 3,
-				       pStartSub, nSizeSub);
+		pHead = extract_avcnal((unsigned char *)pStart + 3,
+					nRemainSize - 3,
+					pStartSub, nSizeSub);
 
 		if (!pHead) {
-			if (eos)
-				pHead = pStart + nRemainSize;
-			else {
+			if (eos) {
+				pHead = pStart + nRemainSize - 1;
+				lastBuffer = OMX_TRUE;
+			} else {
 				break;
 			}
 		}
@@ -360,7 +361,8 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 		}
 
 		pNal->buffer[0] = pStart;
-		splitBuffer = !((pHead >= pStart) && (pHead < pStart + nRemainSize));
+		splitBuffer = !((pHead >= pStart) &&
+				(pHead < pStart + nRemainSize));
 
 		if (splitBuffer) {
 			pNal->size = nRemainSize + pHead - pStartSub;
@@ -368,7 +370,8 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 			pNal->buffer[1] = pStartSub;
 			pNal->splitBufferLen = (pHead - pStartSub);
 			avcparse->pPrevBuffer = pBuffer;
-			avcparse->prevBufferOffset = pNal->splitBufferLen + pBuffer->nOffset;
+			avcparse->prevBufferOffset = pNal->splitBufferLen +
+				pBuffer->nOffset;
 			pStartSub = NULL;
 			nSizeSub = 0;
 		} else {
@@ -387,6 +390,11 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 		}
 		queue(NalQueue, pNal);
 		avcparse->prevPictureNal = pNal->hasPicData;
+		if (lastBuffer) {
+			copyNalData(pActivePic, NalQueue);
+			memset(avcparse, 0, sizeof(*avcparse));
+			return OMX_FALSE;
+		}
 	}
 
 	avcparse->pPrevBuffer = pBuffer;
@@ -396,9 +404,11 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 void
 flushAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
+	struct avcparse_meta *avcparse =
+			shvpu_decode_Private->avCodec->codec_priv;
 	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
 	queue_t *pPicQueue = shvpu_decode_Private->pPicQueue;
-	queue_t *pNalQueue = shvpu_decode_Private->pNalQueue;
+	queue_t *pNalQueue = &avcparse->NalQueue;
 	pic_t *pPic;
 	nal_t *nal;
 
