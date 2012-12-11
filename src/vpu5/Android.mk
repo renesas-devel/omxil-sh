@@ -73,7 +73,7 @@ ifeq ($(VPU_DECODER_COMPONENT),true)
 		shvpu5_avcdec_notify.c \
 		shvpu5_avcdec_omx.c \
 		shvpu5_avcdec_parse.c \
-		shvpu5_avcdec_input.c
+		shvpu5_decode_input.c
 	LOCAL_CFLAGS += -DDECODER_COMPONENT
 endif
 
@@ -278,7 +278,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_queue.c \
 	shvpu5_avcdec_output.c \
-	shvpu5_avcdec_input.c
+	shvpu5_decode_input.c
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfdec

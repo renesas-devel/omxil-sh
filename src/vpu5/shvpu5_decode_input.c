@@ -119,9 +119,9 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue,
 
 	pInputBuf->base_addr = uioBuf;
 	pInputBuf->size = uioBufSize;
-	pInputBuf->n_nals = 1;
-	pInputBuf->nal_sizes[0] = si_eos->strm_buff_size;
-	pInputBuf->nal_offsets[0] = si_eos->strm_buff_addr;
+	pInputBuf->n_sbufs = 1;
+	pInputBuf->buf_sizes[0] = si_eos->strm_buff_size;
+	pInputBuf->buf_offsets[0] = si_eos->strm_buff_addr;
 
 	si = calloc(1, sizeof(si_element_t));
 	if (si) {
@@ -189,7 +189,7 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 		return MCVDEC_INPUT_SKIP_BY_USER;
 	}
 
-	pStrmInfo = calloc(pPic->n_nals, sizeof(MCVDEC_STRM_INFO_T));
+	pStrmInfo = calloc(pPic->n_sbufs, sizeof(MCVDEC_STRM_INFO_T));
 	if (pStrmInfo == NULL) {
 		loge("%s: No memory for stream info data\n",
 		     __FUNCTION__);
@@ -198,9 +198,9 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 	cnt = 0;
 	for (i = 0; i < pPic->n_bufs; i++) {
 		pPicBuf = pPic->pBufs[i];
-		for (j = 0; j < pPicBuf->n_nals; j++) {
-			pStrmInfo[cnt].strm_buff_size = pPicBuf->nal_sizes[j];
-			pStrmInfo[cnt].strm_buff_addr = pPicBuf->nal_offsets[j];
+		for (j = 0; j < pPicBuf->n_sbufs; j++) {
+			pStrmInfo[cnt].strm_buff_size = pPicBuf->buf_sizes[j];
+			pStrmInfo[cnt].strm_buff_addr = pPicBuf->buf_offsets[j];
 			cnt++;
 		}
 	}
@@ -210,7 +210,7 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 
 	input_strm->second_id = 0;
 	input_strm->strm_info = pStrmInfo;
-        input_strm->strm_cnt = pPic->n_nals;
+        input_strm->strm_cnt = pPic->n_sbufs;
 	input_strm->strm_id = *pFrameCount;
 	*pFrameCount += 1;
 
@@ -232,7 +232,7 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 	buffer_meta.id = input_strm->strm_id;
 	pCodec->BMIEntries[buffer_meta.id % BMI_ENTRIES_SIZE] = buffer_meta;
 
-	logd("%s: %d: %d nals input\n",
+	logd("%s: %d: %d sub buffers input\n",
 	     __FUNCTION__, input_strm->strm_id, input_strm->strm_cnt);
 
 	return MCVDEC_NML_END;

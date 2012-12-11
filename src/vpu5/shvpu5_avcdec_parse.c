@@ -254,8 +254,8 @@ copyNalData(pic_t *pPic, queue_t *pNalQueue) {
 		}
 
 		pBuf->size += (*pNal)->size;
-		pBuf->nal_sizes[i++] = (*pNal)->size;
-		pBuf->n_nals++;
+		pBuf->buf_sizes[i++] = (*pNal)->size;
+		pBuf->n_sbufs++;
 		if (!pPic->has_meta && ((*pNal)->hasPicData)) {
 			logd("store buffer metadata\n");
 			buffer_meta = save_omx_buffer_metainfo((*pNal)->pOMXBuffer[0]);
@@ -271,23 +271,23 @@ copyNalData(pic_t *pPic, queue_t *pNalQueue) {
 	pBuf->size *= 0x200;
 	pBuf->base_addr = pmem_alloc(pBuf->size, 256, NULL);
 	pNal = pNalHead;
-	pBuf->nal_offsets[0] = pBuf->base_addr + 256;
-	for (i = 0; i < pBuf->n_nals; i++) {
+	pBuf->buf_offsets[0] = pBuf->base_addr + 256;
+	for (i = 0; i < pBuf->n_sbufs; i++) {
 		int size = (*pNal)->size;
 		size_t offDst = 0;
 		int len = size - (*pNal)->splitBufferLen;
 		for (j = 0; j < 2; j++) {
 			void *pData = (*pNal)->buffer[j];
-			memcpy(pBuf->nal_offsets[i] + offDst, pData, len);
+			memcpy(pBuf->buf_offsets[i] + offDst, pData, len);
 			size -= len;
 			offDst += len;
 			if (size <= 0)
 				break;
 			len = (*pNal)->splitBufferLen;
 		}
-		if (i < (pBuf->n_nals-1)) {
-			pBuf->nal_offsets[i + 1] =
-				pBuf->nal_offsets[i] + (*pNal)->size;
+		if (i < (pBuf->n_sbufs-1)) {
+			pBuf->buf_offsets[i + 1] =
+				pBuf->buf_offsets[i] + (*pNal)->size;
 		}
 		free(*pNal);
 		pNal++;
@@ -295,7 +295,7 @@ copyNalData(pic_t *pPic, queue_t *pNalQueue) {
 	free(pNalHead);
 	pPic->pBufs[pPic->n_bufs++] = pBuf;
 	pPic->size += pBuf->size;
-	pPic->n_nals += pBuf->n_nals;
+	pPic->n_sbufs += pBuf->n_sbufs;
 	return 0;
 }
 

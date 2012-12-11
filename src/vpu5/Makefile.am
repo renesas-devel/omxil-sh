@@ -62,7 +62,7 @@ VPU5_LIBS += @VPU_DEC_LIBS@
 VPU5_DEC_SOURCES = \
 	shvpu5_avcdec_omx.c shvpu5_avcdec_omx.h \
 	shvpu5_avcdec_parse.c shvpu5_decode.c \
-	shvpu5_avcdec_input.c shvpu5_avcdec_output.c \
+	shvpu5_decode_input.c shvpu5_avcdec_output.c \
 	shvpu5_avcdec.h \
 	shvpu5_avcdec_decode.c
 endif
