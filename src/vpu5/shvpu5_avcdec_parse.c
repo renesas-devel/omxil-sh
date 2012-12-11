@@ -193,7 +193,14 @@ isSubsequentPic(nal_t *pNal, OMX_BOOL prevPictureNal)
 	return OMX_FALSE;
 }
 
+static size_t
+trim_trailing_zero(unsigned char *addr, size_t size)
+{
+	while ((size > 0) &&
+	       (addr[size - 1] == 0x00U))
+		size--;
 
+	return size;
 }
 
 static int
@@ -227,6 +234,25 @@ copyNalData(pic_t *pPic, queue_t *pNalQueue) {
 			      "Had NULL input nal!!\n");
 			break;
 		}
+
+		int len = (*pNal)->size - (*pNal)->splitBufferLen;
+		(*pNal)->pOMXBuffer[0]->nFilledLen -= len;
+		(*pNal)->pOMXBuffer[0]->nOffset += len;
+		len = (*pNal)->splitBufferLen;
+		int shrink = -1;
+		if ((*pNal)->splitBufferLen) {
+			shrink = trim_trailing_zero((*pNal)->buffer[1],
+					   (*pNal)->splitBufferLen);
+			(*pNal)->size -= ((*pNal)->splitBufferLen - shrink);
+			(*pNal)->splitBufferLen = shrink;
+			(*pNal)->pOMXBuffer[1]->nFilledLen -= len;
+			(*pNal)->pOMXBuffer[1]->nOffset += len;
+		}
+		if (!shrink) {
+			(*pNal)->size = trim_trailing_zero((*pNal)->buffer[0],
+					   (*pNal)->size);
+		}
+
 		pBuf->size += (*pNal)->size;
 		pBuf->nal_sizes[i++] = (*pNal)->size;
 		pBuf->n_nals++;
@@ -253,8 +279,6 @@ copyNalData(pic_t *pPic, queue_t *pNalQueue) {
 		for (j = 0; j < 2; j++) {
 			void *pData = (*pNal)->buffer[j];
 			memcpy(pBuf->nal_offsets[i] + offDst, pData, len);
-			(*pNal)->pOMXBuffer[j]->nFilledLen -= len;
-			(*pNal)->pOMXBuffer[j]->nOffset += len;
 			size -= len;
 			offDst += len;
 			if (size <= 0)

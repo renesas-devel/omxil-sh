@@ -83,16 +83,6 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 	return MCVDEC_NML_END;
 }
 
-static size_t
-trim_trailing_zero(unsigned char *addr, size_t size)
-{
-	while ((size > 0) &&
-	       (addr[size - 1] == 0x00U))
-		size--;
-
-	return size;
-}
-
 static int
 setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
 {
@@ -223,20 +213,6 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
         input_strm->strm_cnt = pPic->n_nals;
 	input_strm->strm_id = *pFrameCount;
 	*pFrameCount += 1;
-
-	for (j=0; j<input_strm->strm_cnt; j++) {
-		unsigned char *addr;
-		addr = input_strm->strm_info[j].strm_buff_addr;
-		logd("BEFORE: strm_buff_size = %d\n",
-		     input_strm->strm_info[j].strm_buff_size);
-		input_strm->strm_info[j].strm_buff_size =
-			trim_trailing_zero(input_strm->strm_info[j].
-					   strm_buff_addr,
-					   input_strm->strm_info[j].
-					   strm_buff_size);
-		logd("AFTER : strm_buff_size = %d\n",
-		     input_strm->strm_info[j].strm_buff_size);
-	}
 
 	si = calloc(1, sizeof(si_element_t));
 	if (si) {
