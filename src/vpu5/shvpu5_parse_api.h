@@ -33,4 +33,6 @@ struct input_parse_ops {
 					    OMX_BOOL 		 *pIsInBufferNeeded);
 	void (*parserFlush) (shvpu_decode_PrivateType *shvpu_decode_Private);
 	void (*parserDeinit) (shvpu_decode_PrivateType *shvpu_decode_Private);
+	const unsigned char *EOSCode;
+	size_t EOSCodeLen;
 };

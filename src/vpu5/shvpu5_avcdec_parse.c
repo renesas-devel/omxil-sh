@@ -458,10 +458,15 @@ deinitAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	free (avcparse);
 }
 
+static const unsigned char nal_data_eos[16] = {
+	0x00, 0x00, 0x01, 0x0B,
+};
 static struct input_parse_ops avc_parse_ops = {
 	.parseBuffer = parseAVCBuffer,
 	.parserFlush = flushAvcParser,
-	.parserDeinit = deinitAvcParser
+	.parserDeinit = deinitAvcParser,
+	.EOSCode = nal_data_eos,
+	.EOSCodeLen = sizeof(nal_data_eos),
 };
 
 int

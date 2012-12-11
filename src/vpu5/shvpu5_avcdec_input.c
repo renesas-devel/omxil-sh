@@ -31,6 +31,7 @@
 #include "shvpu5_avcdec.h"
 #include "shvpu5_avcdec_omx.h"
 #include "shvpu5_common_queue.h"
+#include "shvpu5_parse_api.h"
 #include "shvpu5_common_log.h"
 
 #define MAX_NALS        8192
@@ -84,11 +85,9 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 }
 
 static int
-setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
+setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue,
+		const unsigned char *eos_code, size_t eos_code_len)
 {
-	const unsigned char nal_data_eos[16] = {
-		0x00, 0x00, 0x01, 0x0B,
-	};
 	MCVDEC_STRM_INFO_T *si_eos;
 	size_t uioBufSize;
 	phys_input_buf_t *pInputBuf;
@@ -97,7 +96,7 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
 
 	logd("%s invoked.\n", __FUNCTION__);
 	pInputBuf = calloc(1, sizeof(phys_input_buf_t));
-	uioBufSize = (4 + 0x200 + 0x600 + 255) / 256;
+	uioBufSize = (eos_code_len + 0x200 + 0x600 + 255) / 256;
 	if ((uioBufSize % 2) == 0)
 		uioBufSize++;
 	uioBufSize *= 256;
@@ -109,7 +108,7 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
 	}
 	pBuf += 0x200;
 
-	memcpy(pBuf, nal_data_eos, 4);
+	memcpy(pBuf, eos_code, eos_code_len);
 	si_eos = calloc (1, sizeof(MCVDEC_STRM_INFO_T));
 	si_eos->strm_buff_addr = pBuf;
 	si_eos->strm_buff_size = 4;
@@ -169,7 +168,8 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 			if (pCodec->has_eos == 0) {
 				pCodec->has_eos = 1;
 				return setup_eos(input_strm, *pFrameCount,
-					pSIQueue);
+					pSIQueue, pCodec->pops->EOSCode,
+					pCodec->pops->EOSCodeLen);
 			} else {
 				return MCVDEC_INPUT_END;
 			}
