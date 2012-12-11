@@ -341,15 +341,15 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 	size_t nRemainSize, nSizeSub;
 	nal_t *pNal;
 	OMX_BOOL splitBuffer;
+	OMX_BOOL lastBuffer = OMX_FALSE;
 	queue_t *NalQueue = &avcparse->NalQueue;
 
 	copyNalData(pActivePic, NalQueue);
 
 	if (avcparse->pPrevBuffer) {
-		pStart = avcparse->pPrevBuffer->pBuffer + avcparse->prevBufferOffset;
-		nRemainSize = avcparse->pPrevBuffer->nOffset +
-			avcparse->pPrevBuffer->nFilledLen -
-			avcparse->prevBufferOffset;
+		pStart = avcparse->pPrevBuffer->pBuffer +
+			 avcparse->prevBufferOffset;
+		nRemainSize = avcparse->pPrevBuffer->nFilledLen;
 		pStartSub = pBuffer->pBuffer + pBuffer->nOffset;
 		nSizeSub = pBuffer->nFilledLen;
 	} else {
