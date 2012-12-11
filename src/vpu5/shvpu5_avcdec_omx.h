@@ -69,24 +69,6 @@ typedef	struct {
 } buffer_avcdec_metainfo_t;
 
 typedef struct {
-	void*			base_addr;
-	size_t			size;
-	int 			n_nals;
-	size_t			nal_sizes[16];
-	void*			nal_offsets[16];
-} phys_input_buf_t;
-
-typedef	struct {
-	phys_input_buf_t*	pBufs[16];
-	int			n_bufs;
-	int			n_nals;
-	size_t			size;
-	OMX_BOOL		hasSlice;
-	buffer_avcdec_metainfo_t buffer_meta;
-	int			has_meta;
-} pic_t;
-
-typedef struct {
 	unsigned int	ce_firmware_size;	/* (1) size  of CE firmware */
 	unsigned int	vlc_firmware_size;	/* (2) size of VLC firmware */
 } shvpu_firmware_size_t;

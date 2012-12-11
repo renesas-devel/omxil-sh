@@ -25,6 +25,24 @@
 
 */
 
+typedef struct {
+	void*			base_addr;
+	size_t			size;
+	int 			n_nals;
+	size_t			nal_sizes[16];
+	void*			nal_offsets[16];
+} phys_input_buf_t;
+
+typedef	struct {
+	phys_input_buf_t*	pBufs[16];
+	int			n_bufs;
+	int			n_nals;
+	size_t			size;
+	OMX_BOOL		hasSlice;
+	buffer_avcdec_metainfo_t buffer_meta;
+	int			has_meta;
+} pic_t;
+
 struct input_parse_ops {
 	OMX_BOOL (*parseBuffer) (shvpu_decode_PrivateType *shvpu_decode_Private,
 					    OMX_BUFFERHEADERTYPE *pBuffer,
