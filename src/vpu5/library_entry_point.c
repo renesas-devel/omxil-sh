@@ -36,7 +36,7 @@
 #define NUM_COMPONENTS (sizeof(stComponents) / sizeof(stComponent))
 
 #ifdef DECODER_COMPONENT
-extern OMX_ERRORTYPE shvpu_avcdec_Constructor(OMX_COMPONENTTYPE*, OMX_STRING);
+extern OMX_ERRORTYPE shvpu_decode_Constructor(OMX_COMPONENTTYPE*, OMX_STRING);
 #endif
 #ifdef ENCODER_COMPONENT
 extern OMX_ERRORTYPE shvpu_avcenc_Constructor(OMX_COMPONENTTYPE*, OMX_STRING);
@@ -53,7 +53,7 @@ stComponent stComponents[] = {
   /* standard components - no functionality */
 #ifdef DECODER_COMPONENT
   { "video_decoder.avc",   "OMX.re.video_decoder",
-    "OMX.re.video_decoder.avc",    shvpu_avcdec_Constructor  },
+    "OMX.re.video_decoder.avc",    shvpu_decode_Constructor  },
 #endif
 #ifdef ENCODER_COMPONENT
   { "video_encoder.avc",   "OMX.re.video_encoder",

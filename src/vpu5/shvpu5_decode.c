@@ -41,7 +41,7 @@
 #include "avcdec.h"
 #include "shvpu5_decode.h"
 #include "shvpu5_avcdec_bufcalc.h"
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_decode_omx.h"
 #include "shvpu5_common_queue.h"
 #include "shvpu5_common_uio.h"
 #include "shvpu5_common_log.h"
@@ -58,7 +58,7 @@ long
 decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 {
 	extern const MCVDEC_API_T avcdec_api_tbl;
-	shvpu_avcdec_codec_t *pCodec;
+	shvpu_decode_codec_t *pCodec;
 	MCVDEC_CONTEXT_T *pContext;
 	long ret;
 	int zero = 0;
@@ -68,11 +68,11 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 	int num_views;
 
 	/*** allocate memory ***/
-	pCodec = (shvpu_avcdec_codec_t *)
-			calloc(1, sizeof(shvpu_avcdec_codec_t));
+	pCodec = (shvpu_decode_codec_t *)
+			calloc(1, sizeof(shvpu_decode_codec_t));
 	if (pCodec == NULL)
 		return -1L;
-	memset((void *)pCodec, 0, sizeof(shvpu_avcdec_codec_t));
+	memset((void *)pCodec, 0, sizeof(shvpu_decode_codec_t));
 
 	/*** workaround clear VP5_IRQ_ENB and VPU5_IRQ_STA ***/
 	reg_base = uio_register_base();
@@ -233,7 +233,7 @@ free_pcodec:
 void
 decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	if (shvpu_decode_Private) {
-		shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
+		shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 		decode_finalize(shvpu_decode_Private->avCodecContext);
 		if (shvpu_decode_Private->intrinsic)
 			pCodec->vpu_codec_params.ops->deinit_intrinsic_array

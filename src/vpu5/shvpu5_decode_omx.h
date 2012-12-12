@@ -1,5 +1,5 @@
 /**
-   src/vpu5/shvpu5_avcdec_omx.h
+   src/vpu5/shvpu5_decode_omx.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
@@ -116,7 +116,7 @@ typedef struct {
 	/** @param private data used for codec specific processing */
 	struct input_parse_ops	*pops;
 	void			*codec_priv;
-} shvpu_avcdec_codec_t;
+} shvpu_decode_codec_t;
 
 typedef struct {
 	int 	native_buffer_enable;
@@ -126,7 +126,7 @@ typedef struct {
 DERIVEDCLASS(shvpu_decode_PrivateType, omx_base_filter_PrivateType)
 #define shvpu_decode_PrivateType_FIELDS omx_base_filter_PrivateType_FIELDS \
 	/** @param avCodec pointer to the VPU5HG video decoder */	\
-	shvpu_avcdec_codec_t *avCodec;						\
+	shvpu_decode_codec_t *avCodec;						\
 	/** @param avCodecContext pointer to VPU5HG decoder context  */ \
 	MCVDEC_CONTEXT_T *avCodecContext;				\
 	/** @param avPicInfo pointer to the VPU5HG current decoded picrure */ 	\
@@ -187,56 +187,56 @@ DERIVEDCLASS(shvpu_decode_PrivateType, omx_base_filter_PrivateType)
 ENDCLASS(shvpu_decode_PrivateType)
 
 /* Component private entry points declaration */
-OMX_ERRORTYPE shvpu_avcdec_Constructor(OMX_COMPONENTTYPE *openmaxStandComp,OMX_STRING cComponentName);
-OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE *openmaxStandComp);
-OMX_ERRORTYPE shvpu_avcdec_Init(OMX_COMPONENTTYPE *openmaxStandComp);
-OMX_ERRORTYPE shvpu_avcdec_Deinit(OMX_COMPONENTTYPE *openmaxStandComp);
-OMX_ERRORTYPE shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE*,internalRequestMessageType*);
+OMX_ERRORTYPE shvpu_decode_Constructor(OMX_COMPONENTTYPE *openmaxStandComp,OMX_STRING cComponentName);
+OMX_ERRORTYPE shvpu_decode_Destructor(OMX_COMPONENTTYPE *openmaxStandComp);
+OMX_ERRORTYPE shvpu_decode_Init(OMX_COMPONENTTYPE *openmaxStandComp);
+OMX_ERRORTYPE shvpu_decode_Deinit(OMX_COMPONENTTYPE *openmaxStandComp);
+OMX_ERRORTYPE shvpu_decode_MessageHandler(OMX_COMPONENTTYPE*,internalRequestMessageType*);
 
-void shvpu_avcdec_DecodePicture(
+void shvpu_decode_DecodePicture(
 	OMX_COMPONENTTYPE *pComponent,
 	OMX_BUFFERHEADERTYPE* outputbuffer);
 
-OMX_ERRORTYPE shvpu_avcdec_GetParameter(
+OMX_ERRORTYPE shvpu_decode_GetParameter(
 	OMX_HANDLETYPE hComponent,
 	OMX_INDEXTYPE nParamIndex,
 	OMX_PTR ComponentParameterStructure);
 
-OMX_ERRORTYPE shvpu_avcdec_SetParameter(
+OMX_ERRORTYPE shvpu_decode_SetParameter(
 	OMX_HANDLETYPE hComponent,
 	OMX_INDEXTYPE nParamIndex,
 	OMX_PTR ComponentParameterStructure);
 
-OMX_ERRORTYPE shvpu_avcdec_GetConfig(
+OMX_ERRORTYPE shvpu_decode_GetConfig(
 	OMX_HANDLETYPE hComponent,
 	OMX_INDEXTYPE nIndex,
 	OMX_PTR pComponentConfigStructure);
 
-OMX_ERRORTYPE shvpu_avcdec_ComponentRoleEnum(
+OMX_ERRORTYPE shvpu_decode_ComponentRoleEnum(
 	OMX_HANDLETYPE hComponent,
 	OMX_U8 *cRole,
 	OMX_U32 nIndex);
 
 OMX_ERRORTYPE
-shvpu_avcdec_GetExtensionIndex(OMX_HANDLETYPE hComponent,
+shvpu_decode_GetExtensionIndex(OMX_HANDLETYPE hComponent,
 				OMX_STRING cParameterName,
 				OMX_INDEXTYPE *pIndexType);
 
-OMX_ERRORTYPE shvpu_avcdec_SetConfig(
+OMX_ERRORTYPE shvpu_decode_SetConfig(
 	OMX_HANDLETYPE hComponent,
 	OMX_INDEXTYPE nIndex,
 	OMX_PTR pComponentConfigStructure);
 
 
 OMX_ERRORTYPE
-shvpu_avcdec_port_AllocateOutBuffer(
+shvpu_decode_port_AllocateOutBuffer(
   omx_base_PortType *pPort,
   OMX_BUFFERHEADERTYPE** pBuffer,
   OMX_U32 nPortIndex,
   OMX_PTR pAppPrivate,
   OMX_U32 nSizeBytes);
 
-OMX_ERRORTYPE shvpu_avcdec_port_UseBuffer(
+OMX_ERRORTYPE shvpu_decode_port_UseBuffer(
   omx_base_PortType *openmaxStandPort,
   OMX_BUFFERHEADERTYPE** ppBufferHdr,
   OMX_U32 nPortIndex,
@@ -245,13 +245,13 @@ OMX_ERRORTYPE shvpu_avcdec_port_UseBuffer(
   OMX_U8* pBuffer);
 
 OMX_ERRORTYPE
-shvpu_avcdec_port_FreeBuffer(
+shvpu_decode_port_FreeBuffer(
   omx_base_PortType *pPort,
   OMX_U32 nPortIndex,
   OMX_BUFFERHEADERTYPE* pBuffer);
 
 OMX_ERRORTYPE
-shvpu_avcdec_SendCommand(
+shvpu_decode_SendCommand(
   OMX_HANDLETYPE hComponent,
   OMX_COMMANDTYPE Cmd,
   OMX_U32 nParam,
@@ -266,6 +266,4 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private);
 
 void
 decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private);
-
-void free_remaining_pictures(shvpu_decode_PrivateType *shvpu_decode_Private);
 #endif

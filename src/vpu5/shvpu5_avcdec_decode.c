@@ -41,7 +41,7 @@
 #include "avcdec.h"
 #include "shvpu5_decode.h"
 #include "shvpu5_avcdec_bufcalc.h"
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_decode_omx.h"
 #include "shvpu5_common_queue.h"
 #include "shvpu5_common_uio.h"
 #include "shvpu5_common_log.h"
@@ -176,7 +176,7 @@ avcCodec_deinit_instrinsic(void **intrinsic) {
 
 static unsigned int
 avcCodec_ir_buf_size(int num_views, shvpu_decode_PrivateType *privType,
-		     shvpu_avcdec_codec_t *pCodec) {
+		     shvpu_decode_codec_t *pCodec) {
         return ir_info_size_calc(
 		privType->maxVideoParameters.eVPU5AVCLevel,
 		pCodec->cprop.max_slice_cnt,
@@ -185,7 +185,7 @@ avcCodec_ir_buf_size(int num_views, shvpu_decode_PrivateType *privType,
 
 static unsigned int
 avcCodec_imd_buf_size(int num_views, shvpu_decode_PrivateType *privType,
-		      shvpu_avcdec_codec_t *pCodec) {
+		      shvpu_decode_codec_t *pCodec) {
 	OMX_PARAM_REVPU5MAXPARAM *max_param = &privType->maxVideoParameters;
 	return inb_buf_size_calc(
 		max_param->eVPU5AVCLevel,
@@ -195,7 +195,7 @@ avcCodec_imd_buf_size(int num_views, shvpu_decode_PrivateType *privType,
 
 static unsigned int
 avcCodec_mv_buf_size(int num_views, shvpu_decode_PrivateType *privType,
-		      shvpu_avcdec_codec_t *pCodec)  {
+		      shvpu_decode_codec_t *pCodec)  {
 	OMX_PARAM_REVPU5MAXPARAM *max_param = &privType->maxVideoParameters;
 	AVCDEC_PARAMS_T *avcdec_params = pCodec->vpu_codec_params.codec_params;
         return mv_info_size_calc(
@@ -207,7 +207,7 @@ avcCodec_mv_buf_size(int num_views, shvpu_decode_PrivateType *privType,
 
 static void
 avcCodec_buf_sizes (int num_views, shvpu_decode_PrivateType *priv,
-			shvpu_avcdec_codec_t *pCodec,
+			shvpu_decode_codec_t *pCodec,
 			long *imd_size,
 			long *ir_size,
 			long *mv_size) {

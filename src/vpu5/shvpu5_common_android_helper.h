@@ -26,17 +26,17 @@
 #if __cplusplus
 extern "C" {
 #endif
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_decode_omx.h"
 #include "shvpu5_avcenc_omx.h"
-OMX_ERRORTYPE shvpu_avcdec_UseAndroidNativeBuffer(
+OMX_ERRORTYPE shvpu_decode_UseAndroidNativeBuffer(
 	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure);
 
-OMX_ERRORTYPE shvpu_avcdec_AndroidNativeBufferEnable(
+OMX_ERRORTYPE shvpu_decode_AndroidNativeBufferEnable(
 	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure);
 
-OMX_ERRORTYPE shvpu_avcdec_GetNativeBufferUsage(
+OMX_ERRORTYPE shvpu_decode_GetNativeBufferUsage(
 	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure);
 

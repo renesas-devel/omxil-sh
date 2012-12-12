@@ -31,7 +31,7 @@
 #include <ui/android_native_buffer.h>
 #include <ui/GraphicBuffer.h>
 extern "C" {
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_decode_omx.h"
 #include "shvpu5_avcenc_omx.h"
 #include "shvpu5_common_log.h"
 }
@@ -45,7 +45,7 @@ using android::GraphicBuffer;
 using android::GraphicBufferMapper;
 using android::Rect;
 extern "C" {
-OMX_ERRORTYPE shvpu_avcdec_UseAndroidNativeBuffer(
+OMX_ERRORTYPE shvpu_decode_UseAndroidNativeBuffer(
 	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure) {
 
@@ -84,12 +84,12 @@ OMX_ERRORTYPE shvpu_avcdec_UseAndroidNativeBuffer(
 
 	logd("Using gralloc'd base %p", dst);
 	mapper.unlock(pBuffer->nativeBuffer->handle);
-        return shvpu_avcdec_port_UseBuffer(port, pBuffer->bufferHeader,
+        return shvpu_decode_port_UseBuffer(port, pBuffer->bufferHeader,
                 portIndex, pBuffer->pAppPrivate,
 		port->sPortParam.nBufferSize,
                 (OMX_U8*) dst);
 }
-OMX_ERRORTYPE shvpu_avcdec_AndroidNativeBufferEnable(
+OMX_ERRORTYPE shvpu_decode_AndroidNativeBufferEnable(
 	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure) {
 
@@ -102,7 +102,7 @@ OMX_ERRORTYPE shvpu_avcdec_AndroidNativeBufferEnable(
 
 	return OMX_ErrorNone;
 }
-OMX_ERRORTYPE shvpu_avcdec_GetNativeBufferUsage(
+OMX_ERRORTYPE shvpu_decode_GetNativeBufferUsage(
 	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure) {
 

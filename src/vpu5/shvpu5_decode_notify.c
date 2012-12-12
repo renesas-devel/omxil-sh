@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include "mcvdec.h"
 #include "shvpu5_decode.h"
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_decode_omx.h"
 #include "shvpu5_common_log.h"
 
 long
@@ -36,7 +36,7 @@ notify_buffering(MCVDEC_CONTEXT_T *context, long status)
 {
 	shvpu_decode_PrivateType *shvpu_decode_Private =
 		(shvpu_decode_PrivateType *)context->user_info;
-	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
+	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 
 	logd("%s(%ld) invoked.\n", __FUNCTION__, status);
 	pthread_mutex_lock(&pCodec->mutex_buffering);

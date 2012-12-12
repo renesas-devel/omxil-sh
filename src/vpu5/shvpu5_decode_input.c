@@ -29,7 +29,7 @@
 #include <sys/types.h>
 #include "mcvdec.h"
 #include "shvpu5_decode.h"
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_decode_omx.h"
 #include "shvpu5_common_queue.h"
 #include "shvpu5_parse_api.h"
 #include "shvpu5_common_log.h"
@@ -52,7 +52,7 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 {
 	shvpu_decode_PrivateType *shvpu_decode_Private =
 		(shvpu_decode_PrivateType *)context->user_info;
-	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
+	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	queue_t *pSIQueue = pCodec->pSIQueue;
 	si_element_t *si;
 	int i;
@@ -147,7 +147,7 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 		(shvpu_decode_PrivateType *)context->user_info;
 	int i, j, cnt;
 	MCVDEC_STRM_INFO_T *pStrmInfo;
-	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
+	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
 	queue_t *pPicQueue = shvpu_decode_Private->pPicQueue;
 	queue_t *pSIQueue = pCodec->pSIQueue;

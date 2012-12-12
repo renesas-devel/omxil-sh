@@ -60,7 +60,7 @@ if DECODER_COMPONENT
 VPU5_CFLAGS += -DDECODER_COMPONENT
 VPU5_LIBS += @VPU_DEC_LIBS@
 VPU5_DEC_SOURCES = \
-	shvpu5_avcdec_omx.c shvpu5_avcdec_omx.h \
+	shvpu5_decode_omx.c shvpu5_decode_omx.h \
 	shvpu5_avcdec_parse.c shvpu5_decode.c \
 	shvpu5_decode_input.c shvpu5_decode_output.c \
 	shvpu5_decode.h \

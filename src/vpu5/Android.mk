@@ -71,7 +71,7 @@ ifeq ($(VPU_DECODER_COMPONENT),true)
 		shvpu5_decode.c \
 		shvpu5_avcdec_decode.c \
 		shvpu5_decode_notify.c \
-		shvpu5_avcdec_omx.c \
+		shvpu5_decode_omx.c \
 		shvpu5_avcdec_parse.c \
 		shvpu5_decode_input.c
 	LOCAL_CFLAGS += -DDECODER_COMPONENT

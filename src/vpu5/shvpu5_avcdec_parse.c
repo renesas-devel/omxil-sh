@@ -29,7 +29,7 @@
 #include <OMX_Types.h>
 #include <OMX_Core.h>
 #include "mcvdec.h"
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_decode_omx.h"
 #include "shvpu5_common_queue.h"
 #include "shvpu5_parse_api.h"
 #include "shvpu5_common_log.h"
@@ -466,7 +466,7 @@ static struct input_parse_ops avc_parse_ops = {
 int
 initAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	struct avcparse_meta *avcparse;
-	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
+	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	avcparse = pCodec->codec_priv =
 		calloc(1, sizeof(struct avcparse_meta));
 	memset(avcparse, 0, sizeof(struct avcparse_meta));
