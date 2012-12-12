@@ -44,7 +44,6 @@ typedef	struct {
 
 struct avcparse_meta {
 	OMX_BUFFERHEADERTYPE *pPrevBuffer;
-	size_t		      prevBufferOffset;
 	queue_t		      NalQueue;
 	OMX_BOOL	      prevPictureNal;
 };
@@ -358,7 +357,6 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 		nRemainSize = pBuffer->nFilledLen;
 		pStartSub = NULL;
 		nSizeSub = 0;
-		avcparse->prevBufferOffset = pBuffer->nOffset;
 	}
 
 
@@ -394,15 +392,11 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 			pNal->buffer[1] = pStartSub;
 			pNal->splitBufferLen = (pHead - pStartSub);
 			avcparse->pPrevBuffer = pBuffer;
-			avcparse->prevBufferOffset = pNal->splitBufferLen +
-				pBuffer->nOffset;
 			pStartSub = NULL;
 			nSizeSub = 0;
 		} else {
 			pNal->size = pHead - pStart;
 			nRemainSize -= pNal->size;
-			avcparse->prevBufferOffset = (pHead - pStart) +
-				pBuffer->nOffset;
 		}
 
 		pStart = pHead;
