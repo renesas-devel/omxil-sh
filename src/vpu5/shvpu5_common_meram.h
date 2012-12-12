@@ -1,5 +1,5 @@
 /**
-   src/vpu55/shvpu5_avcdec_meram.c
+   src/vpu55/shvpu5_common_meram.c
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented

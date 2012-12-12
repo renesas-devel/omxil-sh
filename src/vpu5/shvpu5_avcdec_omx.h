@@ -42,9 +42,9 @@
 #include "avcdec.h"
 #include "shvpu5_common_uio.h"
 #include "shvpu5_driver.h"
-#include "shvpu5_avcdec.h"
+#include "shvpu5_decode.h"
 #include "shvpu5_common_ipmmu.h"
-#include "shvpu5_avcdec_meram.h"
+#include "shvpu5_common_meram.h"
 
 /* Specific include files */
 #include <vpu5/OMX_VPU5Ext.h>
@@ -260,7 +260,7 @@ shvpu_avcdec_SendCommand(
 /*The following functions are not directly OMX related, but
  *take structures defined in this file as arguments.
  *They are placed here temporarily, but should be refactored
- *into shvpu5_avcdec.h when time permits*/
+ *into shvpu5_decode.h when time permits*/
 long
 decode_init(shvpu_decode_PrivateType *shvpu_decode_Private);
 

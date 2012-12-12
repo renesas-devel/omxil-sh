@@ -29,8 +29,8 @@ the system.  A proper implementation is in order */
 #include <tddmac/tddmac.h>
 #include "stdint.h"
 #include "shvpu5_common_log.h"
-#include "shvpu5_avcdec_meram.h"
-#include "shvpu5_avcdec.h" // should be moved to shvpu_common_<something>.h
+#include "shvpu5_common_meram.h"
+#include "shvpu5_decode.h" // should be moved to shvpu_common_<something>.h
 
 #define VALIGN(x) ((x + 15) & ~15)
 #define HALIGN(x) ((x + 31) & ~31)

@@ -46,8 +46,8 @@ endif
 if USE_MERAM
 VPU5_CFLAGS += -DMERAM_ENABLE $(MERAM_CFLAGS)
 VPU5_LIBS += $(MERAM_LIBS)
-OPTIONAL_SOURCES += shvpu5_avcdec_meram.c \
-		shvpu5_avcdec_meram.h
+OPTIONAL_SOURCES += shvpu5_common_meram.c \
+		shvpu5_common_meram.h
 endif
 
 if USE_TDDMAC
@@ -62,8 +62,8 @@ VPU5_LIBS += @VPU_DEC_LIBS@
 VPU5_DEC_SOURCES = \
 	shvpu5_avcdec_omx.c shvpu5_avcdec_omx.h \
 	shvpu5_avcdec_parse.c shvpu5_decode.c \
-	shvpu5_decode_input.c shvpu5_avcdec_output.c \
-	shvpu5_avcdec.h \
+	shvpu5_decode_input.c shvpu5_decode_output.c \
+	shvpu5_decode.h \
 	shvpu5_avcdec_decode.c
 endif
 
@@ -98,7 +98,7 @@ libomxshvpu5avc_la_SOURCES = \
 	shvpu5_common_log.c shvpu5_common_queue.c \
 	shvpu5_common_uio.c shvpu5_common_sync.c \
 	shvpu5_common_udfio.c shvpu5_common_ext.c \
-	shvpu5_avcdec_notify.c $(VPU5_DEC_SOURCES) \
+	shvpu5_decode_notify.c $(VPU5_DEC_SOURCES) \
 	$(VPU5_ENC_SOURCES) \
 	$(OPTIONAL_SOURCES)
 

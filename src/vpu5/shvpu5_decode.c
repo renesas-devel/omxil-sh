@@ -39,7 +39,7 @@
 #endif
 #include "mcvdec.h"
 #include "avcdec.h"
-#include "shvpu5_avcdec.h"
+#include "shvpu5_decode.h"
 #include "shvpu5_avcdec_bufcalc.h"
 #include "shvpu5_avcdec_omx.h"
 #include "shvpu5_common_queue.h"

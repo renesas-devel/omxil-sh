@@ -31,9 +31,9 @@
 #include <pthread.h>
 #include "mcvdec.h"
 #include "shvpu5_common_log.h"
-#include "shvpu5_avcdec.h"
+#include "shvpu5_decode.h"
 #include "shvpu5_avcdec_omx.h"
-#include "shvpu5_avcdec_meram.h"
+#include "shvpu5_common_meram.h"
 
 static pthread_cond_t cond_vp5[2] = {
 	PTHREAD_COND_INITIALIZER,

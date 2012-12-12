@@ -28,7 +28,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#include "shvpu5_avcdec.h"
+#include "shvpu5_decode.h"
 #include "shvpu5_ipmmu_util.h"
 #include "shvpu5_kernel_tiling.h"
 #define PMB_FILE "/dev/pmb"

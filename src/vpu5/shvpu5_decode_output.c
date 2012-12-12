@@ -28,7 +28,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "mcvdec.h"
-#include "shvpu5_avcdec.h"
+#include "shvpu5_decode.h"
 #include "shvpu5_avcdec_omx.h"
 #include "shvpu5_common_uio.h"
 #include "shvpu5_common_log.h"

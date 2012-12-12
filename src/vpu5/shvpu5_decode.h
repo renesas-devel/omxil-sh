@@ -1,5 +1,5 @@
 /**
-   src/vpu5/shvpu5_avcdec_notify.c
+   src/vpu5/shvpu5_decode.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
@@ -24,38 +24,44 @@
    02110-1301 USA
 
 */
-
-#include <stdio.h>
+#ifndef __SIMPLE_AVCDEC_H_
+#define __SIMPLE_AVCDEC_H_
 #include "mcvdec.h"
-#include "shvpu5_avcdec.h"
-#include "shvpu5_avcdec_omx.h"
-#include "shvpu5_common_log.h"
+#include "queue.h"
+#include <OMX_Types.h>
+#include <OMX_Core.h>
+#include <OMX_Component.h>
 
-long
-notify_buffering(MCVDEC_CONTEXT_T *context, long status)
-{
-	shvpu_decode_PrivateType *shvpu_decode_Private =
-		(shvpu_decode_PrivateType *)context->user_info;
-	shvpu_avcdec_codec_t *pCodec = shvpu_decode_Private->avCodec;
+void
+free_remaining_streams(queue_t *pSIQueue);
 
-	logd("%s(%ld) invoked.\n", __FUNCTION__, status);
-	pthread_mutex_lock(&pCodec->mutex_buffering);
-	pCodec->enoughPreprocess = OMX_TRUE;
-	pthread_cond_broadcast(&pCodec->cond_buffering);
-	pthread_mutex_unlock(&pCodec->mutex_buffering);
-	if (pCodec->enoughHeaders) {
-		if (shvpu_decode_Private->enable_sync)
-			pCodec->codecMode = MCVDEC_MODE_SYNC;
-		else
-			pCodec->codecMode = MCVDEC_MODE_MAIN;
+int
+decode_finalize(void *context);
+
+typedef struct {
+	OMX_BOOL use_buffer_mode;
+	OMX_BOOL dmac_mode;
+	OMX_BOOL tl_conv_mode;
+	OMX_U32  tl_conv_vbm;
+	OMX_U32  tl_conv_tbm;
+} decode_features_t;
+
+/* ROUND_2POW rounds up to the next muliple of y,
+   which must be a power of 2 */
+#define ROUND_2POW(x,y) ((x + (y - 1) ) & ~(y - 1))
+#ifdef OUTPUT_BUFFER_ALIGN
+#define ALIGN_STRIDE(x) (ROUND_2POW(x,OUTPUT_BUFFER_ALIGN))
+#else
+#define ALIGN_STRIDE(x) (x)
+#endif
+
+#define ROUND_NEXT_POW2(out, in) \
+	{ \
+		out = (in - 1); \
+		out |= (out >> 1); \
+		out |= (out >> 2); \
+		out |= (out >> 4); \
+		out |= (out >> 8); \
+		out++; \
 	}
-	return MCVDEC_NML_END;
-}
-
-long
-notify_userdata(MCVDEC_CONTEXT_T *context,
-		MCVDEC_USERDATA_T *userdata, long userdata_layer)
-{
-	logd("%s() invoked.\n", __FUNCTION__);
-	return MCVDEC_NML_END;
-}
+#endif /* __SIMPLE_AVCDEC_H_ */

@@ -70,7 +70,7 @@ ifeq ($(VPU_DECODER_COMPONENT),true)
 	LOCAL_SRC_FILES += \
 		shvpu5_decode.c \
 		shvpu5_avcdec_decode.c \
-		shvpu5_avcdec_notify.c \
+		shvpu5_decode_notify.c \
 		shvpu5_avcdec_omx.c \
 		shvpu5_avcdec_parse.c \
 		shvpu5_decode_input.c
@@ -156,7 +156,7 @@ endif
 ifeq ($(TL_INV_MERAM), true)
 ifeq ($(VPU_DECODE_USE_2DDMAC), true)
 ifneq ($(VPU_DECODE_WITH_MERAM), true)
-	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
+	LOCAL_SRC_FILES += shvpu5_common_meram.c
 endif
 endif
 endif
@@ -164,7 +164,7 @@ endif
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
-	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
+	LOCAL_SRC_FILES += shvpu5_common_meram.c
 	LOCAL_CFLAGS += -DMERAM_ENABLE
 endif
 include $(BUILD_SHARED_LIBRARY)
@@ -251,7 +251,7 @@ endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
-	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
+	LOCAL_SRC_FILES += shvpu5_common_meram.c
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_CFLAGS += -DMERAM_ENABLE
 endif
@@ -277,7 +277,7 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_queue.c \
-	shvpu5_avcdec_output.c \
+	shvpu5_decode_output.c \
 	shvpu5_decode_input.c
 
 LOCAL_MODULE_TAGS := optional
@@ -293,7 +293,7 @@ endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
-	LOCAL_SRC_FILES += shvpu5_avcdec_meram.c
+	LOCAL_SRC_FILES += shvpu5_common_meram.c
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_CFLAGS += -DMERAM_ENABLE
 endif
