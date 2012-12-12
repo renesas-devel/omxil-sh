@@ -64,12 +64,12 @@ init_uio_ipmmu(shvpu_ipmmui_t *ipmmui_data,
 	unsigned long mask;
 
 	memset(ipmmui_data, 0, sizeof(*ipmmui_data));
-	ipmmui_data = priv = malloc(sizeof *priv);
+	ipmmui_data->private_data = priv = malloc(sizeof *priv);
 
 	if (stride > 8196 || stride == 0)
 		return -1;
 
-	mask = 0xffffc000;
+	mask = 0xffffe000;
 	for (i = 13; i > 0; i--, mask >>= 1) {
 		if (stride & mask)
 			break;
