@@ -348,7 +348,7 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 	if (avcparse->pPrevBuffer) {
 		pStart = avcparse->pPrevBuffer->pBuffer +
-			 avcparse->prevBufferOffset;
+			avcparse->pPrevBuffer->nOffset;
 		nRemainSize = avcparse->pPrevBuffer->nFilledLen;
 		pStartSub = pBuffer->pBuffer + pBuffer->nOffset;
 		nSizeSub = pBuffer->nFilledLen;
