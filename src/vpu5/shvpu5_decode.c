@@ -267,6 +267,8 @@ decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
 		phys_pmem_free(pCodec->fw.vlc_firmware_addr,
 			pCodec->fw_size.vlc_firmware_size);
 
+		pCodec->vpu_codec_params.ops->deinit_codec
+					(&shvpu_decode_Private->avCodec->vpu_codec_params);
 		free_remaining_streams(pCodec->pSIQueue);
 		free(pCodec->pSIQueue);
 

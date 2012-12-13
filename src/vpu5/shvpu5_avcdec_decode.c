@@ -216,11 +216,20 @@ avcCodec_buf_sizes (int num_views, shvpu_decode_PrivateType *priv,
 	*mv_size = avcCodec_mv_buf_size(num_views, priv, pCodec);
 }
 
+void avcCodec_deinit(shvpu_codec_params_t *vpu_codec_params) {
+	shvpu_codec_params_t *pCodec = vpu_codec_params;
+	AVCDEC_PARAMS_T *avcdec_params = pCodec->codec_params;
+
+	free(avcdec_params->slice_buffer_addr);
+	free(avcdec_params);
+}
+
 static struct codec_init_ops avc_ops = {
 	.init_intrinsic_array = avcCodec_init_instrinsic,
 	.deinit_intrinsic_array = avcCodec_deinit_instrinsic,
 	.calc_buf_sizes = avcCodec_buf_sizes,
 	.intrinsic_func_callback = header_processed_callback,
+	.deinit_codec = avcCodec_deinit,
 };
 
 int
