@@ -70,9 +70,11 @@ ifeq ($(VPU_DECODER_COMPONENT),true)
 	LOCAL_SRC_FILES += \
 		shvpu5_decode.c \
 		shvpu5_avcdec_decode.c \
+		shvpu5_m4vdec_decode.c \
 		shvpu5_decode_notify.c \
 		shvpu5_decode_omx.c \
 		shvpu5_avcdec_parse.c \
+		shvpu5_m4vdec_parse.c \
 		shvpu5_decode_input.c
 	LOCAL_CFLAGS += -DDECODER_COMPONENT
 endif
@@ -115,7 +117,9 @@ ifeq ($(PRODUCT_VPU_VERSION), VPU_VERSION_5HD)
 LOCAL_LDFLAGS = -L$(MIDDLEWARE_LIB_PATH) \
 	-lvpu5hddecavc -lvpu5hddeccmn \
 	-lvpu5hddrvcmn -lvpu5drv \
-	-lvpu5hddrvavcdec -lvpu5hddrvcmndec
+	-lvpu5hddrvavcdec -lvpu5hddrvcmndec \
+	\
+	-lvpu5hddecm4v -lvpu5hddrvm4vdec
 endif
 
 LOCAL_MODULE_TAGS := optional

@@ -382,6 +382,8 @@ shvpu_decode_vpuLibInit(shvpu_decode_PrivateType * shvpu_decode_Private)
 	uiomux_unlock_vpu();
 	switch(shvpu_decode_Private->video_coding_type) {
 	case OMX_VIDEO_CodingMPEG4:
+		initMpegParser(shvpu_decode_Private);
+		break;
 	case OMX_VIDEO_CodingAVC:
 		initAvcParser(shvpu_decode_Private);
 		break;

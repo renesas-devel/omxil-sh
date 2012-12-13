@@ -113,6 +113,11 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 		pCodec->cprop.stream_type		= MCVDEC_H264,
 		avcCodec_init(&pCodec->vpu_codec_params);
 		break;
+	case OMX_VIDEO_CodingMPEG4:
+		pCodec->cprop.stream_type		= MCVDEC_MPEG4,
+		pCodec->cprop.max_slice_cnt		= 1,
+		mpegCodec_init(&pCodec->vpu_codec_params);
+		break;
 	default:
 		goto free_pcodec;
 		
