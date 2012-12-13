@@ -268,6 +268,7 @@ avcCodec_init(shvpu_codec_params_t *vpu_codec_params) {
 
 	pCodec->ce_firmware_name = ce_file;
 	pCodec->vlc_firmware_name = vlc_file;
+	pCodec->api_tbl = (MCVDEC_API_T *)&avcdec_api_tbl,
 	avcdec_params = pCodec->codec_params =
 		calloc(1, sizeof(AVCDEC_PARAMS_T));
 	memcpy(avcdec_params, &_avcdec_params_def, sizeof(AVCDEC_PARAMS_T));

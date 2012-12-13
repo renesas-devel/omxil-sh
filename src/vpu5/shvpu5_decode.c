@@ -149,7 +149,7 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 	cops->init_intrinsic_array(&shvpu_decode_Private->intrinsic);
 
 	logd("----- invoke mcvdec_init_decoder() -----\n");
-	ret = mcvdec_init_decoder((MCVDEC_API_T *)&avcdec_api_tbl,
+	ret = mcvdec_init_decoder(pCodec->vpu_codec_params.api_tbl,
 				  &pCodec->cprop,
 				  &pCodec->wbuf_dec,
 				  &pCodec->fw, shvpu_decode_Private->intrinsic,

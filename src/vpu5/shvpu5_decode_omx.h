@@ -84,6 +84,7 @@ typedef struct {
 	char 			*ce_firmware_name;
 	char 			*vlc_firmware_name;
 	struct codec_init_ops	*ops;
+	MCVDEC_API_T *		*api_tbl;
 } shvpu_codec_params_t;
 
 typedef struct {
