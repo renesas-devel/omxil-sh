@@ -23,8 +23,9 @@ ifeq ($(VPU_MIDDLEWARE_PATH),)
 	VPU_MIDDLEWARE_PATH := hardware/renesas/shmobile/prebuilt/vpu5
 endif
 
-ifeq ($(VPU_DECODE_TL_CONV), true)
-	VPU_DECODE_TL_CONV := uio
+LOCAL_TL_CONV := $(VPU_DECODE_TL_CONV)
+ifeq ($(LOCAL_TL_CONV), true)
+	LOCAL_TL_CONV := uio
 endif
 
 ifeq ($(TARGET_DEVICE),mackerel)
@@ -139,13 +140,13 @@ LOCAL_CFLAGS += -DANDROID_CUSTOM
 LOCAL_SHARED_LIBRARIES += libui
 endif
 
-ifeq ($(VPU_DECODE_TL_CONV), uio)
+ifeq ($(LOCAL_TL_CONV), uio)
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c shvpu5_uio_tiling.c
 	LOCAL_CFLAGS += -DTL_CONV_ENABLE
 	TL_INV_MERAM := true
-else ifeq ($(VPU_DECODE_TL_CONV), kernel)
+else ifeq ($(LOCAL_TL_CONV), kernel)
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c shvpu5_kernel_tiling.c
 	LOCAL_CFLAGS += -DTL_CONV_ENABLE
 	TL_INV_MERAM := true
@@ -201,7 +202,7 @@ endif
 ifeq ($(VPU_DECODE_USE_ICBCACHE), true)
 	LOCAL_CFLAGS += -DICBCACHE_FLUSH
 endif
-ifeq ($(VPU_DECODE_TL_CONV), true)
+ifeq ($(LOCAL_TL_CONV), true)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 	LOCAL_CFLAGS += -DTL_CONV_ENABLE
 endif
@@ -242,7 +243,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udf
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS)
 
-ifeq ($(VPU_DECODE_TL_CONV), uio)
+ifeq ($(LOCAL_TL_CONV), uio)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 	LOCAL_CFLAGS += -DTL_CONV_ENABLE
 endif
@@ -282,7 +283,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfdec
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS)
 
-ifeq ($(VPU_DECODE_TL_CONV), uio)
+ifeq ($(LOCAL_TL_CONV), uio)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c shvpu5_uio_tiling.c
 	LOCAL_CFLAGS += -DTL_CONV_ENABLE
