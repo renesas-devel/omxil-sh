@@ -1241,6 +1241,27 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		loge("terminating because of an error(%d)\n", ret);
 		return;
 	case MCVDEC_NO_STRM:
+		loge("Error NO_STRM reported. Trying a reset\n", ret);
+		mcvdec_set_play_mode(
+			shvpu_decode_Private->avCodecContext,
+			MCVDEC_PLAY_FORWARD, 0, 0);
+
+		pCodec->pops->parserFlush(shvpu_decode_Private);
+
+		mcvdec_flush_buff(shvpu_decode_Private->avCodecContext,
+			MCVDEC_FLMODE_CLEAR);
+
+		pCodec->releaseBufCount = pCodec->bufferingCount = 0;
+
+		if (pCodec->codecMode == MCVDEC_MODE_MAIN ) {
+			pCodec->enoughHeaders = OMX_FALSE;
+			pCodec->enoughPreprocess = OMX_FALSE;
+			pCodec->codecMode = MCVDEC_MODE_BUFFERING;
+		}
+
+		shvpu_decode_Private->isFirstBuffer = OMX_TRUE;
+		break;
+
 	case MCVDEC_INPUT_END:
 		if (!shvpu_decode_Private->bIsEOSReached) {
 			err = OMX_ErrorUnderflow;
