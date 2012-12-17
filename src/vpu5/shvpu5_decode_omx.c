@@ -1061,14 +1061,12 @@ shvpu_decode_BufferMgmtFunction(void *param)
 				   (pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS),
 				   pPic,
 				   &isInBufferNeeded);
-			if (pic_done) {
+			if (pic_done || pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS) {
 				queue(shvpu_decode_Private->pPicQueue, pPic);
 				tsem_up(pPicSem);
 				pPic = NULL;
-			} else if (pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS) {
-			/* EOS flag and no further pictures indicates the last
-			   buffer */
-				shvpu_decode_Private->bIsEOSReached = OMX_TRUE;
+				if (pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS)
+					shvpu_decode_Private->bIsEOSReached = OMX_TRUE;
 			}
 		}
 
