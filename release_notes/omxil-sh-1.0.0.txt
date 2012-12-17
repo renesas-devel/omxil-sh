@@ -1,0 +1,44 @@
+omxil-sh
+========
+
+omxil-sh: A collection of OpenMAX IL components for SH-Mobile,
+using the Bellagio OpenMAX IL project framework.
+
+Copyright (C) 2009 Renesas Technology Corp.
+Copyright (C) 2010-2012 Igel Co., Ltd.
+
+
+New in this release
+-------------------
+
+Unify the Linux and Android build environments. The same code should
+work on both Linux and Android.  The correlation between ./configure
+options and the Android options specified in BoardConfig.mk is described
+in ConfigurationSettings.txt
+
+Damian Hobson-Garcia (10):
+      vpu5: Create buffer meta-date from first NAL with image data in the picture
+      vpu5: Use uiomux_register() via shvpu5_common_uio.c
+      vpu5: correct ifdef around icbcache_flush() declaration
+      vpu5: Enable additional configuration settings from Android
+      vpu5: Allow for changing the default T/L conversion tile size from config
+      vpu5: Tiling API fixes
+      vpu5: uio tiling fixes
+      vpu5: Remove unexecuted testing code
+      Add ConfigurationSettings.txt
+      vpu5: Use local settings for T/L conversion
+
+ ConfigurationSettings.txt      |   84 ++++++++++++++++++++++++++++++++++++++++
+ configure.ac                   |   18 ++++++++
+ src/vpu5/Android.mk            |   47 +++++++++++++++++++---
+ src/vpu5/Makefile.am           |    6 +++
+ src/vpu5/shvpu5_avcdec_omx.c   |   63 ++++++++----------------------
+ src/vpu5/shvpu5_avcdec_omx.h   |    1 +
+ src/vpu5/shvpu5_avcdec_parse.c |    6 ++-
+ src/vpu5/shvpu5_common_ipmmu.c |    4 +-
+ src/vpu5/shvpu5_common_ipmmu.h |    3 -
+ src/vpu5/shvpu5_common_uio.c   |    5 ++
+ src/vpu5/shvpu5_common_uio.h   |    8 +++-
+ src/vpu5/shvpu5_ipmmu_util.h   |    2 +-
+ src/vpu5/shvpu5_uio_tiling.c   |    4 +-
+ 13 files changed, 187 insertions(+), 64 deletions(-)
