@@ -228,6 +228,8 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 		shvpu_decode_Private->maxVideoParameters.nWidth = 1920;
 		shvpu_decode_Private->maxVideoParameters.nHeight = 1080;
 		shvpu_decode_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel41;
+		shvpu_decode_Private->maxVideoParameters.eVPU5MpegLevel =
+			OMX_VPU5MpegLevel6;
 		/*OMX_PARAM_REVPU5MAXINSTANCE*/
 		setHeader(&maxVPUInstances,
 			sizeof (OMX_PARAM_REVPU5MAXINSTANCE));

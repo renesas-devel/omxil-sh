@@ -233,7 +233,8 @@ static struct codec_init_ops avc_ops = {
 };
 
 int
-avcCodec_init(shvpu_codec_params_t *vpu_codec_params) {
+avcCodec_init(shvpu_codec_params_t *vpu_codec_params,
+			const shvpu_decode_PrivateType *priv) {
 	shvpu_codec_params_t *pCodec = vpu_codec_params;
 	AVCDEC_PARAMS_T *avcdec_params;
 	static char ce_file[] = VPU5HG_FIRMWARE_PATH "/p264d_h.bin";

@@ -42,12 +42,15 @@ struct codec_init_ops {
 };
 
 /* Decoder initialization function headers */
-int avcCodec_init(shvpu_codec_params_t *vpu_codec_params);
+int avcCodec_init(shvpu_codec_params_t *vpu_codec_params,
+			const shvpu_decode_PrivateType *priv);
 
 #ifdef MPEG4_DECODER
-int mpegCodec_init(shvpu_codec_params_t *vpu_codec_params);
+int mpegCodec_init(shvpu_codec_params_t *vpu_codec_params,
+			const shvpu_decode_PrivateType *priv);
 #else
-static inline int mpegCodec_init(shvpu_codec_params_t *vpu_codec_params) {
+static inline int mpegCodec_init(shvpu_codec_params_t *vpu_codec_params,
+			const shvpu_decode_PrivateType *priv) {
 	return -1;
 }
 #endif

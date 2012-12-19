@@ -50,12 +50,28 @@ typedef enum OMX_REVPU5LEVEL {
 	OMX_VPU5AVCLevel42,
 } OMX_REVPU5LEVEL;
 
+typedef enum {
+	OMX_VPU5MpegLevel0,
+	OMX_VPU5MpegLevel1,
+	OMX_VPU5MpegLevel2,
+	OMX_VPU5MpegLevel3,
+	OMX_VPU5MpegLevel3B, /* adv. simple profile only */
+	OMX_VPU5MpegLevel4, /* adv. simple profile only */
+	OMX_VPU5MpegLevel4A,  /* simple profile only */
+	OMX_VPU5MpegLevel5,
+	OMX_VPU5MpegLevel6,
+	OMX_VPU5MpegLevel_Baseline,  /* H263 only */
+	OMX_VPU5MpegNLevel
+} OMX_REVPU5MPEGLEVEL;
+
+
 typedef struct OMX_PARAM_REVPU5MAXPARAM {
 	OMX_U32 nSize;
 	OMX_VERSIONTYPE nVersion;
 	OMX_U32 nWidth;
 	OMX_U32 nHeight;
 	OMX_U32 eVPU5AVCLevel;
+	OMX_U32 eVPU5MpegLevel;
 } OMX_PARAM_REVPU5MAXPARAM;
 
 typedef struct OMX_PARAM_REVPU5MAXINSTANCE {
