@@ -35,7 +35,7 @@
 #include "shvpu5_common_log.h"
 
 #define VOP_START_CODE 0xB6
-#define BUFFER_SIZE (512 * 1024)
+#define BUFFER_SIZE (256 * 1024)
 
 typedef enum {
 	START,
@@ -48,6 +48,8 @@ struct m4vparse_meta {
 	OMX_BOOL	      foundVOP;
 	int		      crossBufStartCode;
 	parse_state	      state;
+	size_t		      buffer_size;
+	size_t		      buffer_pos;
 };
 
 static buffer_avcdec_metainfo_t
@@ -120,57 +122,85 @@ alloc_phys_buffer(int *size) {
 }
 
 static int
-init_picture_buffer(pic_t *pPic, int size) {
+alloc_picture_buffer(pic_t *pPic, unsigned int size, phys_input_buf_t *oldBuf) {
 	int full_size = size;
+	static int resize_cnt = 0;
 	phys_input_buf_t *pBuf;
-	if (pPic->pBufs[0]) {
-		pmem_free(pPic->pBufs[0]->base_addr, pPic->pBufs[0]->size);
-		free(pPic->pBufs[0]);
-	}
 	pBuf = calloc(1, sizeof(*pBuf));
-	memset(pBuf, 0, sizeof(*pBuf));
 	if (pBuf == NULL)
 		return -1;
+	memset(pBuf, 0, sizeof(*pBuf));
 	pBuf->base_addr = alloc_phys_buffer(&full_size);
+	if (!pBuf->base_addr)
+		return -1;
 	pBuf->size = full_size;
-	pBuf->buf_offsets[0] = pBuf->base_addr + 256;
+	pBuf->buf_offsets[0] = (unsigned char *)pBuf->base_addr + 256;
 	pBuf->n_sbufs = 1;
+	pPic->pBufs[0] = pBuf;
 	pPic->n_bufs = 1;
 	pPic->n_sbufs = 1;
-	pPic->pBufs[0] = pBuf;
+	if (!oldBuf)
+		return 0;
+
+	if (size <= oldBuf->buf_sizes[0]) {
+		loge("%s: realloc buffer size too small. req = %d, given = %d\n",
+			__FUNCTION__, oldBuf->buf_sizes[0], size);
+		return -1;
+	}
+
+	logd("Resized %d input data buffers. May cause reduced performance",
+			resize_cnt++);
+
+	memcpy(pBuf->buf_offsets[0], oldBuf->buf_offsets[0],
+		oldBuf->buf_sizes[0]);
+	pmem_free(oldBuf->base_addr, oldBuf->size);
+	free(oldBuf);
 	return 0;
 }
 
+static int
+expand_picture_buffer(pic_t *pPic, int size) {
+	return alloc_picture_buffer(pPic, size, pPic->pBufs[0]);
+}
 
 static int
-copyBufData(pic_t *pPic, OMX_BUFFERHEADERTYPE *pBuffer, int len, int prefix_len, int trunc) {
+init_picture_buffer(pic_t *pPic, int size) {
+	return alloc_picture_buffer(pPic, size, NULL);
+}
+
+static int
+copyBufData(pic_t *pPic,
+		OMX_BUFFERHEADERTYPE *pBuffer,
+		int len, int prefix_len,
+		int trunc) {
 	phys_input_buf_t *pBuf;
 	unsigned char *buf;
-	static const char start_code [] = { 0, 0, 1};
+	unsigned int *size;
+	static const char start_code [] = { 0, 0, 1 };
 
 	pBuf = pPic->pBufs[0];
 
 	buf = (unsigned char *)pBuf->buf_offsets[0];
+	size = &pBuf->buf_sizes[0];
 
 	if (trunc) {
-		pBuf->buf_sizes[0] -= trunc;
+		*size -= trunc;
 		pPic->size -= trunc;
 		return -1;
 	}
 
 	if (prefix_len) {
-		memcpy(buf + pBuf->buf_sizes[0], start_code + (3 - prefix_len),	prefix_len);
-		pBuf->buf_sizes[0] += (3 - prefix_len);
+		memcpy(buf + *size, start_code + (3 - prefix_len), prefix_len);
+		*size += (3 - prefix_len);
 	}
 	if (!len)
-		return 0;
-	memcpy(buf + pBuf->buf_sizes[0], pBuffer->pBuffer + pBuffer->nOffset,
-		len);
-	pBuf->buf_sizes[0] += len;
+		return pPic->size;
+	memcpy(buf + *size, pBuffer->pBuffer + pBuffer->nOffset, len);
+	*size += len;
 	pBuffer->nFilledLen -= len;
 	pBuffer->nOffset += len;
-	pPic->size += pBuf->buf_sizes[0];
-	return 0;
+	pPic->size += *size;
+	return pPic->size;
 }
 
 static OMX_BOOL
@@ -212,11 +242,21 @@ parseMpegBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 			2) recreate the start code prefix in a new buffer (always 0x001) */
 
 		if (start_code < 0) {
-			copyBufData(pActivePic, pBuffer, pBuffer->nFilledLen,
-				m4vparse->crossBufStartCode, 0);
+			unsigned int end = m4vparse->buffer_pos +
+						pBuffer->nFilledLen +
+						m4vparse->crossBufStartCode;
+			if (end > m4vparse->buffer_size) {
+				m4vparse->buffer_size = end * 3 / 2;
+				expand_picture_buffer(pActivePic,
+					m4vparse->buffer_size);
+			}
+			m4vparse->buffer_pos = copyBufData(pActivePic,
+					pBuffer, pBuffer->nFilledLen,
+					m4vparse->crossBufStartCode, 0);
 			m4vparse->crossBufStartCode = 0;
 		} else if (m4vparse->foundVOP || eos) {
 			int crossBufStartCode = 0;
+			unsigned int end;
 			if (!eos)
 				total_parsed -= 4;
 			if (total_parsed < 0)
@@ -228,11 +268,22 @@ parseMpegBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 				pActivePic->buffer_meta = buffer_meta;
 				pActivePic->has_meta = 1;
 			}
-			copyBufData(pActivePic, pBuffer, total_parsed,
-				m4vparse->crossBufStartCode, crossBufStartCode);
+			end = m4vparse->buffer_pos + total_parsed +
+				m4vparse->crossBufStartCode;
+			if (end > m4vparse->buffer_size && !crossBufStartCode) {
+				m4vparse->buffer_size = end * 3 / 2;
+				expand_picture_buffer(pActivePic,
+					m4vparse->buffer_size);
+			}
+			m4vparse->buffer_pos = copyBufData(pActivePic,
+					pBuffer, total_parsed,
+					m4vparse->crossBufStartCode,
+					crossBufStartCode);
 			m4vparse->crossBufStartCode = crossBufStartCode;
 			pActivePic->hasSlice = 1;
 			m4vparse->foundVOP = 0;
+			m4vparse->buffer_pos = 0;
+			m4vparse->buffer_size = BUFFER_SIZE;
 			return !eos;
 		}
 
@@ -248,6 +299,7 @@ flushMpegParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	struct m4vparse_meta *m4vparse =
 			shvpu_decode_Private->avCodec->codec_priv;
 	memset(m4vparse, 0, sizeof(*m4vparse));
+	m4vparse->buffer_size = BUFFER_SIZE;
 }
 
 void
@@ -276,6 +328,7 @@ initMpegParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	m4vparse = pCodec->codec_priv =
 		calloc(1, sizeof(struct m4vparse_meta));
 	memset(m4vparse, 0, sizeof(struct m4vparse_meta));
+	m4vparse->buffer_size = BUFFER_SIZE;
 	pCodec->pops = &m4v_parse_ops;
 	return 0;
 }
