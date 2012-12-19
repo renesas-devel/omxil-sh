@@ -263,6 +263,16 @@ if test "x${ac_enable_vpu}" = xyes ; then
   AM_CONDITIONAL(HAVE_SHCODECS, [test "x$HAVE_SHCODECS" = "xyes"])
 fi
 
+dnl MPEG4 decoding
+AC_ARG_ENABLE(vpu5_mpeg4_decode,
+	[AC_HELP_STRING(
+		[--enable-vpu5_mpeg_decode],
+		[with MPEG4 decoding support])],
+	[enable_mpeg_dec=$enableval],
+	[enable_mpeg_dec=no])
+
+AM_CONDITIONAL(WITH_MPEG4_DECODE, [test "x$enable_mpeg_dec" = "xyes"])
+
 dnl VPU Version
 AC_ARG_WITH(vpu5_version,
 	[AC_HELP_STRING(

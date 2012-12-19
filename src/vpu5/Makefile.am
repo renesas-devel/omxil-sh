@@ -56,6 +56,11 @@ OPTIONAL_SOURCES += shvpu5_common_2ddmac.c ipmmuhelper.c
 VPU5_LIBS += $(TDDMAC_LIBS)
 endif
 
+if WITH_MPEG4_DECODE
+VPU5_CFLAGS += -DMPEG4_DECODER
+OPTIONAL_SOURCES += shvpu5_m4vdec_parse.c shvpu5_m4vdec_decode.c
+endif
+
 if DECODER_COMPONENT
 VPU5_CFLAGS += -DDECODER_COMPONENT
 VPU5_LIBS += @VPU_DEC_LIBS@
