@@ -54,8 +54,10 @@ stComponent stComponents[] = {
 #ifdef DECODER_COMPONENT
   { "video_decoder.avc",   "OMX.re.video_decoder",
     "OMX.re.video_decoder.avc",    shvpu_decode_Constructor  },
+#ifdef MPEG4_DECODER
   { "video_decoder.m4v",   "OMX.re.video_decoder",
     "OMX.re.video_decoder.m4v",    shvpu_decode_Constructor  },
+#endif
 #endif
 #ifdef ENCODER_COMPONENT
   { "video_encoder.avc",   "OMX.re.video_encoder",

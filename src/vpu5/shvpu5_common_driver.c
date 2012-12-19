@@ -41,7 +41,9 @@
 #ifdef DECODER_COMPONENT
 #include "mciph_ip0_dec.h"
 #include "mciph_ip0_avcdec.h"
+#ifdef MPEG4_DECODER
 #include "mciph_ip0_m4vdec.h"
+#endif
 #endif
 #ifdef ENCODER_COMPONENT
 #include "mciph_ip0_enc.h"
@@ -148,8 +150,10 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 	pDriver->vpu5Init.vpu_ext_init			= &(pDriver->ip0Init);
 
 #ifdef DECODER_COMPONENT
+#ifdef MPEG4_DECODER
 	pDriver->ip0Init.dec_tbl[0] = &mciph_ip0_m4vdec_api_tbl;
 	pDriver->ip0Init.dec_tbl[1] = &mciph_ip0_m4vdec_api_tbl;
+#endif
 	pDriver->ip0Init.dec_tbl[2] = &mciph_ip0_avcdec_api_tbl;
 	pDriver->apiTbl.dec_api_tbl 	= &mciph_ip0_dec_api_tbl;
 #endif

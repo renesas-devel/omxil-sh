@@ -41,3 +41,13 @@ struct codec_init_ops {
 	void (*deinit_codec) (shvpu_codec_params_t *vpu_codec_params);
 };
 
+/* Decoder initialization function headers */
+int avcCodec_init(shvpu_codec_params_t *vpu_codec_params);
+
+#ifdef MPEG4_DECODER
+int mpegCodec_init(shvpu_codec_params_t *vpu_codec_params);
+#else
+static inline int mpegCodec_init(shvpu_codec_params_t *vpu_codec_params) {
+	return -1;
+}
+#endif

@@ -54,3 +54,14 @@ struct input_parse_ops {
 	const unsigned char *EOSCode;
 	size_t EOSCodeLen;
 };
+
+/* Parser initialization function headers */
+int initAvcParser(shvpu_decode_PrivateType *priv);
+
+#ifdef MPEG4_DECODER
+int initMpegParser(shvpu_decode_PrivateType *priv);
+#else
+static inline int initMpegParser(shvpu_decode_PrivateType *priv) {
+	return -1;
+}
+#endif

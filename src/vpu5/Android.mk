@@ -70,13 +70,18 @@ ifeq ($(VPU_DECODER_COMPONENT),true)
 	LOCAL_SRC_FILES += \
 		shvpu5_decode.c \
 		shvpu5_avcdec_decode.c \
-		shvpu5_m4vdec_decode.c \
 		shvpu5_decode_notify.c \
 		shvpu5_decode_omx.c \
 		shvpu5_avcdec_parse.c \
-		shvpu5_m4vdec_parse.c \
 		shvpu5_decode_input.c
 	LOCAL_CFLAGS += -DDECODER_COMPONENT
+endif
+
+ifeq ($(VPU_MPEG4_DECODER),true)
+	LOCAL_SRC_FILES += \
+		shvpu5_m4vdec_parse.c \
+		shvpu5_m4vdec_decode.c
+	LOCAL_CFLAGS += -DMPEG4_DECODER
 endif
 
 ifneq ($(VPU_TL_TILE_WIDTH_LOG2),)
@@ -117,9 +122,11 @@ ifeq ($(PRODUCT_VPU_VERSION), VPU_VERSION_5HD)
 LOCAL_LDFLAGS = -L$(MIDDLEWARE_LIB_PATH) \
 	-lvpu5hddecavc -lvpu5hddeccmn \
 	-lvpu5hddrvcmn -lvpu5drv \
-	-lvpu5hddrvavcdec -lvpu5hddrvcmndec \
-	\
+	-lvpu5hddrvavcdec -lvpu5hddrvcmndec
+ifeq ($(VPU_MPEG4_DECODER),true)
+LOCAL_LDFLAGS += \
 	-lvpu5hddecm4v -lvpu5hddrvm4vdec
+endif
 endif
 
 LOCAL_MODULE_TAGS := optional
