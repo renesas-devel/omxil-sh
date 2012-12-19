@@ -222,20 +222,6 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	outPort->Port_FreeBuffer = shvpu_decode_port_FreeBuffer;
 	SetInternalVideoParameters(pComponent);
 
-	/*OMX_PARAM_REVPU5MAXPARAM*/
-		setHeader(&shvpu_decode_Private->maxVideoParameters,
-			  sizeof(OMX_PARAM_REVPU5MAXPARAM));
-		shvpu_decode_Private->maxVideoParameters.nWidth = 1920;
-		shvpu_decode_Private->maxVideoParameters.nHeight = 1080;
-		shvpu_decode_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel41;
-		shvpu_decode_Private->maxVideoParameters.eVPU5MpegLevel =
-			OMX_VPU5MpegLevel6;
-		/*OMX_PARAM_REVPU5MAXINSTANCE*/
-		setHeader(&maxVPUInstances,
-			sizeof (OMX_PARAM_REVPU5MAXINSTANCE));
-
-	shvpu_decode_Private->eOutFramePixFmt = 0;
-
 	if (shvpu_decode_Private->video_coding_type ==
 	    OMX_VIDEO_CodingMPEG4) {
 		shvpu_decode_Private->
@@ -282,6 +268,28 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 	loge("reg = %x, mem = %x, memsz = %d\n",
 	     reg, shvpu_decode_Private->uio_start_phys, memsz);
+
+	/*OMX_PARAM_REVPU5MAXPARAM*/
+	setHeader(&shvpu_decode_Private->maxVideoParameters,
+		  sizeof(OMX_PARAM_REVPU5MAXPARAM));
+	if (memsz > (64 << 20)) {
+		shvpu_decode_Private->maxVideoParameters.nWidth = 1920;
+		shvpu_decode_Private->maxVideoParameters.nHeight = 1080;
+		shvpu_decode_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel41;
+	} else {
+		shvpu_decode_Private->maxVideoParameters.nWidth = 1280;
+		shvpu_decode_Private->maxVideoParameters.nHeight = 720;
+		shvpu_decode_Private->maxVideoParameters.eVPU5AVCLevel = OMX_VPU5AVCLevel4;
+	}
+	shvpu_decode_Private->maxVideoParameters.eVPU5MpegLevel =
+		OMX_VPU5MpegLevel6;
+
+	/*OMX_PARAM_REVPU5MAXINSTANCE*/
+	setHeader(&maxVPUInstances,
+		sizeof (OMX_PARAM_REVPU5MAXINSTANCE));
+
+	shvpu_decode_Private->eOutFramePixFmt = 0;
+
 
 #ifdef USE_BUFFER_MODE
 	shvpu_decode_Private->features.use_buffer_mode = OMX_TRUE;
