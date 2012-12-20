@@ -80,5 +80,9 @@ Android.mk file
 
 --enable-spu2aacenc     	(TBD)		enable SPU2 AAC encoder support
 
+--enable-vpu5_mpeg_decode VPU_MPEG4_DECODER	enable MPEG4 decoding. Only available on
+						certain platforms.  Requires additional
+						middleware libraries.
+
 
 

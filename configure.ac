@@ -20,7 +20,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(omxil-sh, 1.0.0, [dhobsong@igel.co.jp])
+AC_INIT(omxil-sh, 1.1.0, [dhobsong@igel.co.jp])
 AM_INIT_AUTOMAKE
 
 ################################################################################
@@ -40,7 +40,7 @@ AM_INIT_AUTOMAKE
 #     release then set AGE to 0.                                               #
 #                                                                              #
 ################################################################################
-SHARED_VERSION_INFO="0:1:0"
+SHARED_VERSION_INFO="1:0:0"
 
 AC_CONFIG_SRCDIR([src/vpu/library_entry_point.c])
 AC_CONFIG_HEADER([config.h])
