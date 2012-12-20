@@ -131,7 +131,7 @@ mpegCodec_mv_buf_size(int num_views, shvpu_decode_PrivateType *privType,
 	OMX_PARAM_REVPU5MAXPARAM *max_param = &privType->maxVideoParameters;
 	int mb_width = ((max_param->nWidth + 15) / 16) * 16 / 16;
 	int mb_height = ((max_param->nHeight + 15) / 16) * 16 / 16;
-	return ALIGN(VPU_UNIT((64 * mb_width * ((mb_height + 3) / 4)) + 512) *
+	return ALIGN(VPU_UNIT((64 * mb_width * ((mb_height + 3) / 4)) * 4 + 512) *
 		     2);
 }
 
