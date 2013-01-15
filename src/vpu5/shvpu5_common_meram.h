@@ -48,6 +48,7 @@ void finish_meram_write(shvpu_meram_t *mdata, ICB *icb);
 void finish_meram_read(shvpu_meram_t *mdata, ICB *icb);
 #else
 typedef struct {
+	char dummy;
 } shvpu_meram_t;
 #define open_meram(x) (0)
 #define close_meram()

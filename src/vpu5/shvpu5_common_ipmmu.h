@@ -48,6 +48,7 @@ ipmmui_to_phys(shvpu_ipmmui_t *ipmmui_data, unsigned long ipmmu,
 
 #else
 typedef struct {
+	char dummy;
 } shvpu_ipmmui_t;
 #define init_ipmmu(a, b, c, d) (0)
 #define deinit_ipmmu(x)
