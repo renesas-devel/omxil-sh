@@ -25,7 +25,7 @@
 #ifndef SHVPU_AVCDEC_MERAM_H
 #define SHVPU_AVCDEC_MERAM_H
 
-#if defined(MERAM_ENABLE) || defined (TL_CONV_ENABLE)
+#if defined(MERAM_ENABLE) || (defined (TL_CONV_ENABLE) && defined(UIO_TL_CONV))
 #include <meram/meram.h>
 typedef struct {
 	MERAM *meram;

@@ -156,7 +156,7 @@ ifeq ($(LOCAL_TL_CONV), uio)
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c shvpu5_uio_tiling.c
-	LOCAL_CFLAGS += -DTL_CONV_ENABLE
+	LOCAL_CFLAGS += -DTL_CONV_ENABLE -DUIO_TL_CONV
 	TL_INV_MERAM := true
 else ifeq ($(LOCAL_TL_CONV), kernel)
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c shvpu5_kernel_tiling.c

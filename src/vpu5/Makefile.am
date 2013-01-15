@@ -26,7 +26,7 @@ OPTIONAL_SOURCES += shvpu5_common_ipmmu.c
 endif
 
 if USE_UIO_TL
-VPU5_CFLAGS += $(MERAM_CFLAGS)
+VPU5_CFLAGS += $(MERAM_CFLAGS) -DUIO_TL_CONV
 VPU5_LIBS += $(MERAM_LIBS)
 OPTIONAL_SOURCES += shvpu5_uio_tiling.c
 endif
