@@ -245,8 +245,9 @@ void
 free_remaining_streams(queue_t *pSIQueue)
 {
 	si_element_t *si;
-	int i;
-	for (i=shvpu_getquenelem(pSIQueue); i>0; i--) {
+	int i, j;
+
+	for (j=shvpu_getquenelem(pSIQueue); j>0; j--) {
 		si = shvpu_dequeue(pSIQueue);
 		for (i=0; i < si->n_bufs; i++) {
 			pmem_free(si->pBufs[i]->base_addr, si->pBufs[i]->size);
