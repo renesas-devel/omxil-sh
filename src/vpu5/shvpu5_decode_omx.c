@@ -107,7 +107,7 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 	pthread_mutex_lock(&initMutex);
 
-	if (noVideoDecInstance > maxVPUInstances.nInstances)   {
+	if (noVideoDecInstance >= maxVPUInstances.nInstances)   {
 		pthread_mutex_unlock(&initMutex);
 		return OMX_ErrorInsufficientResources;
 	}
