@@ -51,9 +51,6 @@
 #define BUFFERING_COUNT 15
 #endif
 
-#define VP5_IRQ_ENB 0x10
-#define VP5_IRQ_STA 0x14
-
 long
 decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 {
@@ -61,8 +58,6 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 	shvpu_decode_codec_t *pCodec;
 	MCVDEC_CONTEXT_T *pContext;
 	long ret;
-	int zero = 0;
-	unsigned long reg_base;
 	unsigned long ce_firmware_addr;
 	struct codec_init_ops *cops;
 	int num_views;
@@ -73,11 +68,6 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 	if (pCodec == NULL)
 		return -1L;
 	memset((void *)pCodec, 0, sizeof(shvpu_decode_codec_t));
-
-	/*** workaround clear VP5_IRQ_ENB and VPU5_IRQ_STA ***/
-	reg_base = uio_register_base();
-	vpu5_mmio_write(reg_base + VP5_IRQ_ENB, (unsigned long) &zero, 1);
-	vpu5_mmio_write(reg_base + VP5_IRQ_STA, (unsigned long) &zero, 1);
 
 	/*** initialize driver ***/
 	ret = shvpu_driver_init(&pCodec->pDriver);

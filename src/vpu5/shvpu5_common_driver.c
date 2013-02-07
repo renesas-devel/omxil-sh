@@ -55,6 +55,9 @@ static shvpu_driver_t *pDriver;
 static pthread_mutex_t initMutex = PTHREAD_MUTEX_INITIALIZER;
 static int nCodecInstances;
 
+#define VP5_IRQ_ENB 0x10
+#define VP5_IRQ_STA 0x14
+
 static inline void *
 malloc_aligned(size_t size, int align)
 {
@@ -103,12 +106,19 @@ long
 shvpu_driver_init(shvpu_driver_t **ppDriver)
 {
 	long ret = 0;
+	unsigned long reg_base;
+	int zero = 0;
 
 	pthread_mutex_lock(&initMutex);
 
 	/* pass the pointer if the driver was already initialized */
 	if (nCodecInstances > 0)
 		goto init_already;
+
+	/*** workaround clear VP5_IRQ_ENB and VPU5_IRQ_STA ***/
+	reg_base = uio_register_base();
+	vpu5_mmio_write(reg_base + VP5_IRQ_ENB, (unsigned long) &zero, 1);
+	vpu5_mmio_write(reg_base + VP5_IRQ_STA, (unsigned long) &zero, 1);
 
 	pDriver = (shvpu_driver_t *)calloc(1, sizeof(shvpu_driver_t));
 	if (pDriver == NULL) {

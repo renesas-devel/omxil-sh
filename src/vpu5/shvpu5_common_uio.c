@@ -215,6 +215,11 @@ uio_init(char *name, unsigned long *paddr_reg,
 			pthread_mutex_unlock(&uiomux_mutex);
 			goto memops_init_fail;
 		}
+		/* clear register save on init */
+		save[0] = save[1] = save[2] = 0;
+#if defined(VPC_ENABLE)
+		vpc_init();
+#endif
 #ifdef ICBCACHE_FLUSH
 		icbcache_init();
 #endif
@@ -227,13 +232,8 @@ uio_init(char *name, unsigned long *paddr_reg,
 
 	uiomux_get_mmio(uiomux, VPU_UIO, &uio_reg_base, NULL, NULL);
 
-	/* clear register save on init */
-	save[0] = save[1] = save[2] = 0;
 	if (paddr_reg)
 		*paddr_reg = uio_reg_base;
-#if defined(VPC_ENABLE)
-	vpc_init();
-#endif
 	return (void *)uiomux;
 
 memops_init_fail:
