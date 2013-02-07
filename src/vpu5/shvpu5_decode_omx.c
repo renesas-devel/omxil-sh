@@ -44,7 +44,9 @@
 #endif
 
 /** Maximum Number of Video Component Instance*/
-#define MAX_COMPONENT_VIDEODEC 2
+#ifndef MAX_COMPONENT_VIDEODEC
+#define MAX_COMPONENT_VIDEODEC 4
+#endif
 /** Counter of Video Component Instance*/
 static OMX_U32 noVideoDecInstance = 0;
 static pthread_mutex_t initMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -85,7 +87,7 @@ static pthread_mutex_t initMutex = PTHREAD_MUTEX_INITIALIZER;
  */
 static OMX_PARAM_REVPU5MAXINSTANCE maxVPUInstances = {
 	/* SYNC mode set if nInstances */
-	.nInstances = 1
+	.nInstances = MAX_COMPONENT_VIDEODEC
 };
 
 static void*
