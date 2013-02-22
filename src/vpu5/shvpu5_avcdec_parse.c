@@ -159,6 +159,8 @@ isSubsequentPic(nal_t *pNal, OMX_BOOL prevPictureNal)
 		break;
 	case 8:
 		logd("PPS\n");
+		if (prevPictureNal)
+			return OMX_TRUE;
 		break;
 	case 9:
 		logd("AUD\n");
