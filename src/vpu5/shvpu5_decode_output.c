@@ -109,6 +109,20 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	if (shvpu_decode_Private->avCodec->codecMode == MCVDEC_MODE_SYNC)
 		required_fmem_cnt += 1;
 
+	/*
+	   If OMX output buffers have been allocated by AllocateBuffers(),
+	   the fmem buffers must be shared with down-stream modules, such
+	   as renderer. So more number of fmem buffers may be necessary
+	   for keeping efficient flow of buffers.
+	 */
+	if (!shvpu_decode_Private->features.use_buffer_mode) {
+		required_fmem_cnt += shvpu_decode_Private->
+			ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX]->
+			sPortParam.nBufferCountActual;
+		if (required_fmem_cnt > MCVDEC_MAX_FMEM_CNT)
+			required_fmem_cnt = MCVDEC_MAX_FMEM_CNT;
+	}
+
 	shvpu_decode_Private->avCodec->fmem = (shvpu_fmem_data *)
 		calloc (required_fmem_cnt, sizeof(shvpu_fmem_data));
 
