@@ -76,6 +76,7 @@ typedef struct {
 typedef struct {
 	unsigned long fmem_start;
 	unsigned long fmem_len;
+	pthread_mutex_t filled;
 } shvpu_fmem_data;
 
 typedef struct {
@@ -257,6 +258,11 @@ shvpu_decode_SendCommand(
   OMX_COMMANDTYPE Cmd,
   OMX_U32 nParam,
   OMX_PTR pCmdData);
+
+OMX_ERRORTYPE
+shvpu_decode_FillThisBuffer(
+  OMX_HANDLETYPE hComponent,
+  OMX_BUFFERHEADERTYPE* pBuffer);
 
 /*The following functions are not directly OMX related, but
  *take structures defined in this file as arguments.

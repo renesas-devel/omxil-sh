@@ -167,12 +167,41 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 		int i,j;
 		shvpu_decode_PrivateType *shvpu_decode_Private =
 	                (shvpu_decode_PrivateType *)dec_context->user_info;
-		MCVDEC_FMEM_INDEX_T *fmem_index;
+		MCVDEC_FMEM_INDEX_T *fmem_index =
+			(MCVDEC_FMEM_INDEX_T *)start_info;
+		shvpu_fmem_data *fmem_data =
+			shvpu_decode_Private->avCodec->fmem;
+		unsigned long start_addr = *fmem_index->ce_img_addr.decY_addr;
+
+		for (i = 0; i < shvpu_decode_Private->
+			     avCodec->fmem_size; i++) {
+			if ((fmem_data[i].fmem_start <= start_addr) &&
+			    (start_addr < (fmem_data[i].fmem_start +
+					   fmem_data[i].fmem_len)))
+				break;
+		}
+		if (i >= shvpu_decode_Private->avCodec->fmem_size) {
+			DEBUG(DEB_LEV_ERR,
+			      "Unknown buffer will be used for output.\n");
+		}else {
+			struct timespec to;
+			int ret;
+
+			to.tv_sec = time(NULL) + 1 /* sec. */;
+			to.tv_nsec = 0;
+			ret = pthread_mutex_timedlock (&fmem_data[i].filled,
+						       &to);
+			if (ret != 0)
+				DEBUG(DEB_LEV_ERR,
+				      "The No.%d fmem buffer(%08lx) will"
+				      "be overwritten.", i,
+				      fmem_data[i].fmem_start);
+		}
+
 		if(shvpu_decode_Private->features.tl_conv_mode == OMX_FALSE) {
 			_uf_vp5_start(context, mode, VP5_MODULE_CE);
 			return;
 		}
-		fmem_index = (MCVDEC_FMEM_INDEX_T *)start_info;
 #ifdef VPU_INTERNAL_TL
 		for (i = 0; i < MCVDEC_FMX_NOEL; i++) {
 			for (j = 0; j < MCVDEC_YC_NOEL; j++) {

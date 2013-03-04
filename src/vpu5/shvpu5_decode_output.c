@@ -139,6 +139,8 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			break;
 		shvpu_decode_Private->avCodec->fmem[i].fmem_start = ypic_paddr;
 		shvpu_decode_Private->avCodec->fmem[i].fmem_len = alloc_size;
+		pthread_mutex_init(&shvpu_decode_Private->
+				   avCodec->fmem[i].filled, NULL);
 		if (shvpu_decode_Private->features.tl_conv_mode == OMX_TRUE) {
 			/*alignment offset*/
 			ypic_paddr = (ypic_paddr + (align - 1)) & ~(align - 1);

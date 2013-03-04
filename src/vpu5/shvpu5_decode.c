@@ -241,9 +241,11 @@ decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
 			for (i = 0 ; i < bufs; i++) {
 				phys_pmem_free(outbuf->fmem_start,
 						outbuf->fmem_len);
+				pthread_mutex_destroy(&outbuf->filled);
 				outbuf++;
 			}
 			free(shvpu_decode_Private->avCodec->fmem);
+			shvpu_decode_Private->avCodec->fmem = NULL;
 		}
 
 		phys_pmem_free(pCodec->mv_info.mv_info_addr,

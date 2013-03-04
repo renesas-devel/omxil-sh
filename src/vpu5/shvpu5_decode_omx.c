@@ -256,6 +256,7 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	pComponent->ComponentRoleEnum = shvpu_decode_ComponentRoleEnum;
 	pComponent->GetExtensionIndex = shvpu_decode_GetExtensionIndex;
 	pComponent->SendCommand = shvpu_decode_SendCommand;
+	pComponent->FillThisBuffer = shvpu_decode_FillThisBuffer;
 
 	shvpu_decode_Private->pPicQueue = calloc(1, sizeof(queue_t));
 	queue_init(shvpu_decode_Private->pPicQueue);
@@ -1479,6 +1480,9 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 					vaddr + pitch * pic_infos[0]->ypic_size,
 					copy_size / 2);
 			}
+			pthread_mutex_unlock(&shvpu_decode_Private->
+					     avCodec->fmem[pic_infos[0]->
+							   fmem_index].filled);
 		} else {
 			if ((unsigned long) vaddr < (unsigned long)
 				shvpu_decode_Private->uio_start)
@@ -1496,6 +1500,9 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 				pOutBuffer->pPlatformPrivate = vaddr;
 			}
 
+			/* memorize the fmem index */
+			pOutBuffer->pOutputPortPrivate =
+				(void *)pic_infos[0]->fmem_index;
 		}
 		pOutBuffer->nFilledLen += pic_size + pic_size / 2;
 
@@ -2151,6 +2158,34 @@ shvpu_decode_SendCommand(
 	   shvpu_decode_Private->features.tl_conv_mode);
   }
   return omx_base_component_SendCommand(hComponent, Cmd, nParam, pCmdData);
+}
+
+OMX_ERRORTYPE
+shvpu_decode_FillThisBuffer( OMX_HANDLETYPE hComponent,
+                            OMX_BUFFERHEADERTYPE* pBuffer)
+{
+       OMX_COMPONENTTYPE* pComponent = (OMX_COMPONENTTYPE*)hComponent;
+      shvpu_decode_PrivateType* shvpu_decode_Private =
+              pComponent->pComponentPrivate;
+       omx_base_PortType *pPort;
+       OMX_ERRORTYPE err;
+       int fmem_index = (int)pBuffer->pOutputPortPrivate;
+
+      DEBUG(DEB_LEV_FUNCTION_NAME, "In %s for component %p\n",
+	    __func__, hComponent);
+
+      if (!shvpu_decode_Private->features.use_buffer_mode &&
+	  shvpu_decode_Private->avCodec->fmem) {
+	      if (fmem_index < shvpu_decode_Private->avCodec->fmem_size)
+		      pthread_mutex_unlock(&shvpu_decode_Private->
+					   avCodec->fmem[fmem_index].filled);
+	      else
+		      DEBUG(DEB_LEV_ERR,
+			    "Illegal fmem index %d (> %d)\n", fmem_index,
+			    shvpu_decode_Private->avCodec->fmem_size);
+      }
+
+      omx_base_component_FillThisBuffer(hComponent, pBuffer);
 }
 
 OMX_ERRORTYPE
