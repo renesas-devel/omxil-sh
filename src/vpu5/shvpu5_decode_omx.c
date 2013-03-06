@@ -2185,7 +2185,7 @@ shvpu_decode_FillThisBuffer( OMX_HANDLETYPE hComponent,
 			    shvpu_decode_Private->avCodec->fmem_size);
       }
 
-      omx_base_component_FillThisBuffer(hComponent, pBuffer);
+      return omx_base_component_FillThisBuffer(hComponent, pBuffer);
 }
 
 OMX_ERRORTYPE
