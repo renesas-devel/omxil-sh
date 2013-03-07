@@ -257,7 +257,7 @@ LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmw
 
 ifeq ($(LOCAL_TL_CONV), uio)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
-	LOCAL_CFLAGS += -DTL_CONV_ENABLE
+	LOCAL_CFLAGS += -DTL_CONV_ENABLE -DUIO_TL_CONV
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
@@ -298,7 +298,7 @@ LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmw
 ifeq ($(LOCAL_TL_CONV), uio)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c shvpu5_uio_tiling.c
-	LOCAL_CFLAGS += -DTL_CONV_ENABLE
+	LOCAL_CFLAGS += -DTL_CONV_ENABLE -DUIO_TL_CONV
 	LOCAL_SHARED_LIBRARIES += libmeram
 endif
 
