@@ -184,13 +184,25 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 			DEBUG(DEB_LEV_ERR,
 			      "Unknown buffer will be used for output.\n");
 		}else {
-			struct timespec to;
 			int ret;
+#ifndef ANDROID
+			struct timespec to;
 
 			to.tv_sec = time(NULL) + 1 /* sec. */;
 			to.tv_nsec = 0;
 			ret = pthread_mutex_timedlock (&fmem_data[i].filled,
 						       &to);
+#else /* !ANDROID */
+			/*
+			  Android bionic libc does not implement
+			  pthread_mutex_timedlock() though it is
+			  declared in pthread.h.
+			  Instead, pthread_mutex_lock_timeout_np()
+			  can be used for Android.
+			 */
+			ret = pthread_mutex_lock_timeout_np (
+				&fmem_data[i].filled, 1000 /* msecs. */);
+#endif /* !ANDROID */
 			if (ret != 0)
 				DEBUG(DEB_LEV_ERR,
 				      "The No.%d fmem buffer(%08lx) will"
