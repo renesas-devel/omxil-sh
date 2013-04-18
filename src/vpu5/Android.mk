@@ -129,6 +129,13 @@ LOCAL_LDFLAGS += \
 endif
 endif
 
+ifeq ($(PRODUCT_VPU_VERSION), VPU_VERSION_VCP1)
+LOCAL_LDFLAGS = -L$(MIDDLEWARE_LIB_PATH) \
+	-lvcp1decavc -lvcp1deccmn \
+	-lvcp1drv -lvcp1drvavcdec \
+	-lvcp1drvcmn -lvcp1drvcmndec
+endif
+
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libshvpu5avc
 LOCAL_CFLAGS += -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS)
