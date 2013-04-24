@@ -26,8 +26,13 @@
 #if __cplusplus
 extern "C" {
 #endif
+#ifdef DECODER_COMPONENT
 #include "shvpu5_decode_omx.h"
+#endif
+#ifdef ENCODER_COMPONENT
 #include "shvpu5_avcenc_omx.h"
+#endif
+#ifdef DECODER_COMPONENT
 OMX_ERRORTYPE shvpu_decode_UseAndroidNativeBuffer(
 	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure);
@@ -39,10 +44,13 @@ OMX_ERRORTYPE shvpu_decode_AndroidNativeBufferEnable(
 OMX_ERRORTYPE shvpu_decode_GetNativeBufferUsage(
 	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure);
+#endif
 
+#ifdef ENCODER_COMPONENT
 OMX_ERRORTYPE shvpu_avcenc_SetMetaDataInBuffers(
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 	OMX_PTR ComponentParameterStructure);
+#endif
 
 enum {
 	HAL_PIXEL_FORMAT_RGB_565       	    = 0x4,

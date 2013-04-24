@@ -24,15 +24,19 @@
 
 */
 
-#include <bellagio/omxcore.h>
-#include <bellagio/omx_base_video_port.h>
 #include <media/stagefright/HardwareAPI.h>
 #include <ui/GraphicBufferMapper.h>
 #include <ui/android_native_buffer.h>
 #include <ui/GraphicBuffer.h>
 extern "C" {
+#include <bellagio/omxcore.h>
+#include <bellagio/omx_base_video_port.h>
+#ifdef DECODER_COMPONENT
 #include "shvpu5_decode_omx.h"
+#endif
+#ifdef ENCODER_COMPONENT
 #include "shvpu5_avcenc_omx.h"
+#endif
 #include "shvpu5_common_log.h"
 }
 
@@ -45,6 +49,7 @@ using android::GraphicBuffer;
 using android::GraphicBufferMapper;
 using android::Rect;
 extern "C" {
+#ifdef DECODER_COMPONENT
 OMX_ERRORTYPE shvpu_decode_UseAndroidNativeBuffer(
 	shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_PTR ComponentParameterStructure) {
@@ -112,7 +117,9 @@ OMX_ERRORTYPE shvpu_decode_GetNativeBufferUsage(
 	pUsage->nUsage = 0;
 	return OMX_ErrorNone;
 }
+#endif
 
+#ifdef ENCODER_COMPONENT
 OMX_ERRORTYPE shvpu_avcenc_SetMetaDataInBuffers(
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 	OMX_PTR ComponentParameterStructure) {
@@ -124,4 +131,5 @@ OMX_ERRORTYPE shvpu_avcenc_SetMetaDataInBuffers(
 		modeSettings.meta_input_buffers = pEnable->bStoreMetaData;
 	return OMX_ErrorNone;
 }
+#endif
 }
