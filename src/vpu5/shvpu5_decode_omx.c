@@ -32,6 +32,7 @@
 #include "shvpu5_common_queue.h"
 #include "shvpu5_common_2ddmac.h"
 #include "shvpu5_common_log.h"
+#include "shvpu5_common_uio.h"
 #include "shvpu5_parse_api.h"
 #include <OMX_Video.h>
 #define _GNU_SOURCE
@@ -270,8 +271,15 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	uio_get_virt_memory(&shvpu_decode_Private->uio_start,
 			&shvpu_decode_Private->uio_size);
 
-	loge("reg = %x, mem = %x, memsz = %d\n",
-	     reg, shvpu_decode_Private->uio_start_phys, memsz);
+
+	if (!memsz || reg == PHYS_INVALID ||
+			shvpu_decode_Private->uio_start_phys == PHYS_INVALID) {
+		loge("VPU Insufficient memory resources\n");
+		loge("reg = %x, mem = %x, memsz = %d\n",
+		     reg, shvpu_decode_Private->uio_start_phys, memsz);
+		uio_deinit();
+		return OMX_ErrorInsufficientResources;
+	}
 
 	/*OMX_PARAM_REVPU5MAXPARAM*/
 	setHeader(&shvpu_decode_Private->maxVideoParameters,
