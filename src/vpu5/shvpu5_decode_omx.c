@@ -46,7 +46,7 @@
 
 /** Maximum Number of Video Component Instance*/
 #ifndef MAX_COMPONENT_VIDEODEC
-#define MAX_COMPONENT_VIDEODEC 4
+#define MAX_COMPONENT_VIDEODEC 2
 #endif
 /** Counter of Video Component Instance*/
 static OMX_U32 noVideoDecInstance = 0;
@@ -113,6 +113,7 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 	if (noVideoDecInstance >= maxVPUInstances.nInstances)   {
 		pthread_mutex_unlock(&initMutex);
+		loge("Too many instances");
 		return OMX_ErrorInsufficientResources;
 	}
 
@@ -128,6 +129,8 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 		if (pComponent->pComponentPrivate == NULL) {
 			return OMX_ErrorInsufficientResources;
 		}
+		loge("Allocated priv data %p for comp %p",
+			pComponent->pComponentPrivate, pComponent);
 	} else {
 		DEBUG(DEB_LEV_FUNCTION_NAME,
 		      "In %s, Error Component %x Already Allocated\n",

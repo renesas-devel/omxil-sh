@@ -24,9 +24,8 @@
 
 */
 
-#include <media/stagefright/HardwareAPI.h>
+#include <HardwareAPI.h>
 #include <ui/GraphicBufferMapper.h>
-#include <ui/android_native_buffer.h>
 #include <ui/GraphicBuffer.h>
 extern "C" {
 #include <bellagio/omxcore.h>

@@ -160,6 +160,7 @@ endif
 ifeq ($(OMXIL_ANDROID_CUSTOM), true)
 LOCAL_SRC_FILES += shvpu5_common_android_helper.cpp
 LOCAL_C_INCLUDES += frameworks/base/include \
+		    frameworks/native/include/media/hardware \
 		    hardware/renesas/shmobile/gralloc
 LOCAL_CFLAGS += -DANDROID_CUSTOM
 LOCAL_SHARED_LIBRARIES += libui
