@@ -247,13 +247,6 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(LOCAL_PATH)/../../include \
 		$(MIDDLEWARE_INCLUDE_PATH)
 
-ifeq ($(VPU_DECODE_USE_VPC), true)
-	LOCAL_CFLAGS += -DVPC_ENABLE
-endif
-ifeq ($(VPU_DECODE_USE_ICBCACHE), true)
-	LOCAL_CFLAGS += -DICBCACHE_FLUSH
-endif
-
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_sync.c \
 	shvpu5_common_udfio.c
@@ -265,6 +258,13 @@ LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmw
 ifeq ($(LOCAL_TL_CONV), uio)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 	LOCAL_CFLAGS += -DTL_CONV_ENABLE -DUIO_TL_CONV
+endif
+
+ifeq ($(VPU_DECODE_USE_VPC), true)
+	LOCAL_CFLAGS += -DVPC_ENABLE
+endif
+ifeq ($(VPU_DECODE_USE_ICBCACHE), true)
+	LOCAL_CFLAGS += -DICBCACHE_FLUSH
 endif
 
 ifeq ($(VPU_DECODE_WITH_MERAM), true)
