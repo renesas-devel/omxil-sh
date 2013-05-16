@@ -171,7 +171,10 @@ mciph_uf_ce_start(void *context, long mode, void *start_info)
 			(MCVDEC_FMEM_INDEX_T *)start_info;
 		shvpu_fmem_data *fmem_data =
 			shvpu_decode_Private->avCodec->fmem;
-		unsigned long start_addr = *fmem_index->ce_img_addr.decY_addr;
+		unsigned long start_addr =
+		start_addr = *fmem_index->ce_img_addr.filterY_addr ?
+			*fmem_index->ce_img_addr.filterY_addr :
+			*fmem_index->ce_img_addr.decY_addr;
 
 		for (i = 0; i < shvpu_decode_Private->
 			     avCodec->fmem_size; i++) {
