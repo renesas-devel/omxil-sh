@@ -134,6 +134,10 @@ LOCAL_LDFLAGS = -L$(MIDDLEWARE_LIB_PATH) \
 	-lvcp1decavc -lvcp1deccmn \
 	-lvcp1drv -lvcp1drvavcdec \
 	-lvcp1drvcmn -lvcp1drvcmndec
+ifeq ($(VPU_MPEG4_DECODER),true)
+LOCAL_LDFLAGS += \
+	-lvcp1decm4v -lvcp1drvm4vdec
+endif
 endif
 
 LOCAL_MODULE_TAGS := optional
