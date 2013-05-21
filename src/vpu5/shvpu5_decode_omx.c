@@ -314,6 +314,7 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	shvpu_decode_Private->features.tl_conv_mode = OMX_TRUE;
 	shvpu_decode_Private->features.tl_conv_tbm = LOG2_TB;
 	shvpu_decode_Private->features.tl_conv_vbm = LOG2_VB;
+	shvpu_decode_Private->features.thumbnail_mode = OMX_FALSE;
 #endif
 
 	/* initialize ippmui for buffers */
@@ -1196,6 +1197,41 @@ wait_vlc_buffering(shvpu_decode_codec_t *pCodec)
 	return;
 }
 
+static void
+memcpy_output_buffer(shvpu_decode_PrivateType *shvpu_decode_Private,
+		MCVDEC_CMN_PICINFO_T *pic_info,
+		OMX_U8 *vid_data,
+		OMX_U8 *buffer)
+{
+	size_t copy_size;
+	size_t pitch;
+	size_t xsize = pic_info->xpic_size;
+	size_t ysize = pic_info->ypic_size -
+			pic_info->frame_crop[MCVDEC_CROP_BOTTOM];
+	pitch = ROUND_2POW(xsize, 32);
+	copy_size = pitch * ysize;
+
+	if (shvpu_decode_Private->features.thumbnail_mode && xsize != pitch) {
+		int i;
+		for (i = 0; i < ysize; i++) {
+			memcpy(buffer, vid_data, xsize);
+			buffer += xsize;
+			vid_data += pitch;
+		}
+		vid_data += pic_info->frame_crop[MCVDEC_CROP_BOTTOM] * pitch;
+		for (i = 0; i < ysize / 2; i++) {
+			memcpy(buffer, vid_data, xsize);
+			buffer += xsize;
+			vid_data += pitch;
+		}
+	} else {
+		memcpy(buffer, vid_data, copy_size);
+		memcpy(buffer + copy_size,
+			vid_data + pitch * pic_info->ypic_size,
+			copy_size / 2);
+	}
+}
+
 /** This function is used to process the input buffer and
     provide one output buffer
 */
@@ -1476,18 +1512,10 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 						pOutBuffer->pPlatformPrivate,
 					frame->Ypic_addr);
 			} else {
-				size_t copy_size;
-				size_t pitch;
-				OMX_U8 *out_buffer;
-				pitch = ROUND_2POW(pic_infos[0]->xpic_size, 32);
-				copy_size = pitch * (pic_infos[0]->ypic_size -
-					pic_infos[0]->frame_crop
-						[MCVDEC_CROP_BOTTOM]);
 				pOutBuffer->nOffset = 0;
-				memcpy(pOutBuffer->pBuffer, vaddr, copy_size);
-				memcpy(pOutBuffer->pBuffer + copy_size,
-					vaddr + pitch * pic_infos[0]->ypic_size,
-					copy_size / 2);
+				memcpy_output_buffer(shvpu_decode_Private,
+					pic_infos[0], vaddr,
+					pOutBuffer->pBuffer);
 			}
 			pthread_mutex_unlock(&shvpu_decode_Private->
 					     avCodec->fmem[pic_infos[0]->
@@ -1771,7 +1799,11 @@ shvpu_decode_SetParameter(OMX_HANDLETYPE hComponent,
 			shvpu_decode_Private->features.dmac_mode =
 				!(*(OMX_BOOL *)ComponentParameterStructure);
 #endif
-			shvpu_decode_Private->enable_sync = OMX_TRUE;
+			shvpu_decode_Private->features.thumbnail_mode =
+				(*(OMX_BOOL *)ComponentParameterStructure);
+
+			shvpu_decode_Private->enable_sync =
+				!(*(OMX_BOOL *)ComponentParameterStructure);
 
 			logd("Switching software readable output mode %s\n",
 			     (*(OMX_BOOL *)ComponentParameterStructure ==
