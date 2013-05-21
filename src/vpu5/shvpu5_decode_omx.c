@@ -625,7 +625,7 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 			ROUND_2POW(outPort->sPortParam.format.video.nFrameWidth,32);
 	}
 	outPort->sPortParam.format.video.nFrameWidth =
-		ALIGN_STRIDE(inPort->sPortParam.format.video.nFrameWidth);
+		inPort->sPortParam.format.video.nFrameWidth;
 	outPort->sPortParam.format.video.nFrameHeight =
 		inPort->sPortParam.format.video.nFrameHeight;
 	outPort->sPortParam.format.video.nSliceHeight =
@@ -2046,15 +2046,38 @@ shvpu_decode_GetParameter(OMX_HANDLETYPE hComponent,
 	return eError;
 }
 
-/** GetConfig
-  * Right now we don't support any configuration, so return
-  * OMX_ErrBadParameter for any request that we get
-  */
 OMX_ERRORTYPE
 shvpu_decode_GetConfig(OMX_HANDLETYPE hComponent,
 		       OMX_INDEXTYPE nIndex,
 		       OMX_PTR pComponentConfigStructure)  {
-	return OMX_ErrorBadParameter;
+
+	OMX_COMPONENTTYPE *pComponent = hComponent;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		pComponent->pComponentPrivate;
+	OMX_ERRORTYPE eError =  OMX_ErrorBadParameter;
+	if (pComponentConfigStructure == NULL)
+		return eError;
+
+	switch (nIndex) {
+	case OMX_IndexConfigCommonOutputCrop:
+	{
+		OMX_CONFIG_RECTTYPE *rec = pComponentConfigStructure;
+		omx_base_video_PortType *inPort = (omx_base_video_PortType *)
+			shvpu_decode_Private->
+					ports[OMX_BASE_FILTER_INPUTPORT_INDEX];
+		eError = checkHeader(rec, sizeof(OMX_CONFIG_RECTTYPE));
+		if (eError != OMX_ErrorNone)
+			break;
+		rec->nLeft = 0;
+		rec->nTop = 0;
+		rec->nWidth = inPort->sPortParam.format.video.nFrameWidth;
+		rec->nHeight = inPort->sPortParam.format.video.nFrameHeight;
+		break;
+	}
+	default:
+		break;
+	}
+	return eError;
 }
 
 OMX_ERRORTYPE
