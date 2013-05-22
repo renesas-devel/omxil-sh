@@ -47,6 +47,8 @@
 #include "shvpu5_decode_api.h"
 #include <vpu5/OMX_VPU5Ext.h>
 
+#include "meram/meram.h"
+
 #ifndef BUFFERING_COUNT
 #define BUFFERING_COUNT 15
 #endif
@@ -55,6 +57,8 @@
 #define VPU_UNIT(x) ((((x) + 255) /256) * 256)
 #define ALIGN_MASK 0xfffff000
 #define ALIGN(x) ((x + ~ALIGN_MASK) & ALIGN_MASK);
+
+#define MERAM_BASE 0xe8080000
 static inline void *
 malloc_aligned(size_t size, int align)
 {
@@ -145,14 +149,25 @@ mpegCodec_buf_sizes (int num_views, shvpu_decode_PrivateType *priv,
 	*ir_size = mpegCodec_ir_buf_size(num_views, priv, pCodec);
 	*mv_size = mpegCodec_mv_buf_size(num_views, priv, pCodec);
 }
+
+typedef struct {
+	MERAM *meram;
+	int meram_block;
+} m4v_priv_data_t;
+
 void mpegCodec_deinit(shvpu_codec_params_t *vpu_codec_params) {
 	shvpu_codec_params_t *pCodec = vpu_codec_params;
+	m4v_priv_data_t *priv = pCodec->private_data;
 	M4VDEC_PARAMS_T *m4vdec_params = pCodec->codec_params;
 
 	phys_pmem_free(m4vdec_params->col_not_coded_buffer_addr,
 		m4vdec_params->col_not_coded_buffer_size);
-	phys_pmem_free(m4vdec_params->dp_buffer_addr,
-		m4vdec_params->dp_buffer_size);
+/*	phys_pmem_free(m4vdec_params->dp_buffer_addr,
+		m4vdec_params->dp_buffer_size); */
+	meram_free_memory_block(priv->meram, priv->meram_block,
+		m4vdec_params->dp_buffer_size >> 10);
+	meram_close(priv->meram);
+	free(priv);
 	free(m4vdec_params);
 }
 
@@ -174,6 +189,7 @@ mpegCodec_init(shvpu_codec_params_t *vpu_codec_params,
 	int mb_height = ((max_param->nHeight + 15) / 16);
 	static char ce_file[] = VPU5HG_FIRMWARE_PATH "/pmp4d_h.bin";
 	static char vlc_file[] = VPU5HG_FIRMWARE_PATH "/smp4d.bin";
+	m4v_priv_data_t *priv;
 
 	/*** initialize decoder ***/
 	static const M4VDEC_PARAMS_T _m4vdec_params_def = {
@@ -188,18 +204,38 @@ mpegCodec_init(shvpu_codec_params_t *vpu_codec_params,
 	pCodec->vlc_firmware_name = vlc_file;
 	pCodec->wbuf_size = 0x108000;
 	pCodec->api_tbl = (MCVDEC_API_T *) &m4vdec_api_tbl;
+	priv = calloc(1, sizeof(m4v_priv_data_t));
+
+	priv->meram = meram_open();
+	if (!priv->meram) {
+		free(priv);
+		return -1;
+	}
+
 	m4vdec_params = pCodec->codec_params =
 		calloc(1, sizeof(AVCDEC_PARAMS_T));
 	memcpy(m4vdec_params, &_m4vdec_params_def, sizeof(AVCDEC_PARAMS_T));
 
 	m4vdec_params->dp_buffer_size = VPU_UNIT(48 * mb_width *
 			mb_height + 392);
-	pmem_alloc(m4vdec_params->dp_buffer_size,
-				1, &m4vdec_params->dp_buffer_addr);
+
+	priv->meram_block = meram_alloc_memory_block(priv->meram,
+		m4vdec_params->dp_buffer_size >> 10);
+
+	if (priv->meram_block < 0) {
+		meram_close(priv->meram);
+		free(priv);
+		return -1;
+	}
+
+	m4vdec_params->dp_buffer_addr = (priv->meram_block << 10) + MERAM_BASE;
+/*	pmem_alloc(m4vdec_params->dp_buffer_size,
+				1, &m4vdec_params->dp_buffer_addr);*/
 	m4vdec_params->col_not_coded_buffer_size = VPU_UNIT((mb_width *
 			mb_height + 7)/8);
 	pmem_alloc(m4vdec_params->col_not_coded_buffer_size, 1,
 				&m4vdec_params->col_not_coded_buffer_addr);
 	pCodec->ops = &m4v_ops;
+	pCodec->private_data = priv;
 	return 0;
 }

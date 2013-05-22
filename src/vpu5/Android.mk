@@ -82,6 +82,8 @@ ifeq ($(VPU_MPEG4_DECODER),true)
 		shvpu5_m4vdec_parse.c \
 		shvpu5_m4vdec_decode.c
 	LOCAL_CFLAGS += -DMPEG4_DECODER
+	LOCAL_SHARED_LIBRARIES += libmeram
+	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 endif
 
 ifneq ($(VPU_TL_TILE_WIDTH_LOG2),)
