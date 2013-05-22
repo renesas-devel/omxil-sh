@@ -25,7 +25,7 @@
 
 */
 struct codec_init_ops {
-	void (*init_intrinsic_array) (void ***intrinsic);
+	int (*init_intrinsic_array) (void ***intrinsic);
 	void (*deinit_intrinsic_array) (void **intrinsic);
 	void (*calc_buf_sizes) (int num_views, shvpu_decode_PrivateType *priv,
 					       shvpu_decode_codec_t *pCodec,

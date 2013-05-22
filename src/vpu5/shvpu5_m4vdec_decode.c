@@ -149,9 +149,9 @@ void mpegCodec_deinit(shvpu_codec_params_t *vpu_codec_params) {
 	shvpu_codec_params_t *pCodec = vpu_codec_params;
 	M4VDEC_PARAMS_T *m4vdec_params = pCodec->codec_params;
 
-	phys_pmem_free((void *)m4vdec_params->col_not_coded_buffer_addr,
+	phys_pmem_free(m4vdec_params->col_not_coded_buffer_addr,
 		m4vdec_params->col_not_coded_buffer_size);
-	phys_pmem_free((void *)m4vdec_params->dp_buffer_addr,
+	phys_pmem_free(m4vdec_params->dp_buffer_addr,
 		m4vdec_params->dp_buffer_size);
 	free(m4vdec_params);
 }
@@ -169,7 +169,7 @@ mpegCodec_init(shvpu_codec_params_t *vpu_codec_params,
 			const shvpu_decode_PrivateType *privType) {
 	shvpu_codec_params_t *pCodec = vpu_codec_params;
 	M4VDEC_PARAMS_T *m4vdec_params;
-	OMX_PARAM_REVPU5MAXPARAM *max_param = &privType->maxVideoParameters;
+	const OMX_PARAM_REVPU5MAXPARAM *max_param = &privType->maxVideoParameters;
 	int mb_width = ((max_param->nWidth + 15) / 16);
 	int mb_height = ((max_param->nHeight + 15) / 16);
 	static char ce_file[] = VPU5HG_FIRMWARE_PATH "/pmp4d_h.bin";
