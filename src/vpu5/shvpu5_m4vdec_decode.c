@@ -213,8 +213,8 @@ mpegCodec_init(shvpu_codec_params_t *vpu_codec_params,
 	}
 
 	m4vdec_params = pCodec->codec_params =
-		calloc(1, sizeof(AVCDEC_PARAMS_T));
-	memcpy(m4vdec_params, &_m4vdec_params_def, sizeof(AVCDEC_PARAMS_T));
+		calloc(1, sizeof(M4VDEC_PARAMS_T));
+	memcpy(m4vdec_params, &_m4vdec_params_def, sizeof(M4VDEC_PARAMS_T));
 
 	m4vdec_params->dp_buffer_size = VPU_UNIT(48 * mb_width *
 			mb_height + 392);
