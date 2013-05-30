@@ -1806,7 +1806,7 @@ shvpu_decode_SetParameter(OMX_HANDLETYPE hComponent,
 				(*(OMX_BOOL *)ComponentParameterStructure);
 
 			shvpu_decode_Private->enable_sync =
-				!(*(OMX_BOOL *)ComponentParameterStructure);
+				(*(OMX_BOOL *)ComponentParameterStructure);
 
 			logd("Switching software readable output mode %s\n",
 			     (*(OMX_BOOL *)ComponentParameterStructure ==
