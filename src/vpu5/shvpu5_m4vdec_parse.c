@@ -35,7 +35,7 @@
 #include "shvpu5_common_log.h"
 
 #define VOP_START_CODE 0xB6
-#define BUFFER_SIZE (256 * 1024)
+#define BUFFER_SIZE (512 * 1024)
 
 typedef enum {
 	START,
