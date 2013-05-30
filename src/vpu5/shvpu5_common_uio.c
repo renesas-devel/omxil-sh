@@ -212,8 +212,11 @@ uio_init(char *name, unsigned long *paddr_reg,
 		uiomux = uiomux_open_named(uio_names);
 		memops = get_memory_ops();
 		if (memops->memory_init(paddr_pmem, size_pmem) != 0) {
+			memops = NULL;
+			uiomux_close(uiomux);
+			uiomux = NULL;
 			pthread_mutex_unlock(&uiomux_mutex);
-			goto memops_init_fail;
+			return NULL;
 		}
 		/* clear register save on init */
 		save[0] = save[1] = save[2] = 0;
@@ -235,12 +238,6 @@ uio_init(char *name, unsigned long *paddr_reg,
 	if (paddr_reg)
 		*paddr_reg = uio_reg_base;
 	return (void *)uiomux;
-
-memops_init_fail:
-	memops = NULL;
-	uiomux_close(uiomux);
-	uiomux = NULL;
-	return NULL;
 }
 
 
