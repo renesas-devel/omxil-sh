@@ -227,7 +227,8 @@ uio_init(char *name, unsigned long *paddr_reg,
 		icbcache_init();
 #endif
 	} else {
-		memops->get_phys_memory(paddr_pmem, size_pmem);
+		memops->get_phys_memory(paddr_pmem,
+			(unsigned long *)size_pmem);
 	}
 	ref_cnt++;
 
@@ -559,7 +560,7 @@ uiomem_mem_write(unsigned long src_addr,
 
 
 unsigned long
-uiomem_virt_to_phys(void *context, long mode, unsigned long addr)
+uiomem_virt_to_phys(void *addr)
 {
 	return PHYS_UNDEF;
 }
