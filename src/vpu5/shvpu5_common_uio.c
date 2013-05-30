@@ -465,8 +465,12 @@ uiomux_register_memory(void *vaddr, unsigned long paddr, int size) {
 int
 uiomem_memory_init(unsigned long *paddr_pmem, size_t *size_pmem)
 {
-	return uiomem_get_phys_memory(paddr_pmem,
+	int ret;
+	ret = uiomem_get_phys_memory(paddr_pmem,
 			(unsigned long *)size_pmem);
+	if (paddr_pmem == PHYS_INVALID)
+		return -1;
+	return ret;
 }
 
 void
