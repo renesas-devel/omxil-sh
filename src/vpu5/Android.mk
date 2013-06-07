@@ -41,7 +41,7 @@ VPU_ENCODER_COMPONENT := true
 endif
 
 include $(LOCAL_PATH)/versiondefs.mk
-
+include $(LOCAL_PATH)/optiondefs.mk
 
 MIDDLEWARE_INCLUDE_PATH := $(VPU_MIDDLEWARE_PATH)/include
 MIDDLEWARE_LIB_PATH := $(VPU_MIDDLEWARE_PATH)/lib
@@ -58,7 +58,8 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
 		$(LOCAL_PATH)/../../include \
-		$(MIDDLEWARE_INCLUDE_PATH)
+		$(MIDDLEWARE_INCLUDE_PATH) \
+		$(VPU_OPTION_INCLUDES)
 
 LOCAL_SRC_FILES := 	\
 	library_entry_point.c \
@@ -84,13 +85,6 @@ ifeq ($(VPU_MPEG4_DECODER),true)
 	LOCAL_CFLAGS += -DMPEG4_DECODER
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
-endif
-
-ifneq ($(VPU_TL_TILE_WIDTH_LOG2),)
-	LOCAL_CFLAGS += -DTL_TILE_WIDTH_LOG2=$(VPU_TL_TILE_WIDTH_LOG2)
-endif
-ifneq ($(VPU_TL_TILE_HEIGHT_LOG2),)
-	LOCAL_CFLAGS += -DTL_TILE_HEIGHT_LOG2=$(VPU_TL_TILE_HEIGHT_LOG2)
 endif
 
 ifeq ($(VPU_ENCODER_COMPONENT),true)
@@ -144,7 +138,7 @@ endif
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libshvpu5avc
-LOCAL_CFLAGS += -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS)
+LOCAL_CFLAGS += -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS) $(VPU_OPTION_DEFS)
 
 
 ifeq ($(VPU_DECODE_USE_BUFFER), true)
@@ -207,7 +201,8 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
 		$(LOCAL_PATH)/../../include \
-		$(MIDDLEWARE_INCLUDE_PATH)
+		$(MIDDLEWARE_INCLUDE_PATH) \
+		$(VPU_OPTION_INCLUDES)
 
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_uio.c \
@@ -219,7 +214,7 @@ endif
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5uio
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DANDROID $(VPU_VERSION_DEFS)
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DANDROID $(VPU_VERSION_DEFS) $(VPU_OPTION_DEFS)
 
 
 ifeq ($(VPU_DECODE_USE_VPC), true)
@@ -252,7 +247,8 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
 		$(LOCAL_PATH)/../../include \
-		$(MIDDLEWARE_INCLUDE_PATH)
+		$(MIDDLEWARE_INCLUDE_PATH) \
+		$(VPU_OPTION_INCLUDES)
 
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_sync.c \
@@ -260,7 +256,7 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udf
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS)
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS) $(VPU_OPTION_DEFS)
 
 ifeq ($(LOCAL_TL_CONV), uio)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
@@ -298,7 +294,8 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		external/libuiomux/include \
 		hardware/renesas/shmobile/prebuilt/include \
 		$(LOCAL_PATH)/../../include \
-		$(MIDDLEWARE_INCLUDE_PATH)
+		$(MIDDLEWARE_INCLUDE_PATH) \
+		$(VPU_OPTION_INCLUDES)
 
 LOCAL_SRC_FILES := 	\
 	shvpu5_common_queue.c \
@@ -307,12 +304,16 @@ LOCAL_SRC_FILES := 	\
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfdec
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS)
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS) $(VPU_OPTION_DEFS)
 
 ifeq ($(LOCAL_TL_CONV), uio)
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c shvpu5_uio_tiling.c
 	LOCAL_CFLAGS += -DTL_CONV_ENABLE -DUIO_TL_CONV
+	LOCAL_SHARED_LIBRARIES += libmeram
+endif
+ifeq ($(LOCAL_TL_CONV), kernel)
+	LOCAL_SRC_FILES += shvpu5_common_ipmmu.c shvpu5_kernel_tiling.c
 	LOCAL_SHARED_LIBRARIES += libmeram
 endif
 
@@ -340,13 +341,14 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH) \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio/bellagio \
 		external/libuiomux/include \
 		$(LOCAL_PATH)/../../include \
-		$(MIDDLEWARE_INCLUDE_PATH)
+		$(MIDDLEWARE_INCLUDE_PATH) \
+		$(VPU_OPTION_INCLUDES)
 
 LOCAL_SRC_FILES := 	\
 	shvpu5_avcenc_output.c
 
 LOCAL_MODULE_TAGS := optional
 LOCAL_MODULE := libvpu5udfenc
-LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS)
+LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS) $(VPU_OPTION_DEFS)
 include $(BUILD_SHARED_LIBRARY)
 endif
