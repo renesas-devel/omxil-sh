@@ -25,7 +25,7 @@
 
 */
 
-#define PMB_SIZE 128
+#define PMB_SIZE 512
 
 struct shvpu_ipmmui_t {
 	unsigned long ipmmui_vaddr;
