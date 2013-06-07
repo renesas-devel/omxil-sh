@@ -52,7 +52,7 @@ init_kernel_tiling(struct shvpu_ipmmui_t *ipmmui_data,
 	ROUND_NEXT_POW2(stride, stride);
 
 	pmb.size_mb = PMB_SIZE;
-	pmb.paddr = phys_base;
+	pmb.paddr = phys_base & ~((PMB_SIZE << 20)- 1);
 	pmb.enabled = 1;
 
 	tile.enabled = 1;
