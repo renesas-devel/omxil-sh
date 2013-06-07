@@ -1518,7 +1518,9 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 				pOutBuffer->nOffset = 0;
 				DMAC_copy_buffer((unsigned long)
 						pOutBuffer->pPlatformPrivate,
-					frame->Ypic_addr);
+						phys_to_ipmmui(shvpu_decode_Private->
+							ipmmui_data,
+							frame->Ypic_addr));
 			} else {
 				pOutBuffer->nOffset = 0;
 				memcpy_output_buffer(shvpu_decode_Private,
