@@ -1307,7 +1307,9 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 		loge("terminating because of an error(%d)\n", ret);
 		return;
 	case MCVDEC_NO_STRM:
-		loge("Error NO_STRM reported. Trying a reset\n", ret);
+		if (shvpu_decode_Private->bIsEOSReached)
+			break;
+		loge("Error NO_STRM reported. Trying a reset %d\n", ret);
 		mcvdec_set_play_mode(
 			shvpu_decode_Private->avCodecContext,
 			MCVDEC_PLAY_FORWARD, 0, 0);
