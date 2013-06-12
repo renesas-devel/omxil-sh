@@ -263,20 +263,6 @@ if test "x${ac_enable_vpu}" = xyes ; then
   AM_CONDITIONAL(HAVE_SHCODECS, [test "x$HAVE_SHCODECS" = "xyes"])
 fi
 
-dnl MPEG4 decoding
-AC_ARG_ENABLE(vpu5_mpeg4_decode,
-	[AC_HELP_STRING(
-		[--enable-vpu5_mpeg_decode],
-		[with MPEG4 decoding support])],
-	[enable_mpeg_dec=$enableval],
-	[enable_mpeg_dec=no])
-
-
-AS_IF([test "x$enable_mpeg_dec" = "xyes"],
-		[PKG_CHECK_MODULES([MERAM], [meram])])
-
-AM_CONDITIONAL(WITH_MPEG4_DECODE, [test "x$enable_mpeg_dec" = "xyes"])
-
 dnl VPU Version
 AC_ARG_WITH(vpu5_version,
 	[AC_HELP_STRING(
@@ -309,6 +295,33 @@ dnl  	default
 		VPU_CMN_LIBS="-lvpu5drvcmn -lvpu5drvhg"
 		VPU_DEC_LIBS="-lvpu5decavc -lvpu5deccmn"
 		VPU_ENC_LIBS="-lvpu5encavc -lvpu5enccmn"]);
+
+dnl MPEG4 decoding
+AC_ARG_ENABLE(vpu5_mpeg4_decode,
+	[AC_HELP_STRING(
+		[--enable-vpu5_mpeg_decode],
+		[with MPEG4 decoding support])],
+	[enable_mpeg_dec=$enableval],
+	[enable_mpeg_dec=no])
+
+AS_IF([test "x$enable_mpeg_dec" = "xyes"],
+		[PKG_CHECK_MODULES([MERAM], [meram])
+		VPU_DEC_LIBS="${VPU_DEC_LIBS} -lm4vdec -lmciphm4vdec"])
+
+AM_CONDITIONAL(WITH_MPEG4_DECODE, [test "x$enable_mpeg_dec" = "xyes"])
+
+dnl VC1 decoding
+AC_ARG_ENABLE(vpu5_vc1_decode,
+	[AC_HELP_STRING(
+		[--enable-vpu5_vc1_decode],
+		[with MPEG4 decoding support])],
+	[enable_vc1_dec=$enableval],
+	[enable_vc1_dec=no])
+
+AS_IF([test "x$enable_vc1_dec" = "xyes"],
+		[VPU_DEC_LIBS="${VPU_DEC_LIBS} -lvc1dec -lmciphvc1dec"])
+
+AM_CONDITIONAL(WITH_VC1_DECODE, [test "x$enable_vc1_dec" = "xyes"])
 
 AC_SUBST(VPU_VERSION)
 AC_SUBST(VPU_SERIES)

@@ -62,6 +62,11 @@ OPTIONAL_SOURCES += shvpu5_m4vdec_parse.c shvpu5_m4vdec_decode.c
 VPU5_LIBS += $(MERAM_LIBS)
 endif
 
+if WITH_VC1_DECODE
+VPU5_CFLAGS += -DVC1_DECODER
+OPTIONAL_SOURCES += shvpu5_vc1dec_parse.c shvpu5_vc1dec_decode.c
+endif
+
 if DECODER_COMPONENT
 VPU5_CFLAGS += -DDECODER_COMPONENT
 VPU5_LIBS += @VPU_DEC_LIBS@

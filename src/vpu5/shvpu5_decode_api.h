@@ -54,3 +54,13 @@ static inline int mpegCodec_init(shvpu_codec_params_t *vpu_codec_params,
 	return -1;
 }
 #endif
+
+#ifdef VC1_DECODER
+int vc1Codec_init(shvpu_codec_params_t *vpu_codec_params,
+			const shvpu_decode_PrivateType *priv);
+#else
+static inline int vc1Codec_init(shvpu_codec_params_t *vpu_codec_params,
+			const shvpu_decode_PrivateType *priv) {
+	return -1;
+}
+#endif

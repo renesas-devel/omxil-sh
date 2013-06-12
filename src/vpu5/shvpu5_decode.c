@@ -62,6 +62,8 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 	struct codec_init_ops *cops;
 	int num_views;
 	int buf_total;
+	void *vaddr;
+	unsigned long paddr;
 
 	/*** allocate memory ***/
 	pCodec = (shvpu_decode_codec_t *)
@@ -109,6 +111,11 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 		pCodec->cprop.max_slice_cnt		= 1,
 		mpegCodec_init(&pCodec->vpu_codec_params, shvpu_decode_Private);
 		break;
+	case OMX_VIDEO_CodingWMV:
+		pCodec->cprop.stream_type		= MCVDEC_VC1,
+		pCodec->cprop.max_slice_cnt		= 2,
+		vc1Codec_init(&pCodec->vpu_codec_params, shvpu_decode_Private);
+		break;
 	default:
 		goto free_pcodec;
 		
@@ -155,8 +162,6 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 		return ret;
 
 	/*** initialize work area ***/
-	void *vaddr;
-	unsigned long paddr;
 
 	cops->calc_buf_sizes(num_views,
 		shvpu_decode_Private,

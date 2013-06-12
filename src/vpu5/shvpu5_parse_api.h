@@ -65,3 +65,11 @@ static inline int initMpegParser(shvpu_decode_PrivateType *priv) {
 	return -1;
 }
 #endif
+
+#ifdef VC1_DECODER
+int initVc1Parser(shvpu_decode_PrivateType *priv);
+#else
+static inline int initVc1Parser(shvpu_decode_PrivateType *priv) {
+	return -1;
+}
+#endif

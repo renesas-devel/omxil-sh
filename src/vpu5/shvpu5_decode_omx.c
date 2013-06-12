@@ -215,6 +215,8 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 			OMX_VIDEO_CodingMPEG4;
 	} else if (!strcmp(cComponentName, VIDEO_DEC_H264_NAME)) {
 		shvpu_decode_Private->video_coding_type = OMX_VIDEO_CodingAVC;
+	} else if (!strcmp(cComponentName, VIDEO_DEC_VC1_NAME)) {
+		shvpu_decode_Private->video_coding_type = OMX_VIDEO_CodingWMV;
 	} else if (!strcmp(cComponentName, VIDEO_DEC_BASE_NAME)) {
 		shvpu_decode_Private->video_coding_type =
 			OMX_VIDEO_CodingUnused;
@@ -229,16 +231,9 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	outPort->Port_FreeBuffer = shvpu_decode_port_FreeBuffer;
 	SetInternalVideoParameters(pComponent);
 
-	if (shvpu_decode_Private->video_coding_type ==
-	    OMX_VIDEO_CodingMPEG4) {
-		shvpu_decode_Private->
-			ports[OMX_BASE_FILTER_INPUTPORT_INDEX]->sPortParam.format.
-			video.eCompressionFormat = OMX_VIDEO_CodingMPEG4;
-	} else {
-		shvpu_decode_Private->
-			ports[OMX_BASE_FILTER_INPUTPORT_INDEX]->sPortParam.format.
-			video.eCompressionFormat = OMX_VIDEO_CodingAVC;
-	}
+	shvpu_decode_Private->ports[OMX_BASE_FILTER_INPUTPORT_INDEX]->
+		sPortParam.format.video.eCompressionFormat =
+			shvpu_decode_Private->video_coding_type;
 
 	/** general configuration irrespective of any video formats
 	 * setting other parameters of shvpu_decode_private
@@ -303,6 +298,8 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	}
 	shvpu_decode_Private->maxVideoParameters.eVPU5MpegLevel =
 		OMX_VPU5MpegLevel6;
+	shvpu_decode_Private->maxVideoParameters.eVPU5VC1Level =
+		OMX_VPU5VC1Level3;
 
 	/*OMX_PARAM_REVPU5MAXINSTANCE*/
 	setHeader(&maxVPUInstances,
@@ -417,6 +414,9 @@ shvpu_decode_vpuLibInit(shvpu_decode_PrivateType * shvpu_decode_Private)
 		break;
 	case OMX_VIDEO_CodingAVC:
 		initAvcParser(shvpu_decode_Private);
+		break;
+	case OMX_VIDEO_CodingWMV:
+		initVc1Parser(shvpu_decode_Private);
 		break;
 	}
 	return OMX_ErrorNone;
