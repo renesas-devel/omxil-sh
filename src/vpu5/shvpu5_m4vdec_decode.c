@@ -109,7 +109,7 @@ mpegCodec_ir_buf_size(int num_views, shvpu_decode_PrivateType *privType,
 	int max_slice_cnt = pCodec->cprop.max_slice_cnt;
         int hdr_fr_cnt = vbv_size < 5000000 ?
                 MAXFPS + 2 : vbv_size * MAXFPS / 5000000 + 2;
-        return  ALIGN(512 * hdr_fr_cnt * 2 +
+        return  ALIGN(512 * hdr_fr_cnt * 2 * num_views +
                       VPU_UNIT( 992 * max_slice_cnt / 2) *
                       2 * hdr_fr_cnt * num_views + 3072);
 }

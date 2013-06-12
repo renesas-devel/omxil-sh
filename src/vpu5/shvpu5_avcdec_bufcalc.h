@@ -81,7 +81,7 @@ ir_info_size_calc(int level, int max_slice_cnt, int num_views) {
 	int vbv_size = maxCPB[level] * 1000 / 8;
 	int hdr_fr_cnt = vbv_size < 5000000 ?
 		MAXFPS + 2 : vbv_size * MAXFPS / 5000000 + 2;
-	return  ALIGN(512 * hdr_fr_cnt * 2 +
+	return  ALIGN(512 * hdr_fr_cnt * 2 * num_views +
 		      VPU_UNIT( 992 * max_slice_cnt / 2) *
 		      2 * hdr_fr_cnt * num_views + 3072);
 }
