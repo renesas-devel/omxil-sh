@@ -59,6 +59,7 @@ endif
 if WITH_MPEG4_DECODE
 VPU5_CFLAGS += -DMPEG4_DECODER
 OPTIONAL_SOURCES += shvpu5_m4vdec_parse.c shvpu5_m4vdec_decode.c
+VPU5_LIBS += $(MERAM_LIBS)
 endif
 
 if DECODER_COMPONENT
