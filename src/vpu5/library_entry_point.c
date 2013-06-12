@@ -52,10 +52,10 @@ typedef struct {
 stComponent stComponents[] = {
   /* standard components - no functionality */
 #ifdef DECODER_COMPONENT
-  { "video_decoder.avc",   "OMX.re.video_decoder",
+  { "video_decoder.avc",   "OMX.re.video_decoder.avc",
     "OMX.re.video_decoder.avc",    shvpu_decode_Constructor  },
 #ifdef MPEG4_DECODER
-  { "video_decoder.mpeg4",   "OMX.re.video_decoder",
+  { "video_decoder.mpeg4",   "OMX.re.video_decoder.mpeg4",
     "OMX.re.video_decoder.mpeg4",    shvpu_decode_Constructor  },
 #endif
 #endif
