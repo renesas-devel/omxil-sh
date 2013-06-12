@@ -71,7 +71,7 @@ typedef enum {
 	N_PROFILE,
 } MpegProfile;
 
-const int vbv_sizes [N_PROFILE][OMX_VPU5MpegNLevel] = {
+static const int vbv_sizes [N_PROFILE][OMX_VPU5MpegNLevel] = {
 	[MPEG_SP][OMX_VPU5MpegLevel0] = 163840,
 	[MPEG_SP][OMX_VPU5MpegLevel1] = 163840,
 	[MPEG_SP][OMX_VPU5MpegLevel2] = 655360,
