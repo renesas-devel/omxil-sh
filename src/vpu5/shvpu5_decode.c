@@ -61,6 +61,7 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 	unsigned long ce_firmware_addr;
 	struct codec_init_ops *cops;
 	int num_views;
+	int buf_total;
 
 	/*** allocate memory ***/
 	pCodec = (shvpu_decode_codec_t *)
@@ -163,7 +164,17 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 		&pCodec->imd_info.imd_buff_size,
         	&pCodec->ir_info.ir_info_size,
         	&pCodec->mv_info.mv_info_size);
-		
+
+	buf_total = pCodec->imd_info.imd_buff_size +
+			pCodec->ir_info.ir_info_size +
+			pCodec->mv_info.mv_info_size;
+
+	logd("Middleware buffer sizes:\n");
+	logd("Intermed. decode buffer: %d\n", pCodec->imd_info.imd_buff_size);
+	logd("Init buffer: %d\n", pCodec->ir_info.ir_info_size);
+	logd("Motion vectors: %d\n", pCodec->mv_info.mv_info_size);
+	logd("----------------------------\n");
+	logd("Total = %d (%dMB)\n", buf_total, buf_total >> 20);
 
 	pCodec->imd_info.imd_buff_mode = MCVDEC_MODE_NOMAL;
 
