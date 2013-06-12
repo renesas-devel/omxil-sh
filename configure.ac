@@ -273,7 +273,7 @@ AC_ARG_ENABLE(vpu5_mpeg4_decode,
 
 
 AS_IF([test "x$enable_mpeg_dec" = "xyes"],
-		[PKG_CHECK_MODULES([MERAM], [meram]))
+		[PKG_CHECK_MODULES([MERAM], [meram])])
 
 AM_CONDITIONAL(WITH_MPEG4_DECODE, [test "x$enable_mpeg_dec" = "xyes"])
 
