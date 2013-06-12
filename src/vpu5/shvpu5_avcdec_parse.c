@@ -454,7 +454,7 @@ deinitAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	free (avcparse);
 }
 
-static const unsigned char nal_data_eos[16] = {
+static const unsigned char nal_data_eos[] = {
 	0x00, 0x00, 0x01, 0x0B,
 };
 static struct input_parse_ops avc_parse_ops = {

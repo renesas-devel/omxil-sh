@@ -309,7 +309,7 @@ deinitMpegParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	free(m4vparse);
 }
 
-static const unsigned char mpeg4_data_eos[16] = {
+static const unsigned char mpeg4_data_eos[] = {
 	0x00, 0x00, 0x01, 0xB1,
 };
 
