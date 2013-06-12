@@ -1095,8 +1095,12 @@ shvpu_decode_BufferMgmtFunction(void *param)
 				   pPic,
 				   &isInBufferNeeded);
 			if (pic_done || pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS) {
-				queue(shvpu_decode_Private->pPicQueue, pPic);
-				tsem_up(pPicSem);
+				if (pPic->size) {
+					queue(shvpu_decode_Private->pPicQueue, pPic);
+					tsem_up(pPicSem);
+				} else {
+					free(pPic);
+				}
 				pPic = NULL;
 				if (pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS)
 					shvpu_decode_Private->bIsEOSReached = OMX_TRUE;
