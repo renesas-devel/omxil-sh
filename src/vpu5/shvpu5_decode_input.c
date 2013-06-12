@@ -101,6 +101,7 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue,
 		uioBufSize++;
 	uioBufSize *= 256;
 	uioBuf = pBuf = pmem_alloc(uioBufSize, 32, NULL);
+	memset(pBuf, 0, uioBufSize);
 	if (uioBuf == NULL) {
 		loge("%s: No memory for uio buffer\n",
 		     __FUNCTION__);
@@ -111,7 +112,7 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue,
 	memcpy(pBuf, eos_code, eos_code_len);
 	si_eos = calloc (1, sizeof(MCVDEC_STRM_INFO_T));
 	si_eos->strm_buff_addr = pBuf;
-	si_eos->strm_buff_size = 4;
+	si_eos->strm_buff_size = eos_code_len;
 	input_strm->second_id = 0;
 	input_strm->strm_info = si_eos;
         input_strm->strm_cnt = 1;
