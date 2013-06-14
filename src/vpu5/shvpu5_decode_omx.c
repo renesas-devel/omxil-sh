@@ -416,6 +416,8 @@ shvpu_decode_vpuLibDeInit(shvpu_decode_PrivateType *
 	if (shvpu_decode_Private) {
 		shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 		pCodec->pops->parserDeinit(shvpu_decode_Private);
+		deinit_ipmmu(shvpu_decode_Private->ipmmui_data);
+		shvpu_decode_Private->ipmmui_data = NULL;
 		uiomux_lock_vpu();
 		decode_deinit(shvpu_decode_Private);
 		uiomux_unlock_vpu();
