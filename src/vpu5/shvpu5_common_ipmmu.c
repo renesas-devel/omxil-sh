@@ -47,8 +47,10 @@ init_ipmmu(unsigned long phys_base, int stride, int tile_logw, int tile_logh) {
 void
 deinit_ipmmu(shvpu_ipmmui_t *ipmmui_data)
 {
-	pmb_ops->deinit(ipmmui_data);
-	free(ipmmui_data);
+	if (ipmmui_data) {
+		pmb_ops->deinit(ipmmui_data);
+		free(ipmmui_data);
+	}
 }
 
 unsigned long
