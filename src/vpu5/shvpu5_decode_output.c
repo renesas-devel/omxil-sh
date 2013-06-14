@@ -126,12 +126,21 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 	shvpu_decode_Private->avCodec->fmem = (shvpu_fmem_data *)
 		calloc (required_fmem_cnt, sizeof(shvpu_fmem_data));
 
-	_fmem = *fmem = (MCVDEC_FMEM_INFO_T *)
-		calloc(required_fmem_cnt, sizeof(MCVDEC_FMEM_INFO_T));
-	shvpu_decode_Private->avCodec->fmem_size = required_fmem_cnt;
-	if (*fmem == NULL || shvpu_decode_Private->avCodec->fmem == NULL)
+	if (shvpu_decode_Private->avCodec->fmem == NULL)
 		return MCVDEC_FMEM_SKIP_BY_USER;
 
+	_fmem = *fmem = (MCVDEC_FMEM_INFO_T *)
+		calloc(required_fmem_cnt, sizeof(MCVDEC_FMEM_INFO_T));
+
+	if (*fmem == NULL) {
+		free(shvpu_decode_Private->avCodec->fmem);
+		shvpu_decode_Private->avCodec->fmem = NULL;
+		return MCVDEC_FMEM_SKIP_BY_USER;
+	}
+
+	shvpu_decode_Private->avCodec->fmem_size = required_fmem_cnt;
+
+	*fmem_cnt = 0;
 
 	for (i=0; i<required_fmem_cnt; i++) {
 		ypic_vaddr = pmem_alloc(alloc_size, align, &ypic_paddr);
@@ -172,5 +181,20 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		fmem_size[MCVDEC_FMX_REF] =
 		fmem_size[MCVDEC_FMX_FLT] = fmemsize;
 
-	return (i > 0) ? MCVDEC_NML_END : MCVDEC_FMEM_SKIP_BY_USER;
+	if (*fmem_cnt == required_fmem_cnt)
+		return MCVDEC_NML_END;
+
+	/* cleanup on failure */
+
+	for (i=0; i < *fmem_cnt; i++) {
+		shvpu_fmem_data *outbuf = &shvpu_decode_Private->avCodec->fmem[i];
+		phys_pmem_free(outbuf->fmem_start, outbuf->fmem_len);
+		pthread_mutex_destroy(&outbuf->filled);
+	}
+	free(shvpu_decode_Private->avCodec->fmem);
+	shvpu_decode_Private->avCodec->fmem = NULL;
+	free(*fmem);
+	*fmem = NULL;
+
+	return MCVDEC_FMEM_SKIP_BY_USER;
 }
