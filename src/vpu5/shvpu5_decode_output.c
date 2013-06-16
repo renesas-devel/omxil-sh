@@ -63,7 +63,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		align = 32;
 		fmemsize = fmem_x * (ROUND_2POW(ypic_size, 16));
 		alloc_size = fmemsize * 3 / 2;
-	} else {
+	} else if (!shvpu_decode_Private->ipmmui_data) {
 		unsigned long pitch;
 		int next_power = 0;
 		int align_bits;
