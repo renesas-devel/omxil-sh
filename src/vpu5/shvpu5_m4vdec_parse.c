@@ -153,6 +153,7 @@ alloc_picture_buffer(pic_t *pPic, unsigned int size, phys_input_buf_t *oldBuf) {
 
 	memcpy(pBuf->buf_offsets[0], oldBuf->buf_offsets[0],
 		oldBuf->buf_sizes[0]);
+	pBuf->buf_sizes[0] = oldBuf->buf_sizes[0];
 	pmem_free(oldBuf->base_addr, oldBuf->size);
 	free(oldBuf);
 	return 0;
