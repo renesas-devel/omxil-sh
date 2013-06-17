@@ -86,6 +86,12 @@ ifeq ($(VPU_MPEG4_DECODER),true)
 	LOCAL_SHARED_LIBRARIES += libmeram
 	LOCAL_C_INCLUDES += hardware/renesas/shmobile/libshmeram/include
 endif
+ifeq ($(VPU_VC1_DECODER),true)
+	LOCAL_SRC_FILES += \
+		shvpu5_vc1dec_parse.c \
+		shvpu5_vc1dec_decode.c
+	LOCAL_CFLAGS += -DVC1_DECODER
+endif
 
 ifeq ($(VPU_ENCODER_COMPONENT),true)
 	LOCAL_SRC_FILES += \
@@ -133,6 +139,10 @@ LOCAL_LDFLAGS = -L$(MIDDLEWARE_LIB_PATH) \
 ifeq ($(VPU_MPEG4_DECODER),true)
 LOCAL_LDFLAGS += \
 	-lvcp1decm4v -lvcp1drvm4vdec
+endif
+ifeq ($(VPU_VC1_DECODER),true)
+LOCAL_LDFLAGS += \
+	-lvcp1decvc1 -lvcp1drvvc1dec
 endif
 endif
 
