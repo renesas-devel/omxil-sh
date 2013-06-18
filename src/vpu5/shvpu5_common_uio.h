@@ -31,7 +31,7 @@
 #define MAXNAMELEN	256
 #define MAXUIOIDS	32
 
-#define PHYS_INVALID	(~0)
+#define PHYS_INVALID	(~0UL)
 
 struct uio_device {
 	char *name;

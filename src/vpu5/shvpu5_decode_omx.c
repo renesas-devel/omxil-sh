@@ -1255,7 +1255,7 @@ memcpy_output_buffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 	copy_size = pitch * ysize;
 
 	if (shvpu_decode_Private->features.thumbnail_mode && xsize != pitch) {
-		int i;
+		unsigned int i;
 		for (i = 0; i < ysize; i++) {
 			memcpy(buffer, vid_data, xsize);
 			buffer += xsize;
