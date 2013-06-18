@@ -235,6 +235,11 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 		sPortParam.format.video.eCompressionFormat =
 			shvpu_decode_Private->video_coding_type;
 
+	((omx_base_video_PortType *)(shvpu_decode_Private->
+			ports[OMX_BASE_FILTER_INPUTPORT_INDEX]))->
+			sVideoParam.eCompressionFormat =
+		shvpu_decode_Private->video_coding_type;
+
 	/** general configuration irrespective of any video formats
 	 * setting other parameters of shvpu_decode_private
 	 */
