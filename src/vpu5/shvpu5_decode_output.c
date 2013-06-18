@@ -63,7 +63,7 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		align = 32;
 		fmemsize = fmem_x * (ROUND_2POW(ypic_size, 16));
 		alloc_size = fmemsize * 3 / 2;
-	} else if (!shvpu_decode_Private->ipmmui_data) {
+	} else {
 		unsigned long pitch;
 		int next_power = 0;
 		int align_bits;
@@ -77,10 +77,12 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			pitch >>=1;
 		}
 		pitch = (1 << (i + next_power));
-		shvpu_decode_Private->ipmmui_data = init_ipmmu(
-			shvpu_decode_Private->uio_start_phys, pitch,
-			shvpu_decode_Private->features.tl_conv_tbm,
-			shvpu_decode_Private->features.tl_conv_vbm);
+		if (!shvpu_decode_Private->ipmmui_data) {
+			shvpu_decode_Private->ipmmui_data = init_ipmmu(
+				shvpu_decode_Private->uio_start_phys, pitch,
+				shvpu_decode_Private->features.tl_conv_tbm,
+				shvpu_decode_Private->features.tl_conv_vbm);
+		}
 		align_bits = i + next_power +
 			shvpu_decode_Private->features.tl_conv_tbm;
 
