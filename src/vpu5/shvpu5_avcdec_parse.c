@@ -428,18 +428,8 @@ void
 flushAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	struct avcparse_meta *avcparse =
 			shvpu_decode_Private->avCodec->codec_priv;
-	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
-	queue_t *pPicQueue = shvpu_decode_Private->pPicQueue;
 	queue_t *pNalQueue = &avcparse->NalQueue;
-	pic_t *pPic;
 	nal_t *nal;
-
-	tsem_reset(pPicSem);
-
-	while (pPicQueue->nelem > 0) {
-		pPic = dequeue(pPicQueue);
-		free(pPic);
-	}
 
 	while (pNalQueue->nelem > 0) {
 		nal = dequeue(pNalQueue);
