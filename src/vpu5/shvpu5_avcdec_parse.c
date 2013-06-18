@@ -445,6 +445,8 @@ flushAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 		nal = dequeue(pNalQueue);
 		free(nal);
 	}
+	memset(avcparse, 0, sizeof(struct avcparse_meta));
+	queue_init(&avcparse->NalQueue);
 }
 
 void
