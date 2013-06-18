@@ -675,6 +675,19 @@ UpdateFrameSize(OMX_COMPONENTTYPE * pComponent)
 #endif
 }
 
+static void
+destroyPic(pic_t *pPic) {
+	int i;
+	if (!pPic)
+		return;
+	for (i = 0; i < pPic->n_bufs; i++) {
+		pmem_free(pPic->pBufs[i]->base_addr,
+			pPic->pBufs[i]->size);
+		free(pPic->pBufs[i]);
+	}
+	free(pPic);
+}
+
 static inline void
 handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 		    OMX_BOOL *pIsInBufferNeeded,
@@ -682,7 +695,8 @@ handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 		    int *pInBufExchanged, int *pOutBufExchanged,
 		    OMX_BUFFERHEADERTYPE *pInBuffer[],
 		    OMX_BUFFERHEADERTYPE **ppOutBuffer,
-		    queue_t *pInBufQueue)
+		    queue_t *pInBufQueue,
+		    pic_t **ppPic)
 {
 	omx_base_PortType *pInPort =
 		(omx_base_PortType *)
@@ -692,8 +706,11 @@ handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 		shvpu_decode_Private->ports[OMX_BASE_FILTER_OUTPUTPORT_INDEX];
 	tsem_t *pInputSem = pInPort->pBufferSem;
 	tsem_t *pOutputSem = pOutPort->pBufferSem;
+	queue_t *pPicQueue = shvpu_decode_Private->pPicQueue;
+	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
 	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	buffer_avcdec_metainfo_t *pBMI;
+	pic_t *pPic;
 
 	pthread_mutex_lock(&shvpu_decode_Private->flush_mutex);
 	while (PORT_IS_BEING_FLUSHED(pInPort) ||
@@ -739,8 +756,19 @@ handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 			      "Ports are flushing,so returning "
 			      "input buffer\n");
 
-
 			/*Flush out Pic and Nal queues*/
+
+			/* destroy currently active Pic */
+			destroyPic(*ppPic);
+
+			*ppPic = NULL;
+
+			while (pPicQueue->nelem > 0) {
+				pPic = dequeue(pPicQueue);
+				destroyPic(pPic);
+			}
+			tsem_reset(pPicSem);
+
 			pCodec->pops->parserFlush(shvpu_decode_Private);
 
 			logd("Resetting play mode");
@@ -1064,7 +1092,8 @@ shvpu_decode_BufferMgmtFunction(void *param)
 				    &isInBufferNeeded,
 				    &isOutBufferNeeded,
 				    &inBufExchanged, &outBufExchanged,
-				    pInBuffer, &pOutBuffer, &processInBufQueue);
+				    pInBuffer, &pOutBuffer, &processInBufQueue,
+				    &pPic);
 
 		/*No buffer to process. So wait here */
 		ret = waitBuffers(shvpu_decode_Private,
