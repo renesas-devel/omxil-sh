@@ -233,8 +233,13 @@ decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
 		if (shvpu_decode_Private->intrinsic)
 			pCodec->vpu_codec_params.ops->deinit_intrinsic_array
 					(shvpu_decode_Private->intrinsic);
-		if (shvpu_decode_Private->avCodec && 
-			shvpu_decode_Private->avCodec->fmem) {
+#ifdef MERAM_ENABLE
+		close_meram(&shvpu_decode_Private->meram_data);
+#endif
+		if (!pCodec)
+			return;
+
+		if (shvpu_decode_Private->avCodec->fmem) {
 			int i, bufs = shvpu_decode_Private->avCodec->fmem_size;
 
 			shvpu_fmem_data *outbuf = shvpu_decode_Private->avCodec->fmem;
@@ -247,6 +252,8 @@ decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
 			free(shvpu_decode_Private->avCodec->fmem);
 			shvpu_decode_Private->avCodec->fmem = NULL;
 		}
+
+		free(shvpu_decode_Private->avCodec->fmem_info);
 
 		phys_pmem_free(pCodec->mv_info.mv_info_addr,
 			pCodec->mv_info.mv_info_size);
@@ -268,14 +275,13 @@ decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
 					(&shvpu_decode_Private->avCodec->vpu_codec_params);
 		free_remaining_streams(pCodec->pSIQueue);
 		free(pCodec->pSIQueue);
-
-#ifdef MERAM_ENABLE
-		close_meram(&shvpu_decode_Private->meram_data);
-#endif
+		free(pCodec->wbuf_dec.work_area_addr);
 
 		free(pCodec);
 
 		shvpu_decode_Private->avCodec = NULL;
+
+
 	}
 }
 

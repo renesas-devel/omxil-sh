@@ -214,6 +214,11 @@ uiomux_unlock_vpu();
 void
 uiomux_register_memory(void *vaddr, unsigned long paddr, int size);
 
+/** Unregister a buffer with UIOMux
+  */
+void
+uiomux_unregister_memory(void *vaddr);
+
 #ifdef ICBCACHE_FLUSH
 void icbcache_flush(void);
 #endif

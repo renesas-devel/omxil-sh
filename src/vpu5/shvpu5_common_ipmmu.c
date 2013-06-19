@@ -28,6 +28,7 @@
 #include <string.h>
 #include "shvpu5_common_ipmmu.h"
 #include "shvpu5_ipmmu_util.h"
+#include "shvpu5_common_uio.h"
 
 shvpu_ipmmui_t *
 init_ipmmu(unsigned long phys_base, int stride, int tile_logw, int tile_logh) {
@@ -38,8 +39,8 @@ init_ipmmu(unsigned long phys_base, int stride, int tile_logw, int tile_logh) {
 		memset(ipmmui_data, 0, sizeof(*ipmmui_data));
 		pmb_ops->init(ipmmui_data, phys_base, stride, tile_logw,
 			tile_logh);
-		uiomux_register_memory(ipmmui_data->ipmmui_vaddr,
-		(unsigned long) ipmmui_data->ipmmui_vaddr, (PMB_SIZE << 20));
+		uiomux_register_memory((void *)ipmmui_data->ipmmui_vaddr,
+			ipmmui_data->ipmmui_vaddr, (PMB_SIZE << 20));
 	}
 	return ipmmui_data;
 }
@@ -48,6 +49,7 @@ void
 deinit_ipmmu(shvpu_ipmmui_t *ipmmui_data)
 {
 	if (ipmmui_data) {
+		uiomux_unregister_memory((void *)ipmmui_data->ipmmui_vaddr);
 		pmb_ops->deinit(ipmmui_data);
 		free(ipmmui_data);
 	}
