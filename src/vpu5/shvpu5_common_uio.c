@@ -461,6 +461,11 @@ uiomux_register_memory(void *vaddr, unsigned long paddr, int size) {
 	uiomux_register(vaddr, paddr, size);
 }
 
+void
+uiomux_unregister_memory(void *vaddr) {
+	uiomux_unregister(vaddr);
+}
+
 #if defined(VPU_UIO_MEMORY)
 
 int

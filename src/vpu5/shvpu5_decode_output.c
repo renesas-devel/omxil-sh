@@ -140,6 +140,8 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 		return MCVDEC_FMEM_SKIP_BY_USER;
 	}
 
+	shvpu_decode_Private->avCodec->fmem_info = _fmem;
+
 	shvpu_decode_Private->avCodec->fmem_size = required_fmem_cnt;
 
 	*fmem_cnt = 0;

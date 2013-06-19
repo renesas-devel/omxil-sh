@@ -117,6 +117,7 @@ typedef struct {
 	int 			has_eos;
 	shvpu_fmem_data		*fmem;
 	shvpu_firmware_size_t	fw_size;
+	MCVDEC_FMEM_INFO_T 	*fmem_info;
 	int 			fmem_size;
 	/** @param private data used for codec specific processing */
 	struct input_parse_ops	*pops;
