@@ -129,8 +129,6 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 		if (pComponent->pComponentPrivate == NULL) {
 			return OMX_ErrorInsufficientResources;
 		}
-		loge("Allocated priv data %p for comp %p",
-			pComponent->pComponentPrivate, pComponent);
 	} else {
 		DEBUG(DEB_LEV_FUNCTION_NAME,
 		      "In %s, Error Component %x Already Allocated\n",
