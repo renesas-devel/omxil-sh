@@ -190,7 +190,8 @@ avcCodec_imd_buf_size(int num_views, shvpu_decode_PrivateType *privType,
 	return inb_buf_size_calc(
 		max_param->eVPU5AVCLevel,
 		max_param->nWidth,
-		max_param->nHeight, num_views) + 2048;
+		max_param->nHeight, num_views,
+		privType->features.thumbnail_mode) + 2048;
 }
 
 static unsigned int

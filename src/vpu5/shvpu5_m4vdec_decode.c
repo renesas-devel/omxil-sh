@@ -124,6 +124,8 @@ mpegCodec_imd_buf_size(int num_views, shvpu_decode_PrivateType *privType,
 	int mb_height = ((max_param->nHeight + 15) / 16);
 	int imd_fr_cnt = vbv_size < 5000000 ?
 		MAXFPS + 2 : vbv_size * MAXFPS / 5000000 + 2;
+	vbv_size = privType->features.thumbnail_mode ?
+		mss * 3 : vbv_size;
 	return ALIGN((vbv_size + mss * 2) +
 		     VPU_UNIT(mb_width * (mb_height + 3) * 8 / 4) *
 		     4 * imd_fr_cnt * num_views);

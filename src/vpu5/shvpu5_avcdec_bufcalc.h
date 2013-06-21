@@ -64,13 +64,14 @@ static int minCR[] = {
 #define ALIGN(x) (x + ~ALIGN_MASK) & ALIGN_MASK;
 
 static inline unsigned int
-inb_buf_size_calc(int level, int width, int height, int num_views) {
+inb_buf_size_calc(int level, int width, int height, int num_views, int thumbnail) {
 	int vbv_size = maxCPB[level] * 1000 / 8;
 	int mss = width*height* 3 / 2 / minCR[level];
 	int mb_width = ((width + 15) / 16) * 16 / 16;
 	int mb_height = ((height + 15) / 16) * 16 / 16;
 	int imd_fr_cnt = vbv_size < 5000000 ?
 		MAXFPS + 2 : vbv_size * MAXFPS / 5000000 + 2;
+	vbv_size = thumbnail ? mss * 3 : vbv_size;
 	return ALIGN(vbv_size * 4 + mss * 8 +
 		     VPU_UNIT(mb_width * (mb_height + 3) * 8 / 4) *
 		     4 * imd_fr_cnt * num_views);
