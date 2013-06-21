@@ -243,7 +243,7 @@ avcCodec_init(shvpu_codec_params_t *vpu_codec_params,
 
 	/*** initialize decoder ***/
 	static const AVCDEC_PARAMS_T _avcdec_params_def = {
-		.supple_info_enable = MCVDEC_ON,
+		.supple_info_enable = MCVDEC_OFF,
 		.max_num_ref_frames_plus1 = 17,
 		.slice_buffer_size = 0x9000, /* 132 * 17 * 16 * (num_view = 1)*/
 		.user_dpb_size = 0,

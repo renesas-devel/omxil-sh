@@ -174,7 +174,7 @@ vc1Codec_init(shvpu_codec_params_t *vpu_codec_params,
 
 	/*** initialize decoder ***/
 	static const VC1DEC_PARAMS_T _vc1dec_params_def = {
-		.vbv_param_enable = MCVDEC_ON,
+		.vbv_param_enable = MCVDEC_OFF,
 		.need_search_sc = MCVDEC_ON,
 		.mv_info_mode = MCVDEC_OUTPUT,
 		.post_filter_mode = MCVDEC_NO_OUTPUT,
