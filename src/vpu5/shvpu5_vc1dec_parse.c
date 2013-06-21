@@ -44,8 +44,9 @@ typedef enum {
 
 
 struct vc1parse_meta {
-	int		first_frame;
 	vc1_profile	profile;
+	unsigned char	*seqhdr;
+	unsigned int 	seqhdrlen;
 };
 
 static buffer_avcdec_metainfo_t
@@ -187,33 +188,35 @@ static const unsigned char vc1_eop_code[] = {
 static int
 copyBufData(pic_t *pPic,
 		OMX_BUFFERHEADERTYPE *pBuffer,
-		int len, int prefix_len,
-		int trunc, int add_eop) {
+		int len,
+		int ap_profile,
+		int seqhdrlen, unsigned char *seqhdr) {
 	phys_input_buf_t *pBuf;
 	unsigned char *buf;
 	unsigned int *size;
-	static const char start_code [] = { 0, 0, 1 };
+	static const char start_code [] = { 0x0, 0x0, 0x1, 0xD };
 
 	pBuf = pPic->pBufs[0];
 
 	buf = (unsigned char *)pBuf->buf_offsets[0];
 	size = &pBuf->buf_sizes[0];
 
-	if (trunc) {
-		*size -= trunc;
-		pPic->size -= trunc;
-		return -1;
-	}
-
-	if (prefix_len) {
-		memcpy(buf + *size, start_code + (3 - prefix_len), prefix_len);
-		*size += (3 - prefix_len);
-	}
 	if (!len)
 		return pPic->size;
+
+	if (seqhdrlen) {
+		memcpy(buf + *size, seqhdr, seqhdrlen);
+		*size += seqhdrlen;
+	}
+
+	if (ap_profile) {
+		memcpy(buf + *size, start_code, 4);
+		*size += 4;
+	}
+
 	memcpy(buf + *size, pBuffer->pBuffer + pBuffer->nOffset, len);
 	*size += len;
-	if (add_eop) {
+	if (ap_profile) {
 		memcpy(buf + *size, &vc1_eop_code, 8);
 		*size += 8;
 	}
@@ -221,6 +224,86 @@ copyBufData(pic_t *pPic,
 	pBuffer->nOffset += len;
 	pPic->size += *size;
 	return pPic->size;
+}
+
+static void
+parseVc1CodecData(shvpu_decode_PrivateType *shvpu_decode_Private,
+	    OMX_BUFFERHEADERTYPE *pBuffer,
+	    struct vc1parse_meta *vc1parse) {
+#ifdef VC1_PREPOCESSED_CODEC_DATA
+	VC1DEC_SEQ_HDR_SPMP_SYNTAX_T seq_hdr_spmp;
+	unsigned char *pStart;
+	unsigned int profile;
+	unsigned int nRemainSize;
+		int ret, i;
+		char *tmp = stream_data_struct;
+	pStart = pBuffer->pBuffer + pBuffer->nOffset;
+	nRemainSize = pBuffer->nFilledLen;
+	profile = vc1parse->profile;
+	ret = vc1dec_get_seq_header_spmp(pStart, &seq_hdr_spmp);
+	if (ret == VC1DEC_RTN_NORMAL || ret == VC1DEC_RTN_WARN)
+		profile = seq_hdr_spmp.profile >> 2;
+
+	if (profile == PROFILE_ADVANCED) {
+		vc1parse->seqhdrlen = pBuffer->nFilledLen;
+		vc1parse->seqhdr = calloc(1, pBuffer->nFilledLen);
+		memcpy(vc1parse->seqhdr, pBuffer->pBuffer +
+			pBuffer->nOffset, pBuffer->nFilledLen);
+	} else if (vc1parse->profile != profile) { /* should not be switching midstream */
+		reinit_spmp_mode(shvpu_decode_Private, &seq_hdr_spmp);
+	}
+	vc1parse->profile = profile;
+#else
+	VC1DEC_SEQ_HDR_SPMP_SYNTAX_T seq_hdr_spmp;
+	unsigned char *pStart;
+	unsigned int profile;
+	unsigned int nRemainSize;
+	uint32_t stream_data_struct[] = {
+		0xc5000000,
+		0x00000004,
+		0x00000000,
+		0x00000000,
+		0x00000000,
+		0x0000000c
+	};
+	pStart = pBuffer->pBuffer + pBuffer->nOffset;
+	nRemainSize = pBuffer->nFilledLen;
+	if (nRemainSize < 40)
+		return;
+
+	if (!strncasecmp("WVC1", pStart + 16, 4)) {
+		profile = PROFILE_ADVANCED;
+	} else if (!strncasecmp("WMV3", pStart + 16, 4)) {
+		profile = PROFILE_MAIN; /* could be simple too */
+	} else {
+		loge("Unknown VC-1 profile; guess based on codec data size\n");
+		if (nRemainSize > 44)
+			profile = PROFILE_ADVANCED;
+		else
+			profile = PROFILE_MAIN;
+	}
+	if (profile == PROFILE_ADVANCED) {
+		int len = pBuffer->nFilledLen - 40;
+		vc1parse->seqhdrlen = len;
+		vc1parse->seqhdr = calloc(1, len);
+		memcpy(vc1parse->seqhdr, pStart + 40, len);
+	} else if (vc1parse->profile != PROFILE_MAIN &&
+			vc1parse->profile != PROFILE_SIMPLE ) {
+		int ret, i;
+		char *tmp = stream_data_struct;
+
+		stream_data_struct[2] = *(uint32_t *)(pStart + 40);
+		stream_data_struct[3] = *(uint32_t *)(pStart + 8);
+		stream_data_struct[4] = *(uint32_t *)(pStart + 4);
+		ret = vc1dec_get_seq_header_spmp(stream_data_struct, &seq_hdr_spmp);
+		if (ret == VC1DEC_RTN_NORMAL || ret == VC1DEC_RTN_WARN) {
+			profile = seq_hdr_spmp.profile >> 2;
+			reinit_spmp_mode(shvpu_decode_Private, &seq_hdr_spmp);
+		}
+	}
+	vc1parse->profile = profile;
+#endif
+
 }
 
 static OMX_BOOL
@@ -237,7 +320,7 @@ parseVc1Buffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 	int start_code;
 	int bufsize;
 	long ret;
-	int add_special_code = 0;
+	int ap_profile = 0;
 	VC1DEC_SEQ_HDR_SPMP_SYNTAX_T seq_hdr_spmp;
 	buffer_avcdec_metainfo_t buffer_meta;
 	struct vc1parse_meta *vc1parse;
@@ -249,35 +332,39 @@ parseVc1Buffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 	bufsize = pBuffer->nFilledLen;
 
-	if (!bufsize)
-		goto out;
+	if (!bufsize) {
+		*pIsInBufferNeeded = OMX_TRUE;
+		return OMX_FALSE;
+	}
 
 	if(pBuffer->nFlags & OMX_BUFFERFLAG_CODECCONFIG) {
-		vc1parse->first_frame = 0;
-		ret = vc1dec_get_seq_header_spmp(pStart, &seq_hdr_spmp);
-		logd ("vc1dec_get_seq_header_spmp ret = %d\n", ret);
-		if (ret == VC1DEC_RTN_NORMAL || ret == VC1DEC_RTN_WARN) {
-			vc1parse->profile = seq_hdr_spmp.profile >> 2;	
-			if (vc1parse->profile != PROFILE_ADVANCED) {
-				reinit_spmp_mode(shvpu_decode_Private,
-								&seq_hdr_spmp);
-			}
-			logd("profile = %d\n", seq_hdr_spmp.profile);
-		}
+		parseVc1CodecData(shvpu_decode_Private,
+			pBuffer,vc1parse);
+		*pIsInBufferNeeded = OMX_TRUE;
+		return OMX_FALSE;
 	}
 
 /* just copy in the whole buffer as is for now */
 	if (vc1parse->profile == PROFILE_ADVANCED) {
 		bufsize += 8;
-		add_special_code = 1;
+		ap_profile = 1;
 	};
+
+	if (vc1parse->seqhdrlen) {
+		bufsize += vc1parse->seqhdrlen;
+	}
 
 	init_picture_buffer(pActivePic, bufsize);
 	buffer_meta = save_omx_buffer_metainfo(pBuffer);
 	pActivePic->buffer_meta = buffer_meta;
 	pActivePic->has_meta = 1;
-	copyBufData(pActivePic, pBuffer, pBuffer->nFilledLen, 0, 0,
-		add_special_code);
+	copyBufData(pActivePic, pBuffer, pBuffer->nFilledLen,
+		ap_profile, vc1parse->seqhdrlen, vc1parse->seqhdr);
+
+	if (vc1parse->seqhdrlen) {
+		vc1parse->seqhdrlen = 0;
+		free(vc1parse->seqhdr);
+	}
 	pActivePic->hasSlice = 1;
 
 out:
@@ -316,7 +403,7 @@ initVc1Parser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	vc1parse = pCodec->codec_priv =
 		calloc(1, sizeof(struct vc1parse_meta));
-	vc1parse->first_frame = 1;
+	memset(vc1parse, 0, sizeof(struct vc1parse_meta));
 	vc1parse->profile = PROFILE_ADVANCED;
 	/* set mode depending on AP or SPMP mode */
 	pCodec->pops = &vc1_parse_ops;
