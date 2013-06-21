@@ -177,7 +177,7 @@ mpegCodec_init(shvpu_codec_params_t *vpu_codec_params,
 
 	/*** initialize decoder ***/
 	static const M4VDEC_PARAMS_T _m4vdec_params_def = {
-		.vbv_param_enable = MCVDEC_ON,
+		.vbv_param_enable = MCVDEC_OFF,
 		.input_stream_format = MCVDEC_NA,
 		.need_search_sc = MCVDEC_ON,
 		.mv_info_mode = MCVDEC_OUTPUT,
