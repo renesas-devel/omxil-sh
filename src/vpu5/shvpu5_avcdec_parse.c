@@ -369,7 +369,7 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 		if (!pHead) {
 			if (eos) {
-				pHead = pStart + nRemainSize - 1;
+				pHead = pStart + nRemainSize;
 				lastBuffer = OMX_TRUE;
 			} else {
 				break;
@@ -386,7 +386,7 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 		pNal->buffer[0] = pStart;
 		splitBuffer = !((pHead >= pStart) &&
-				(pHead < pStart + nRemainSize));
+				(pHead < pStart + nRemainSize)) && !lastBuffer;
 
 		if (splitBuffer) {
 			pNal->size = nRemainSize + pHead - pStartSub;
