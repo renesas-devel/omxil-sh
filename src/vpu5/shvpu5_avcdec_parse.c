@@ -101,7 +101,7 @@ extract_avcnal(unsigned char *buf0, size_t len0, unsigned char *buf1, size_t len
 static inline OMX_BOOL
 isSubsequentPic(nal_t *pNal, OMX_BOOL prevPictureNal)
 {
-	int type, first_mb, has_eos;
+	int type, *first_mb, has_eos;
 	size_t len;
 	OMX_U8 *pbuf;
 
@@ -115,18 +115,18 @@ isSubsequentPic(nal_t *pNal, OMX_BOOL prevPictureNal)
 	case 3:
 		pbuf = pNal->buffer[1];
 		type = pbuf[3 - len] & 0x1fU;
-		first_mb = pbuf[4 - len] & 0x80U;
+		first_mb = &pbuf[4 - len];
 		break;
 	case 4:
 		pbuf = pNal->buffer[0];
 		type = pbuf[3] & 0x1fU;
 		pbuf = pNal->buffer[1];
-		first_mb = pbuf[0] & 0x80U;
+		first_mb = &pbuf[0];
 		break;
 	default:
 		pbuf = pNal->buffer[0];
 		type = pbuf[3] & 0x1fU;
-		first_mb = pbuf[4] & 0x80U;
+		first_mb = &pbuf[4];
 		break;
 	}
 
@@ -141,15 +141,15 @@ isSubsequentPic(nal_t *pNal, OMX_BOOL prevPictureNal)
 		logd("DP-C\n");
 		break;
 	case 1:
-		logd("non IDR(%02x)\n", first_mb);
+		logd("non IDR(%02x)\n", *first_mb & 0x80U);
 		pNal->hasPicData = OMX_TRUE;
-		if (prevPictureNal && (first_mb == 0x80U))
+		if (prevPictureNal && ((*first_mb & 0x80U) == 0x80U))
 			return OMX_TRUE;
 		break;
 	case 5:
-		logd("IDR(%02x)\n", first_mb);
+		logd("IDR(%02x)\n", *first_mb & 0x80U);
 		pNal->hasPicData = OMX_TRUE;
-		if (prevPictureNal && (first_mb == 0x80U))
+		if (prevPictureNal && ((*first_mb & 0x80U) == 0x80U))
 			return OMX_TRUE;
 		break;
 	case 6:
