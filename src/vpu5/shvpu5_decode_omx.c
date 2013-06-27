@@ -109,17 +109,6 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	unsigned long reg;
 	size_t memsz;
 
-	pthread_mutex_lock(&initMutex);
-
-	if (noVideoDecInstance >= maxVPUInstances.nInstances)   {
-		pthread_mutex_unlock(&initMutex);
-		loge("Too many instances");
-		return OMX_ErrorInsufficientResources;
-	}
-
-	noVideoDecInstance++;
-	pthread_mutex_unlock(&initMutex);
-
 	/* initialize component private data */
 	if (!pComponent->pComponentPrivate) {
 		DEBUG(DEB_LEV_FUNCTION_NAME, "In %s, allocating component\n",
@@ -134,6 +123,18 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 		      "In %s, Error Component %x Already Allocated\n",
 		      __func__, (int)pComponent->pComponentPrivate);
 	}
+
+	pthread_mutex_lock(&initMutex);
+
+	if (noVideoDecInstance >= maxVPUInstances.nInstances)   {
+		pthread_mutex_unlock(&initMutex);
+		loge("Too many instances\n");
+		return OMX_ErrorInsufficientResources;
+	}
+
+	noVideoDecInstance++;
+	pthread_mutex_unlock(&initMutex);
+
 
 	shvpu_decode_Private = pComponent->pComponentPrivate;
 	shvpu_decode_Private->ports = NULL;
