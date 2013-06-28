@@ -1472,8 +1472,8 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 				(pComponent,
 				 shvpu_decode_Private->callbackData,
 				 OMX_EventPortSettingsChanged, // The command was completed
-				 0,  //to adjust the file pointer to resume the correct decode process
-				 0, // This is the input port index
+				 OMX_BASE_FILTER_OUTPUTPORT_INDEX,
+				 0,
 				 NULL);
 		}
 	}
