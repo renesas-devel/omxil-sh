@@ -116,7 +116,7 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 		pComponent->pComponentPrivate =
 			calloc(1, sizeof(shvpu_decode_PrivateType));
 		if (pComponent->pComponentPrivate == NULL) {
-			return OMX_ErrorInsufficientResources;
+			return OMX_ErrorUndefined;
 		}
 	} else {
 		DEBUG(DEB_LEV_FUNCTION_NAME,
@@ -132,9 +132,7 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 		return OMX_ErrorInsufficientResources;
 	}
 
-	noVideoDecInstance++;
 	pthread_mutex_unlock(&initMutex);
-
 
 	shvpu_decode_Private = pComponent->pComponentPrivate;
 	shvpu_decode_Private->ports = NULL;
@@ -221,6 +219,7 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 			OMX_VIDEO_CodingUnused;
 	} else {
 		// IL client specified an invalid component name
+		free(pComponent->pComponentPrivate);
 		return OMX_ErrorInvalidComponentName;
 	}
 
@@ -326,6 +325,10 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	shvpu_decode_Private->features.thumbnail_mode = OMX_FALSE;
 #endif
 
+	pthread_mutex_lock(&initMutex);
+	noVideoDecInstance++;
+	pthread_mutex_unlock(&initMutex);
+
 	/* initialize ippmui for buffers */
 	if (!shvpu_decode_Private->features.use_buffer_mode)
 		return eError;
@@ -334,13 +337,21 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 		return eError;
 
 	if (ipmmui_buffer_init() < 0)
-		return OMX_ErrorHardware;
+		goto hardware_error;
 
 	/* initialize 2D-DMAC for buffers */
 	if (DMAC_init() < 0)
-		return OMX_ErrorHardware;
+		goto hardware_error;
 
 	return eError;
+
+hardware_error:
+	uio_deinit();
+	free(pComponent->pComponentPrivate);
+	pthread_mutex_lock(&initMutex);
+	noVideoDecInstance--;
+	pthread_mutex_unlock(&initMutex);
+	return OMX_ErrorHardware;
 }
 
 /** The destructor of the video decoder component
@@ -350,6 +361,9 @@ OMX_ERRORTYPE shvpu_decode_Destructor(OMX_COMPONENTTYPE * pComponent)
 	shvpu_decode_PrivateType *shvpu_decode_Private =
 		pComponent->pComponentPrivate;
 	OMX_U32 i;
+
+	if (!shvpu_decode_Private)
+		return OMX_ErrorNone;
 
 	shvpu_decode_Deinit(pComponent);
 
@@ -375,21 +389,22 @@ OMX_ERRORTYPE shvpu_decode_Destructor(OMX_COMPONENTTYPE * pComponent)
 	DEBUG(DEB_LEV_FUNCTION_NAME,
 	      "Destructor of video decoder component is called\n");
 
-	/*remove any remaining picutre elements if they haven't
-          already been remover (i.e. premature decode cancel)*/
-
 	free(shvpu_decode_Private->pPicSem);
 	free(shvpu_decode_Private->pPicQueue);
 
 	omx_base_filter_Destructor(pComponent);
-	noVideoDecInstance--;
 
-	uio_deinit();
+	if (shvpu_decode_Private->uio_start_phys)
+		uio_deinit();
 
 	if(shvpu_decode_Private->features.dmac_mode) {
 		DMAC_deinit();
 		ipmmui_buffer_deinit();
 	}
+
+	pthread_mutex_lock(&initMutex);
+	noVideoDecInstance--;
+	pthread_mutex_unlock(&initMutex);
 
 	return OMX_ErrorNone;
 }
