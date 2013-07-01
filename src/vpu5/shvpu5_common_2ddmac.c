@@ -87,7 +87,9 @@ int DMAC_setup_buffers(int w, int h, int do_tl_conv)
 		pitch |= pitch >> 4;
 		pitch ++;
 
+		close_meram(&DMAC_data.meram_data); //nop if not already opened
 		open_meram(&DMAC_data.meram_data);
+
 		setup_icb(&DMAC_data.meram_data,
 			&DMAC_data.meram_data.decY_icb,
 			pitch, VALIGN(h), 128, 0xD, 0, DMAC_YICB);

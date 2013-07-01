@@ -1555,6 +1555,16 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	}
 }
 
+static OMX_BOOL
+can_change_port_settings(OMX_STATETYPE state,
+			omx_base_video_PortType *port) {
+
+	return state == OMX_StateLoaded ||
+			state == OMX_StateWaitForResources ||
+			(state != OMX_StateInvalid &&
+			 port->sPortParam.bPopulated == OMX_FALSE);
+}
+
 OMX_ERRORTYPE
 shvpu_decode_SetParameter(OMX_HANDLETYPE hComponent,
 			  OMX_INDEXTYPE nParamIndex,
@@ -1839,9 +1849,13 @@ shvpu_decode_SetParameter(OMX_HANDLETYPE hComponent,
 		}
 		case OMX_IndexAndroidUseNativeBuffer:
 		{
-			if (shvpu_decode_Private->state != OMX_StateLoaded
-				&& shvpu_decode_Private->state !=
-				OMX_StateWaitForResources) {
+			omx_base_video_PortType *outPort;
+			outPort = (omx_base_video_PortType *)
+				shvpu_decode_Private->ports[
+					OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+
+			if (!can_change_port_settings(
+				shvpu_decode_Private->state, outPort)) {
 				DEBUG(DEB_LEV_ERR,
 					"In %s Incorrect State=%x lineno=%d\n",
 					__func__, shvpu_decode_Private->state,
@@ -2174,8 +2188,10 @@ shvpu_decode_SendCommand(
         return err;
     }
   }
-  if ((Cmd == OMX_CommandStateSet) && (nParam == OMX_StateExecuting) &&
-      (shvpu_decode_Private->state == OMX_StateIdle) &&
+  if ((((Cmd == OMX_CommandStateSet) && (nParam == OMX_StateExecuting) &&
+      (shvpu_decode_Private->state == OMX_StateIdle) ) ||
+	((Cmd == OMX_CommandPortEnable) &&
+	(nParam == OMX_BASE_FILTER_OUTPUTPORT_INDEX))) &&
       (shvpu_decode_Private->features.dmac_mode)) {
 
     /* Input port holds the dimensions of the input data stream, while the

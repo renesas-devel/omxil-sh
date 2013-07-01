@@ -65,6 +65,10 @@ open_meram(shvpu_meram_t *mdata)
 {
 	MERAM_REG *reg;
 	unsigned long tmp;
+
+	if (mdata->meram)
+		return 0;
+
 	mdata->meram = meram_open();
 	if (mdata->meram == NULL)
 		return -1;
@@ -84,7 +88,9 @@ close_meram(shvpu_meram_t *mdata)
 	if (mdata->decC_icb)
 		release_icb(mdata, mdata->decC_icb);
 	meram_close(mdata->meram);
+	memset(mdata, 0, sizeof (shvpu_meram_t));
 }
+
 unsigned long
 setup_icb(shvpu_meram_t *mdata,
 	  ICB **icb,
