@@ -251,8 +251,8 @@ uio_deinit() {
 		icbcache_deinit();
 #endif
 		memops->memory_deinit();
-/*		uiomux_close(uiomux);
-		uiomux = NULL; */
+		uiomux_close(uiomux);
+		uiomux = NULL;
 	}
 	pthread_mutex_unlock(&uiomux_mutex);
 }
