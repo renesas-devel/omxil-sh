@@ -2539,9 +2539,11 @@ shvpu_decode_port_FreeBuffer(
   for(i=0; i < pPort->sPortParam.nBufferCountActual; i++){
     if(pPort->pInternalBufferStorage[i] == pBuffer) {
       pPort->bIsFullOfBuffers = OMX_FALSE;
-      if(pPort->bBufferStateAllocated[i] & BUFFER_ALLOCATED)
-        pBuffer->pBuffer = NULL; /* we don't actually allocate anything */
-      else if (pPort->bBufferStateAllocated[i] & BUFFER_ASSIGNED)
+      if(pPort->bBufferStateAllocated[i] & BUFFER_ALLOCATED) {
+        if(nPortIndex == OMX_BASE_FILTER_INPUTPORT_INDEX)
+          free(pBuffer->pBuffer); /* output ports don't allocate memory */
+        pBuffer->pBuffer = NULL;
+      } else if (pPort->bBufferStateAllocated[i] & BUFFER_ASSIGNED)
 	if (shvpu_decode_Private->features.dmac_mode)
 	    ipmmui_buffer_unmap_vaddr(pBuffer->pBuffer);
       if(pPort->bBufferStateAllocated[i] & HEADER_ALLOCATED) {
