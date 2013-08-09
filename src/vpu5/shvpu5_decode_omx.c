@@ -2471,9 +2471,12 @@ OMX_ERRORTYPE shvpu_decode_port_UseBuffer(
       outPort->pInternalBufferStorage[i]->pBuffer = pBuffer;
       outPort->pInternalBufferStorage[i]->nAllocLen = nSizeBytes;
       if (shvpu_decode_Private->features.dmac_mode) {
-          ipmmui_buffer_map_vaddr(pBuffer, nSizeBytes,
+	  int res;
+          res =  ipmmui_buffer_map_vaddr(pBuffer, nSizeBytes,
 		(unsigned long *)&outPort->pInternalBufferStorage[i]->
 		pPlatformPrivate);
+	  if (res)
+		set_dmac_mode(shvpu_decode_Private, OMX_FALSE);
       }
 
       outPort->pInternalBufferStorage[i]->pAppPrivate = pAppPrivate;

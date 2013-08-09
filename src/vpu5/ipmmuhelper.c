@@ -131,6 +131,8 @@ ipmmui_error:
 	int pg_size = sysconf(_SC_PAGESIZE);
 	unsigned long addr = (unsigned long) vaddr;
 	uint64_t val;
+	unsigned long page_addr, page_start = 0;
+	unsigned int i;
 
 	if (!vaddr || !paddr)
 		return -EINVAL;
@@ -140,15 +142,28 @@ ipmmui_error:
 	addr = addr / pg_size;
 	size = (size + pg_size - 1) / pg_size;
 	fseek(pagemap, addr * 8, SEEK_SET);
-	if (fread(&val, sizeof (uint64_t), 1, pagemap) != 1)
-		return -1;
+	for (i = 0; i < size; i++) {
+		if (fread(&val, sizeof (uint64_t), 1, pagemap) != 1)
+			goto err;
 
-	if (!(val & (1ULL << 63)))
-		return -1;
+		if (!(val & (1ULL << 63)))
+			goto err;
 
-	*paddr = (val & ((1ULL << 54) - 1)) * pg_size;
+		page_addr = (val & ((1ULL << 54) - 1));
+
+		if (i == 0)
+			page_start = page_addr;
+		else if (page_addr != page_start + i)
+			goto err;
+	}
 	fclose(pagemap);
+
+	*paddr = page_start * pg_size;
+
 	return 0;
+err:
+	fclose(pagemap);
+	return -1;
 #endif
 
 }
