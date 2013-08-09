@@ -313,9 +313,6 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 #ifdef USE_BUFFER_MODE
 	shvpu_decode_Private->features.use_buffer_mode = OMX_TRUE;
-#ifdef DMAC_MODE
-	shvpu_decode_Private->features.dmac_mode = OMX_TRUE;
-#endif
 #endif
 
 #ifdef TL_CONV_ENABLE
@@ -335,13 +332,6 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 
 	if (!shvpu_decode_Private->features.dmac_mode)
 		return eError;
-
-	if (ipmmui_buffer_init() < 0)
-		goto hardware_error;
-
-	/* initialize 2D-DMAC for buffers */
-	if (DMAC_init() < 0)
-		goto hardware_error;
 
 	return eError;
 
@@ -1628,6 +1618,27 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 }
 
 static OMX_BOOL
+set_dmac_mode(shvpu_decode_PrivateType *shvpu_decode_Private,
+		OMX_BOOL enable) {
+	if (enable) {
+		if (!shvpu_decode_Private->features.dmac_mode) {
+			if (ipmmui_buffer_init() < 0)
+				return OMX_FALSE;
+
+			if (DMAC_init() < 0)
+				return OMX_FALSE;
+		}
+	} else {
+		if (shvpu_decode_Private->features.dmac_mode) {
+			DMAC_deinit();
+			ipmmui_buffer_deinit();
+		}
+	}
+	shvpu_decode_Private->features.dmac_mode = enable;
+	return OMX_TRUE;
+}
+
+static OMX_BOOL
 can_change_port_settings(OMX_STATETYPE state,
 			omx_base_video_PortType *port) {
 
@@ -1921,6 +1932,12 @@ shvpu_decode_SetParameter(OMX_HANDLETYPE hComponent,
 			else
 				outPort->sPortParam.format.video.eColorFormat =
 					OUTPUT_DECODED_COLOR_FMT;
+
+#ifdef DMAC_MODE
+			if (set_dmac_mode(shvpu_decode_Private, enable) ==
+					OMX_FALSE)
+				eError = OMX_ErrorUndefined;
+#endif
 			break;
 		}
 		case OMX_IndexAndroidUseNativeBuffer:
