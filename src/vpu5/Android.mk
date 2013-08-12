@@ -362,3 +362,13 @@ LOCAL_MODULE := libvpu5udfenc
 LOCAL_CFLAGS:= -DLOG_TAG=\"shvpudec\" -DVPU5HG_FIRMWARE_PATH=\"/system/lib/firmware/vpu5/\" -DANDROID $(VPU_VERSION_DEFS) $(VPU_OPTION_DEFS)
 include $(BUILD_SHARED_LIBRARY)
 endif
+
+ifeq ($(VPU_MEMORY_ALLOC_HELPER),true)
+include $(CLEAR_VARS)
+LOCAL_PRELINK_MODULE := false
+LOCAL_SRC_FILES := memallochelper.c
+
+LOCAL_MODULE_TAGS := optional
+LOCAL_MODULE := vpumemhelper
+include $(BUILD_EXECUTABLE)
+endif
