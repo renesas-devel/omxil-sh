@@ -94,6 +94,7 @@ shvpu_driver_deinit(shvpu_driver_t *pHandle)
 		uio_exit_handler(&pDriver->uioSem, &pDriver->isExit);
 		uio_wakeup();
 		pthread_join(pDriver->intrHandler, NULL);
+		free(pDriver->wbufVpu5.work_area_addr);
 		free(pDriver);
 		pDriver = NULL;
 	}
