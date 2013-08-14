@@ -360,6 +360,7 @@ OMX_ERRORTYPE shvpu_decode_Destructor(OMX_COMPONENTTYPE * pComponent)
           already been remover (i.e. premature decode cancel)*/
 
 	free(shvpu_decode_Private->pPicSem);
+	queue_deinit(shvpu_decode_Private->pPicQueue);
 	free(shvpu_decode_Private->pPicQueue);
 
 	omx_base_filter_Destructor(pComponent);
@@ -1170,6 +1171,8 @@ shvpu_decode_BufferMgmtFunction(void *param)
 				       &processInBufQueue,
 				       &inBufExchanged);
 	}
+
+	queue_deinit(&processInBufQueue);
 
 	DEBUG(DEB_LEV_FUNCTION_NAME, "Out of %s of component %x\n", __func__,
 	      (int)pComponent);
