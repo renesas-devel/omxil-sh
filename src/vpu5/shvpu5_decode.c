@@ -218,9 +218,11 @@ decode_init(shvpu_decode_PrivateType *shvpu_decode_Private)
 	pCodec->frameCount = pCodec->bufferingCount = 0;
 
 	if (shvpu_decode_Private->enable_sync) {
+		logi("Use the SYNC mode for low latency.\n");
 		pCodec->codecMode = MCVDEC_MODE_SYNC;
 		pCodec->outMode = MCVDEC_OUTMODE_PULL;
 	} else {
+		logi("Use the BUFFERING/MAIN mode for high throughput.\n");
 		pCodec->codecMode = MCVDEC_MODE_BUFFERING;
 		pCodec->outMode = MCVDEC_OUTMODE_PUSH;
 	}

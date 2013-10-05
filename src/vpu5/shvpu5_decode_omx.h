@@ -53,6 +53,7 @@
 #define VIDEO_DEC_BASE_NAME "OMX.re.video_decoder"
 #define VIDEO_DEC_MPEG4_NAME "OMX.re.video_decoder.mpeg4"
 #define VIDEO_DEC_H264_NAME "OMX.re.video_decoder.avc"
+#define VIDEO_DEC_H264_ONESHOT_NAME "OMX.re.video_decoder.avc.oneshot"
 #define VIDEO_DEC_VC1_NAME "OMX.re.video_decoder.vc1"
 #define VIDEO_DEC_MPEG4_ROLE "video_decoder.mpeg4"
 #define VIDEO_DEC_H264_ROLE "video_decoder.avc"
