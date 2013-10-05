@@ -206,6 +206,9 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	outPort->sVideoParam.eColorFormat = OUTPUT_DECODED_COLOR_FMT;
 	outPort->sVideoParam.xFramerate = 0;
 
+	/* OMX_PARAM_REVPU5INPUTUNIT */
+	shvpu_decode_Private->eInputUnit = OMX_InputUnitUnspecified;
+
 	/** now it's time to know the video coding type of the component */
 	if (!strcmp(cComponentName, VIDEO_DEC_MPEG4_NAME)) {
 		shvpu_decode_Private->video_coding_type =
@@ -1132,7 +1135,7 @@ shvpu_decode_BufferMgmtFunction(void *param)
 				pPic = calloc(1, sizeof (pic_t));
 			pic_done = pCodec->pops->parseBuffer(shvpu_decode_Private,
 				   pInBuffer[0],
-				   (pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS),
+			           (pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS),
 				   pPic,
 				   &isInBufferNeeded);
 			if (pic_done || pInBuffer[0]->nFlags & OMX_BUFFERFLAG_EOS) {
@@ -1908,6 +1911,28 @@ shvpu_decode_SetParameter(OMX_HANDLETYPE hComponent,
 			}
 			break;
 		}
+		case OMX_IndexParamInputUnitSetting:
+		{
+			OMX_PARAM_REVPU5INPUTUNIT *pInputUnit;
+			pInputUnit = ComponentParameterStructure;
+			eError = checkHeader(pInputUnit,
+					     sizeof
+					     (OMX_PARAM_REVPU5INPUTUNIT));
+			if (eError != OMX_ErrorNone)
+				break;
+
+			switch (pInputUnit->eInputUnit) {
+			case OMX_InputUnitUnspecified:
+			case OMX_InputUnitPicture:
+				shvpu_decode_Private->eInputUnit =
+					pInputUnit->eInputUnit;
+				break;
+			default:
+				eError = OMX_ErrorBadParameter;
+				break;
+			}
+			break;
+		}
 #ifdef ANDROID_CUSTOM
 		case OMX_IndexAndroidNativeEnable:
 		{
@@ -2157,6 +2182,19 @@ shvpu_decode_GetParameter(OMX_HANDLETYPE hComponent,
 		{
 			*(OMX_BOOL *)ComponentParameterStructure =
 				!shvpu_decode_Private->features.tl_conv_mode;
+			break;
+		}
+		case OMX_IndexParamInputUnitSetting:
+		{
+			OMX_PARAM_REVPU5INPUTUNIT *pInputUnit;
+			pInputUnit = ComponentParameterStructure;
+			eError = checkHeader(pInputUnit,
+					     sizeof
+					     (OMX_PARAM_REVPU5INPUTUNIT));
+
+			if (eError == OMX_ErrorNone)
+				pInputUnit->eInputUnit =
+					shvpu_decode_Private->eInputUnit;
 			break;
 		}
 #ifdef ANDROID_CUSTOM

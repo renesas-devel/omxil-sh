@@ -32,6 +32,7 @@
 #define OMX_VPU5_CommandMaxOut "OMX.RE.VPU5MaxOutputSetting"
 #define OMX_VPU5_CommandMaxInst "OMX.RE.VPU5MaxInstance"
 #define OMX_VPU5_SoftwareRender "OMX.RE.SoftwareRender"
+#define OMX_VPU5_CommandInputUnit "OMX.RE.InputUnitSetting"
 
 typedef enum OMX_REVPU5LEVEL {
 	OMX_VPU5AVCLevel1,
@@ -96,4 +97,16 @@ typedef struct OMX_PARAM_REVPU5IPMMUSTATUS {
 	OMX_VERSIONTYPE nVersion;
 	OMX_BOOL bIpmmuEnable;
 } OMX_PARAM_REVPU5IPMMUSTATUS;
+
+typedef enum {
+	OMX_InputUnitUnspecified,
+	OMX_InputUnitPicture,
+} OMX_REVPU5INPUTUNIT;
+
+typedef struct OMX_PARAM_REVPU5INPUTUNIT {
+	OMX_U32 nSize;
+	OMX_VERSIONTYPE nVersion;
+	OMX_U32 eInputUnit;
+} OMX_PARAM_REVPU5INPUTUNIT;
+
 #endif

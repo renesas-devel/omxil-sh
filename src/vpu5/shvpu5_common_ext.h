@@ -32,6 +32,7 @@ typedef enum OMX_REVPU5INDEXTYPE {
 	OMX_IndexParamVPUMaxInstance,
 	OMX_IndexParamQueryIPMMUEnable,
 	OMX_IndexParamSoftwareRenderMode,
+	OMX_IndexParamInputUnitSetting,
 #ifdef ANDROID_CUSTOM
 	OMX_IndexAndroidNativeEnable,
 	OMX_IndexAndroidMetaDataBuffers,

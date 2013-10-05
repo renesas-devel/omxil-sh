@@ -181,6 +181,8 @@ DERIVEDCLASS(shvpu_decode_PrivateType, omx_base_filter_PrivateType)
 	OMX_PARAM_REVPU5MAXPARAM maxVideoParameters;			\
 	/** @param enable_sync enable SYNC mode for vpu decode*/	\
 	OMX_BOOL                enable_sync;				\
+	/** @param eInputUnit field that specifies unit of each input expected */	\
+	OMX_U32 eInputUnit;						\
 	/** @param uio_start start address of the uio memory range*/	\
 	void *                  uio_start;				\
 	/** @param uio_size size of the uio memory range*/		\
