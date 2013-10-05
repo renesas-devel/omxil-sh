@@ -29,47 +29,18 @@
 #include <stdarg.h>
 #include "shvpu5_common_log.h"
 
-#ifdef HAVE_ANDROID_OS
-#include <utils/Log.h>
-#endif
-int
-logd(const char *format, ...)
+int _shvpu5_logout(int level, const char *format, ...)
 {
-#if 0
 	int ret = 0;
 	va_list ap;
 
 	va_start(ap, format);
 #ifdef HAVE_ANDROID_OS
-        LOG_PRI_VA(ANDROID_LOG_DEBUG, LOG_TAG, format, ap);
+        LOG_PRI_VA(level, LOG_TAG, format, ap);
 #else
 	ret = vfprintf(stderr, format, ap);
 #endif
 	va_end(ap);
 
 	return ret;
-#else
-	return 0;
-#endif
-}
-
-int
-loge(const char* format, ...)
-{
-#if 1
-	int ret = 0;
-	va_list ap;
-
-	va_start(ap, format);
-#ifdef HAVE_ANDROID_OS
-        LOG_PRI_VA(ANDROID_LOG_ERROR, LOG_TAG, format, ap);
-#else
-	ret = vfprintf(stderr, format, ap);
-#endif
-	va_end(ap);
-
-	return ret;
-#else
-	return 0;
-#endif
 }

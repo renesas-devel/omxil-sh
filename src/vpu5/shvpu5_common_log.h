@@ -27,7 +27,20 @@
 #ifndef __SHVPU5_COMMON_LOG_H_
 #define __SHVPU5_COMMON_LOG_H_
 
-int logd(const char *format, ...);
-int loge(const char *format, ...);
+#ifdef HAVE_ANDROID_OS
+#include <utils/Log.h>
+#endif
+
+int _shvpu5_logout(int level, const char *format, ...);
+
+#ifdef HAVE_ANDROID_OS
+#define logd(_f, ...)	 {} /* _shvpu5_logout(ANDROID_LOG_DEBUG, (_f), ##__VA_ARGS__) */
+#define logi(_f, ...)	_shvpu5_logout(ANDROID_LOG_INFO, (_f), ##__VA_ARGS__)
+#define loge(_f, ...)	_shvpu5_logout(ANDROID_LOG_ERROR, (_f), ##__VA_ARGS__)
+#else /* HAVE_ANDROID_OS */
+#define logd(_l, ...)	{} /* _shvpu5_logout(0, (_f), ##__VA_ARGS__) */
+#define logi(_f, ...)	_shvpu5_logout(0, (_f), ##__VA_ARGS__)
+#define loge(_f, ...)	_shvpu5_logout(0, (_f), ##__VA_ARGS__)
+#endif /* HAVE_ANDROID_OS */
 
 #endif /* __SHVPU5_COMMON_LOG_H_ */
