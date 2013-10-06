@@ -191,7 +191,6 @@ shvpu_decode_Constructor(OMX_COMPONENTTYPE * pComponent,
 	inPort->sPortParam.format.video.xFramerate = 0;
 	inPort->sPortParam.format.video.eCompressionFormat =
 		OMX_VIDEO_CodingAVC;
-	inPort->Port_FreeBuffer = shvpu_decode_port_FreeBuffer;
 
 	//common parameters related to output port
 	outPort =
