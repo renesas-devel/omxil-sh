@@ -243,6 +243,20 @@ free_pcodec:
 	return -1;
 }
 
+static void
+free_memory_list(struct mem_list **mlist_head)
+{
+	struct mem_list *pm, *n_pm;
+
+	for (pm = *mlist_head; pm; pm = n_pm) {
+		n_pm = pm->p_next;
+		logd("  free (%p:%u) [%p]", pm->va, pm->size, pm);
+		pmem_free(pm->va, pm->size);
+		free(pm);
+	}
+	*mlist_head = NULL;
+}
+
 void
 decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	if (shvpu_decode_Private) {
@@ -297,8 +311,9 @@ decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private) {
 
 		free(pCodec);
 
-		shvpu_decode_Private->avCodec = NULL;
+		free_memory_list(&shvpu_decode_Private->mlist_head);
 
+		shvpu_decode_Private->avCodec = NULL;
 
 	}
 }

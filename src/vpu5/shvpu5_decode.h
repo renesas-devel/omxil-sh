@@ -47,6 +47,16 @@ typedef struct {
 	OMX_BOOL thumbnail_mode;
 } decode_features_t;
 
+struct mem_list {
+	struct mem_list *p_next;
+	size_t size;
+	void *va;
+};
+
+void *
+pmem_alloc_reuse(struct mem_list **mlistHead, size_t size, size_t *asize,
+			int align);
+
 /* ROUND_2POW rounds up to the next muliple of y,
    which must be a power of 2 */
 #define ROUND_2POW(x,y) ((x + (y - 1) ) & ~(y - 1))

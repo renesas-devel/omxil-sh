@@ -205,8 +205,8 @@ trim_trailing_zero(unsigned char *addr, size_t size)
 }
 
 static int
-copyNalData(pic_t *pPic, queue_t *pNalQueue) {
-
+copyNalData(struct mem_list **mlistHead, pic_t *pPic, queue_t *pNalQueue)
+{
 	phys_input_buf_t *pBuf;
 	nal_t **pNal, **pNalHead;
 	buffer_avcdec_metainfo_t buffer_meta;
@@ -270,7 +270,8 @@ copyNalData(pic_t *pPic, queue_t *pNalQueue) {
 	if ((pBuf->size % 2) == 0)
 		pBuf->size++;
 	pBuf->size *= 0x200;
-	pBuf->base_addr = pmem_alloc(pBuf->size, 256, NULL);
+	pBuf->base_addr = pmem_alloc_reuse(mlistHead, pBuf->size,
+					&pBuf->alloc_size, 256);
 	pNal = pNalHead;
 	pBuf->buf_offsets[0] = pBuf->base_addr + 256;
 	for (i = 0; i < pBuf->n_sbufs; i++) {
@@ -345,8 +346,9 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 	OMX_BOOL splitBuffer;
 	OMX_BOOL lastBuffer = OMX_FALSE;
 	queue_t *NalQueue = &avcparse->NalQueue;
+	struct mem_list **mlistHead = &shvpu_decode_Private->mlist_head;
 
-	copyNalData(pActivePic, NalQueue);
+	copyNalData(mlistHead, pActivePic, NalQueue);
 
 	if (avcparse->pPrevBuffer) {
 		pStart = avcparse->pPrevBuffer->pBuffer +
@@ -406,7 +408,7 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 		if (isSubsequentPic(pNal, avcparse->prevPictureNal)) {
 			avcparse->prevPictureNal = pNal->hasPicData;
-			copyNalData(pActivePic, NalQueue);
+			copyNalData(mlistHead, pActivePic, NalQueue);
 			queue(NalQueue, pNal);
 			avcparse->pPrevBuffer = NULL;
 			return OMX_TRUE;
@@ -419,7 +421,7 @@ parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 	if (lastBuffer) {
 		avcparse->pPrevBuffer = NULL;
 		avcparse->prevPictureNal = OMX_FALSE;
-		copyNalData(pActivePic, NalQueue);
+		copyNalData(mlistHead, pActivePic, NalQueue);
 	} else {
 		avcparse->pPrevBuffer = pBuffer;
 	}

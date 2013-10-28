@@ -124,18 +124,19 @@ reinit_spmp_mode(shvpu_decode_PrivateType *shvpu_decode_Private,
 }
 
 static void *
-alloc_phys_buffer(int *size) {
+alloc_phys_buffer(struct mem_list **mlistHead, int *size, size_t *asize) {
 	int lsize = *size;
 	lsize = (lsize + 0x200 + 0x600 + 255) / 256;
 	if ((lsize % 2) == 0)
 		lsize++;
 	lsize *= 0x200;
 	*size = lsize;
-	return pmem_alloc(lsize, 256, NULL);
+	return pmem_alloc_reuse(mlistHead, lsize, asize, 256);
 }
 
 static int
-alloc_picture_buffer(pic_t *pPic, unsigned int size, phys_input_buf_t *oldBuf) {
+alloc_picture_buffer(struct mem_list **mlistHead, pic_t *pPic,
+			unsigned int size, phys_input_buf_t *oldBuf) {
 	int full_size = size;
 	static int resize_cnt = 0;
 	phys_input_buf_t *pBuf;
@@ -143,7 +144,8 @@ alloc_picture_buffer(pic_t *pPic, unsigned int size, phys_input_buf_t *oldBuf) {
 	if (pBuf == NULL)
 		return -1;
 	memset(pBuf, 0, sizeof(*pBuf));
-	pBuf->base_addr = alloc_phys_buffer(&full_size);
+	pBuf->base_addr = alloc_phys_buffer(mlistHead, &full_size,
+						&pBuf->alloc_size);
 	if (!pBuf->base_addr)
 		return -1;
 	pBuf->size = full_size;
@@ -172,13 +174,13 @@ alloc_picture_buffer(pic_t *pPic, unsigned int size, phys_input_buf_t *oldBuf) {
 }
 
 static int
-expand_picture_buffer(pic_t *pPic, int size) {
-	return alloc_picture_buffer(pPic, size, pPic->pBufs[0]);
+expand_picture_buffer(struct mem_list **mlistHead, pic_t *pPic, int size) {
+	return alloc_picture_buffer(mlistHead, pPic, size, pPic->pBufs[0]);
 }
 
 static int
-init_picture_buffer(pic_t *pPic, int size) {
-	return alloc_picture_buffer(pPic, size, NULL);
+init_picture_buffer(struct mem_list **mlistHead, pic_t *pPic, int size) {
+	return alloc_picture_buffer(mlistHead, pPic, size, NULL);
 }
 
 static const unsigned char vc1_eop_code[] = {
@@ -326,6 +328,7 @@ parseVc1Buffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 	struct vc1parse_meta *vc1parse;
 	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	vc1parse = pCodec->codec_priv;
+	struct mem_list **mlistHead = &shvpu_decode_Private->mlist_head;
 
 	pStart = pBuffer->pBuffer + pBuffer->nOffset;
 	nRemainSize = pBuffer->nFilledLen;
@@ -354,7 +357,7 @@ parseVc1Buffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 		bufsize += vc1parse->seqhdrlen;
 	}
 
-	init_picture_buffer(pActivePic, bufsize);
+	init_picture_buffer(mlistHead, pActivePic, bufsize);
 	buffer_meta = save_omx_buffer_metainfo(pBuffer);
 	pActivePic->buffer_meta = buffer_meta;
 	pActivePic->has_meta = 1;

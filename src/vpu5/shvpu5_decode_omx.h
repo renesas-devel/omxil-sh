@@ -189,6 +189,7 @@ DERIVEDCLASS(shvpu_decode_PrivateType, omx_base_filter_PrivateType)
 	/** @param uio_size size of the uio memory range*/		\
 	unsigned long           uio_size;				\
 	unsigned long           uio_start_phys;				\
+	struct mem_list		*mlist_head;				\
 	shvpu_meram_t		meram_data;				\
 	shvpu_ipmmui_t		*ipmmui_data;				\
 	decode_features_t	features;				\

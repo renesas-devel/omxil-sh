@@ -111,18 +111,19 @@ find_start_code(unsigned char *buf, size_t len, parse_state *state,
 }
 
 static void *
-alloc_phys_buffer(int *size) {
+alloc_phys_buffer(struct mem_list **mlistHead, int *size, size_t *asize) {
 	int lsize = *size;
 	lsize = (lsize + 0x200 + 0x600 + 255) / 256;
 	if ((lsize % 2) == 0)
 		lsize++;
 	lsize *= 0x200;
 	*size = lsize;
-	return pmem_alloc(lsize, 256, NULL);
+	return pmem_alloc_reuse(mlistHead, lsize, asize, 256);
 }
 
 static int
-alloc_picture_buffer(pic_t *pPic, unsigned int size, phys_input_buf_t *oldBuf) {
+alloc_picture_buffer(struct mem_list **mlistHead, pic_t *pPic,
+			unsigned int size, phys_input_buf_t *oldBuf) {
 	int full_size = size;
 	static int resize_cnt = 0;
 	phys_input_buf_t *pBuf;
@@ -130,7 +131,8 @@ alloc_picture_buffer(pic_t *pPic, unsigned int size, phys_input_buf_t *oldBuf) {
 	if (pBuf == NULL)
 		return -1;
 	memset(pBuf, 0, sizeof(*pBuf));
-	pBuf->base_addr = alloc_phys_buffer(&full_size);
+	pBuf->base_addr = alloc_phys_buffer(mlistHead, &full_size,
+						&pBuf->alloc_size);
 	if (!pBuf->base_addr)
 		return -1;
 	pBuf->size = full_size;
@@ -160,13 +162,13 @@ alloc_picture_buffer(pic_t *pPic, unsigned int size, phys_input_buf_t *oldBuf) {
 }
 
 static int
-expand_picture_buffer(pic_t *pPic, int size) {
-	return alloc_picture_buffer(pPic, size, pPic->pBufs[0]);
+expand_picture_buffer(struct mem_list **mlistHead, pic_t *pPic, int size) {
+	return alloc_picture_buffer(mlistHead, pPic, size, pPic->pBufs[0]);
 }
 
 static int
-init_picture_buffer(pic_t *pPic, int size) {
-	return alloc_picture_buffer(pPic, size, NULL);
+init_picture_buffer(struct mem_list **mlistHead, pic_t *pPic, int size) {
+	return alloc_picture_buffer(mlistHead, pPic, size, NULL);
 }
 
 static int
@@ -218,12 +220,13 @@ parseMpegBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 	int total_parsed;
 	int start_code;
 	buffer_avcdec_metainfo_t buffer_meta;
+	struct mem_list **mlistHead = &shvpu_decode_Private->mlist_head;
 
 	pStart = pBuffer->pBuffer + pBuffer->nOffset;
 	nRemainSize = pBuffer->nFilledLen;
 
 	if (!pActivePic->n_bufs)
-		init_picture_buffer(pActivePic, BUFFER_SIZE);
+		init_picture_buffer(mlistHead, pActivePic, BUFFER_SIZE);
 
 	total_parsed = 0;
 	while (nRemainSize > 3) {
@@ -248,7 +251,7 @@ parseMpegBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 						m4vparse->crossBufStartCode;
 			if (end > m4vparse->buffer_size) {
 				m4vparse->buffer_size = end * 3 / 2;
-				expand_picture_buffer(pActivePic,
+				expand_picture_buffer(mlistHead, pActivePic,
 					m4vparse->buffer_size);
 			}
 			m4vparse->buffer_pos = copyBufData(pActivePic,
@@ -273,7 +276,7 @@ parseMpegBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 				m4vparse->crossBufStartCode;
 			if (end > m4vparse->buffer_size && !crossBufStartCode) {
 				m4vparse->buffer_size = end * 3 / 2;
-				expand_picture_buffer(pActivePic,
+				expand_picture_buffer(mlistHead, pActivePic,
 					m4vparse->buffer_size);
 			}
 			m4vparse->buffer_pos = copyBufData(pActivePic,

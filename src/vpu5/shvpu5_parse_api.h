@@ -28,6 +28,7 @@
 typedef struct {
 	void*			base_addr;
 	size_t			size;
+	size_t			alloc_size;
 	int 			n_sbufs;
 	size_t			buf_sizes[16];
 	void*			buf_offsets[16];
