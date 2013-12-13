@@ -531,14 +531,14 @@ void omx_audiodec_component_BufferMgmtCallback(OMX_COMPONENTTYPE *openmaxStandCo
   inbufend = pInputBuffer->pBuffer + pInputBuffer->nOffset
 	  + pInputBuffer->nFilledLen;
   if ((pInputBuffer->nFlags & OMX_BUFFERFLAG_EOS) == OMX_BUFFERFLAG_EOS) {
-    if (spu_aac_decode (&outbuf, outbufend, NULL, NULL, &format) < 0) {
+    if (spu_aac_decode (&outbuf, outbufend, NULL, NULL, &format, &pOutputBuffer->nTimeStamp, &pInputBuffer->nTimeStamp, sizeof pOutputBuffer->nTimeStamp) < 0) {
       fprintf (stderr, "Decode error\n");
       message.messageType = OMX_CommandStateSet;
       message.messageParam = OMX_StateInvalid;
       omx_audiodec_component_Private->messageHandler(openmaxStandComp, &message);
     }
   } else {
-    if (spu_aac_decode (&outbuf, outbufend, &inbuf, inbufend, &format) < 0) {
+    if (spu_aac_decode (&outbuf, outbufend, &inbuf, inbufend, &format, &pOutputBuffer->nTimeStamp, &pInputBuffer->nTimeStamp, sizeof pOutputBuffer->nTimeStamp) < 0) {
       fprintf (stderr, "Decode error\n");
       message.messageType = OMX_CommandStateSet;
       message.messageParam = OMX_StateInvalid;

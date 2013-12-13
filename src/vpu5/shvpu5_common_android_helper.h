@@ -1,12 +1,11 @@
 /**
-   src/vpu5/shvpu5_driver.h
+   src/vpu5/shvpu_common_android_helper.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
    on the Renesas's VPU5HG middleware library.
 
-   Copyright (C) 2010 IGEL Co., Ltd
-   Copyright (C) 2010 Renesas Solutions Corp.
+   Copyright (C) 2011 Renesas Solutions Corp.
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public License
@@ -24,40 +23,32 @@
    02110-1301 USA
 
 */
-#ifndef __SHVPU5_DRIVER_H_
-#define __SHVPU5_DRIVER_H_
-#include <pthread.h>
-#include <bellagio/tsemaphore.h>
-#include "mciph.h"
-#include "uiomux/uiomux.h"
-#if defined(VPU5HA_SERIES)
-#include "mciph_ip0_cmn.h"
+#if __cplusplus
+extern "C" {
 #endif
+#include "shvpu5_decode_omx.h"
+#include "shvpu5_avcenc_omx.h"
+OMX_ERRORTYPE shvpu_decode_UseAndroidNativeBuffer(
+	shvpu_decode_PrivateType *shvpu_decode_Private,
+	OMX_PTR ComponentParameterStructure);
 
-typedef struct {
-	MCIPH_DRV_INFO_T*	pDrvInfo;
-	MCIPH_API_T		apiTbl;
-	/** @param mode for VPU5HG video decoder */
-	MCIPH_WORK_INFO_T	wbufVpu5;
-	MCIPH_VPU5_INIT_T	vpu5Init;
-#if defined(VPU5HA_SERIES)
-	MCIPH_IP0_INIT_T	ip0Init;
+OMX_ERRORTYPE shvpu_decode_AndroidNativeBufferEnable(
+	shvpu_decode_PrivateType *shvpu_decode_Private,
+	OMX_PTR ComponentParameterStructure);
+
+OMX_ERRORTYPE shvpu_decode_GetNativeBufferUsage(
+	shvpu_decode_PrivateType *shvpu_decode_Private,
+	OMX_PTR ComponentParameterStructure);
+
+OMX_ERRORTYPE shvpu_avcenc_SetMetaDataInBuffers(
+	shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
+	OMX_PTR ComponentParameterStructure);
+
+enum {
+	HAL_PIXEL_FORMAT_RGB_565       	    = 0x4,
+	HAL_PIXEL_FORMAT_YCrCb_420_SP       = 0x11,
+	HAL_PIXEL_FORMAT_YV12		    = 0x32315659, // YCrCb 4:2:0 Planar
+};
+#if __cplusplus
+}
 #endif
-	UIOMux*			uiomux;
-	pthread_t		intrHandler;
-	int			frameId;
-	int			lastOutput;
-	unsigned char		isEndInput;
-	tsem_t			uioSem;
-	int			isExit;
-} shvpu_driver_t;
-
-int
-shvpu_driver_deinit(shvpu_driver_t *pHandle);
-
-long
-shvpu_driver_init(shvpu_driver_t **ppDriver);
-
-unsigned long
-shvpu5_load_firmware(char *filename, size_t *size);
-#endif /* __SHVPU5_DRIVER_H_ */

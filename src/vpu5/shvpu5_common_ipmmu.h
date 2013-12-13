@@ -1,5 +1,6 @@
+
 /**
-   src/vpu5/shvpu5_driver.h
+   src/vpu5/shvpu5_avcdec_ipmmu.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
@@ -24,40 +25,34 @@
    02110-1301 USA
 
 */
-#ifndef __SHVPU5_DRIVER_H_
-#define __SHVPU5_DRIVER_H_
-#include <pthread.h>
-#include <bellagio/tsemaphore.h>
-#include "mciph.h"
-#include "uiomux/uiomux.h"
-#if defined(VPU5HA_SERIES)
-#include "mciph_ip0_cmn.h"
-#endif
+#ifndef _SHVPU5_COMMON_IPMMU_H
+#define _SHVPU5_COMMON_IPMMU_H
 
-typedef struct {
-	MCIPH_DRV_INFO_T*	pDrvInfo;
-	MCIPH_API_T		apiTbl;
-	/** @param mode for VPU5HG video decoder */
-	MCIPH_WORK_INFO_T	wbufVpu5;
-	MCIPH_VPU5_INIT_T	vpu5Init;
-#if defined(VPU5HA_SERIES)
-	MCIPH_IP0_INIT_T	ip0Init;
-#endif
-	UIOMux*			uiomux;
-	pthread_t		intrHandler;
-	int			frameId;
-	int			lastOutput;
-	unsigned char		isEndInput;
-	tsem_t			uioSem;
-	int			isExit;
-} shvpu_driver_t;
+#ifdef TL_CONV_ENABLE
 
-int
-shvpu_driver_deinit(shvpu_driver_t *pHandle);
+struct shvpu_ipmmui_t;
+typedef struct shvpu_ipmmui_t shvpu_ipmmui_t;
 
-long
-shvpu_driver_init(shvpu_driver_t **ppDriver);
+shvpu_ipmmui_t *
+init_ipmmu(unsigned long phys_base, int stride, int tile_logw, int tile_logh);
+
+void
+deinit_ipmmu(shvpu_ipmmui_t *ipmmui_data);
 
 unsigned long
-shvpu5_load_firmware(char *filename, size_t *size);
-#endif /* __SHVPU5_DRIVER_H_ */
+phys_to_ipmmui(shvpu_ipmmui_t *ipmmui_data, unsigned long address);
+
+unsigned long
+ipmmui_to_phys(shvpu_ipmmui_t *ipmmui_data, unsigned long ipmmu,
+	unsigned long phys_base);
+
+#else
+typedef struct {
+	char dummy;
+} shvpu_ipmmui_t;
+#define init_ipmmu(a, b, c, d) (0)
+#define deinit_ipmmu(x)
+#define phys_to_ipmmui(x, y) (y)
+#define ipmmui_to_phys(x, y, z) (y)
+#endif
+#endif /*  _SHVPU5_COMMON_IPMMU_H */

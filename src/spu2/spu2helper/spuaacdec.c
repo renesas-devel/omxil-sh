@@ -38,6 +38,18 @@ struct state_info {
 	int decode_really_end;
 };
 
+struct datalist {
+	struct datalist *next, *prev;
+	void *data;
+	int datalen;
+	int len;
+};
+
+struct datalist_head {
+	struct datalist *head, *tail;
+	pthread_mutex_t lock;
+};
+
 static short *pcmbuf, *pcmaddr;
 static RSACPDS_AAC *paac;
 static unsigned char *aacbuf, *aacaddr;
@@ -58,7 +70,94 @@ static int callbk_err = 0;
 static long decode_end_status;
 static struct spu_aac_decode_fmt format_current, format_next;
 static int next_sampling_frequency_index;
-static long output_remain, output_remain_add;
+static long output_remain;
+static struct datalist_head indata, outdata, delaydata;
+static struct datalist_head outlendata, outfmtdata;
+static struct spu_aac_decode_fmt _format_current;
+
+static void
+datalist_init (struct datalist_head *d)
+{
+	pthread_mutex_init (&d->lock, NULL);
+	d->head = NULL;
+	d->tail = NULL;
+}
+
+static void
+datalist_add (struct datalist_head *d, void *data, int datalen, int addlen)
+{
+	pthread_mutex_lock (&d->lock);
+	if (d->tail != NULL) {
+		if (d->tail->datalen == datalen) {
+			if (datalen == 0)
+				goto add;
+			if (memcmp (d->tail->data, data, datalen) == 0)
+				goto add;
+		}
+		d->tail->next = malloc (sizeof *d->tail->next);
+		d->tail->next->next = NULL;
+		d->tail->next->prev = d->tail;
+		d->tail = d->tail->next;
+		goto listinit;
+	add:
+		d->tail->len += addlen;
+	} else {
+		d->tail = malloc (sizeof *d->tail);
+		d->head = d->tail;
+		d->tail->next = NULL;
+		d->tail->prev = NULL;
+	listinit:
+		d->tail->data = NULL;
+		d->tail->datalen = datalen;
+		d->tail->len = addlen;
+		if (datalen != 0) {
+			d->tail->data = malloc (datalen);
+			memcpy (d->tail->data, data, datalen);
+		}
+	}
+	pthread_mutex_unlock (&d->lock);
+}
+
+static void
+datalist_sub (struct datalist_head *d, void **data, int *datalen, int sublen)
+{
+	struct datalist *p;
+
+	pthread_mutex_lock (&d->lock);
+	p = d->head;
+	if (p != NULL) {
+		if (datalen != NULL) {
+			*data = NULL;
+			*datalen = p->datalen;
+			if (p->datalen != 0) {
+				*data = malloc (p->datalen);
+				memcpy (*data, p->data, p->datalen);
+			}
+		}
+	} else {
+		ERR ("No datalist exists!");
+	}
+	while (sublen > 0 && p != NULL) {
+		if (p->len > sublen) {
+			p->len -= sublen;
+			sublen = 0;
+			break;
+		}
+		sublen -= p->len;
+		if (d->head == d->tail) {
+			d->head = NULL;
+			d->tail = NULL;
+		} else {
+			d->head = p->next;
+			d->head->prev = NULL;
+		}
+		if (p->datalen != 0)
+			free (p->data);
+		free (p);
+		p = d->head;
+	}
+	pthread_mutex_unlock (&d->lock);
+}
 
 static int
 buflist_add (struct buflist_head *buf, struct buflist *p)
@@ -192,64 +291,68 @@ decode_end_cb (RSACPDS_AAC *aac, long ret, unsigned long bcnt,
 		},
 	};
 	long end_block_size;
+	void *data;
+	int datalen;
+	int outputlen;
+	struct spu_aac_decode_fmt _format_next;
 
 	decode_end_status = paac->statusCode;
 	end_block_size = 1024;
-	if (format_current.aacplus != 0)
+	if (_format_current.aacplus != 0)
 		end_block_size = 2048;
 	if (ret == 0) {
 		if (n >= 1) {
 			switch (pcnt - (n - 1) * end_block_size) {
 			case 1024:
-				format_next.aacplus = 0;
+				_format_next.aacplus = 0;
 				break;
 			case 2048:
-				format_next.aacplus = 1;
+				_format_next.aacplus = 1;
 				break;
 			default:
 				ERR ("unknown block size");
-				format_next.aacplus = 0;
+				_format_next.aacplus = 0;
 				break;
 			}
 		}
 		if (next_sampling_frequency_index >= 0 &&
 		    next_sampling_frequency_index < 0xc)
-			format_next.sampling_frequency = freqlist
-				[format_next.aacplus]
+			_format_next.sampling_frequency = freqlist
+				[_format_next.aacplus]
 				[next_sampling_frequency_index];
 		else
-			format_next.sampling_frequency = 0;
-		if (format_next.sampling_frequency == 0)
+			_format_next.sampling_frequency = 0;
+		if (_format_next.sampling_frequency == 0)
 			ERR ("sampling frequency error");
 		switch (outInfo.channelMode) {
 		case 0:		/* monaural */
-			format_next.channel = 1;
+			_format_next.channel = 1;
 			break;
 		case 1:		/* stereo */
 		case 2:		/* dual monaural */
 		case 3:		/* parametric stereo */
-			format_next.channel = 2;
+			_format_next.channel = 2;
 			break;
 		case 4:		/* 3/0 */
-			format_next.channel = 3;
+			_format_next.channel = 3;
 			break;
 		case 5:		/* 3/1 */
-			format_next.channel = 4;
+			_format_next.channel = 4;
 			break;
 		case 6:		/* 3/2 */
-			format_next.channel = 5;
+			_format_next.channel = 5;
 			break;
 		case 7:		/* 3/2 + LFE (5.1) */
-			format_next.channel = 6;
+			_format_next.channel = 6;
 			break;
 		case 8:		/* 2/1 */
 		case 9:		/* 2/2 */
 			ERR ("channel mode 2/1 or 2/2 not supported");
-			format_next.channel = 0;
+			_format_next.channel = 0;
 			break;
 		case -1:
 			ERR ("channel mode error");
-			format_next.channel = 0;
+			_format_next.channel = 0;
 			break;
 		}
 	}
@@ -257,8 +360,27 @@ decode_end_cb (RSACPDS_AAC *aac, long ret, unsigned long bcnt,
 		n++;		/* last block */
 	if (state.first_block != 0 && n >= 1)
 		n--;		/* first block */
+	if (bcnt != 0) {
+		datalist_sub (&indata, &data, &datalen, bcnt);
+		datalist_add (&delaydata, data, datalen, 1);
+		/* fprintf (stderr, "input %d n %lu c %d b %ld\n", bcnt, n, _format_current.channel, end_block_size); */
+		if (datalen != 0)
+			free (data);
+	}
+	outputlen = n * _format_current.channel * end_block_size * 2;
+	if (outputlen != 0) {
+		datalist_sub (&delaydata, &data, &datalen, 1);
+		datalist_add (&outdata, data, datalen, outputlen);
+		if (datalen != 0)
+			free (data);
+		/* fprintf (stderr, "output %d\n", outputlen); */
+	}
 	pthread_mutex_lock (&transfer_lock);
-	output_remain_add += n * format_current.channel * end_block_size * 2;
+	if (outputlen != 0) {
+		datalist_add (&outlendata, &outputlen, sizeof outputlen, 1);
+		datalist_add (&outfmtdata, &_format_current,
+			      sizeof _format_current, 1);
+	}
 	state.decode_end = 1;
 	if (ret == -1 && decode_end_status == RSACPDS_ERR_DATA_EMPTY)
 		state.decode_really_end = 1;
@@ -267,6 +389,7 @@ decode_end_cb (RSACPDS_AAC *aac, long ret, unsigned long bcnt,
 		pthread_mutex_unlock (&transfer_done);
 	}
 	pthread_mutex_unlock (&transfer_lock);
+	_format_current = _format_next;
 }
 
 static void
@@ -353,6 +476,8 @@ init2 (void)
 
 	spu_get_workarea (&dsp0_addr, &dsp0_size, &dsp0_io);
 
+	dsp0_size = (32 << 10);
+
 	paac = NULL;
 	aacbuf = (unsigned char *)dsp0_io;
 	aacaddr = (unsigned char *)dsp0_addr;
@@ -368,6 +493,12 @@ init2 (void)
 	outbuf_current = NULL;
 	inbuf_copying = NULL;
 	outbuf_copying = NULL;
+
+	datalist_init (&indata);
+	datalist_init (&outdata);
+	datalist_init (&delaydata);
+	datalist_init (&outlendata);
+	datalist_init (&outfmtdata);
 
 	format_type = SPU_AAC_DECODE_SETFMT_TYPE_ADTS;
 	pthread_mutex_lock (&transfer_done);
@@ -493,11 +624,15 @@ get_header_and_pce (long status)
 }
 
 static int
-copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
+copy_output_buffer (void **destbuf, void *destend, int *pneed_output,
+		    void **data, int *datalen)
 {
 	uint8_t *_dstbuf;
 	int _dstlen, copylen;
+	int first = 1;
 
+	*data = NULL;
+	*datalen = 0;
 	_dstbuf = (uint8_t *)*destbuf;
 	_dstlen = (uint8_t *)destend - _dstbuf;
 	if (outbuf_copying == NULL) {
@@ -514,15 +649,23 @@ copy_output_buffer (void **destbuf, void *destend, int *pneed_output)
 		}
 		if (_dstlen == 0)
 			break;
+		if (outdata.head == NULL)
+			break;
 		if (copylen > _dstlen)
 			copylen = _dstlen;
 		if (output_remain > 0 && copylen > output_remain)
-			copylen = copylen > output_remain;
+			copylen = copylen - output_remain;
 		memcpy (_dstbuf, (uint8_t *)outbuf_copying->buf +
 			outbuf_copied, copylen);
 		_dstbuf += copylen;
 		_dstlen -= copylen;
 		outbuf_copied += copylen;
+		if (first != 0) {
+			datalist_sub (&outdata, data, datalen, copylen);
+			first = 0;
+		} else {
+			datalist_sub (&outdata, NULL, NULL, copylen);
+		}
 		if (output_remain == 0)
 			format_current = format_next;
 		output_remain -= copylen;
@@ -569,7 +712,7 @@ handle_last_input_buffer (int *pneed_input, int *pinbuf_added)
 
 static int
 copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
-		   int *pinbuf_added)
+		   int *pinbuf_added, void *data, int datalen)
 {
 	uint8_t *_srcbuf;
 	int _srclen, copylen;
@@ -603,6 +746,7 @@ copy_input_buffer (void **srcbuf, void *srcend, int *pneed_input,
 		_srcbuf += copylen;
 		_srclen -= copylen;
 		inbuf_copied += copylen;
+		datalist_add (&indata, data, datalen, copylen);
 	}
 	if (*srcbuf == (void *)_srcbuf && *srcbuf != srcend)
 		return 0;
@@ -729,7 +873,8 @@ spu_aac_decode_setfmt (struct spu_aac_decode_setfmt_data *format)
 
 long
 spu_aac_decode (void **destbuf, void *destend, void **srcbuf, void *srcend,
-		struct spu_aac_decode_fmt *format)
+		struct spu_aac_decode_fmt *format, void *dataout,
+		void *datain, int datalen)
 {
 	long status;
 	int need_input, need_output;
@@ -740,6 +885,8 @@ spu_aac_decode (void **destbuf, void *destend, void **srcbuf, void *srcend,
 	int incopy, outcopy;
 	unsigned long nblk;
 	long err = RSACPDS_RTN_GOOD;
+	void *_dataout;
+	int _dataoutlen;
 
 once_again:
 	need_input = 0;
@@ -751,16 +898,37 @@ once_again:
 		state.init = 1;
 	}
 	pthread_mutex_lock (&transfer_lock);
-	output_remain += output_remain_add;
-	output_remain_add = 0;
+	while (output_remain <= 0 && outlendata.head != NULL) {
+		int *outlen;
+		struct spu_aac_decode_fmt *outfmt;
+		void *p;
+		int tmp;
+
+		datalist_sub (&outlendata, &p, &tmp, 1);
+		outlen = p;
+		datalist_sub (&outfmtdata, &p, &tmp, 1);
+		outfmt = p;
+		output_remain += *outlen;
+		format_next = *outfmt;
+		free (outlen);
+		free (outfmt);
+	}
 	endflag = outbuf_end;
 	state_decode_end = state.decode_end;
 	state_decode_really_end = state.decode_really_end;
 	transfer_flag = 1;
 	pthread_mutex_unlock (&transfer_lock);
 
-	outcopy = copy_output_buffer (destbuf, destend, &need_output);
-	incopy = copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added);
+	outcopy = copy_output_buffer (destbuf, destend, &need_output,
+				      &_dataout, &_dataoutlen);
+	incopy = copy_input_buffer (srcbuf, srcend, &need_input, &inbuf_added,
+				    datain, datalen);
+	if (_dataoutlen != 0) {
+		if (_dataoutlen > datalen)
+			_dataoutlen = datalen;
+		memcpy (dataout, _dataout, _dataoutlen);
+		free (_dataout);
+	}
 	*format = format_current;
 
 	if (state.open == 0) {
@@ -788,7 +956,6 @@ once_again:
 		need_input = 1;
 		need_output = 0;
 		output_remain = 0;
-		output_remain_add = 0;
 	} else {
 		state_decode = 1;
 		if (state_decode_really_end != 0)
@@ -819,6 +986,9 @@ once_again:
 		if (err < 0)
 			goto close_and_ret;
 		nblk = 0;
+		if (format_type == SPU_AAC_DECODE_SETFMT_TYPE_RAW_AAC ||
+		    format_type == SPU_AAC_DECODE_SETFMT_TYPE_RAW_AACPLUS)
+			nblk = 1;
 		if (state.first_block != 0)
 			nblk = 1;
 		if (RSACPDS_Decode (paac, nblk) < RSACPDS_RTN_GOOD) {
@@ -840,7 +1010,7 @@ once_again:
 		err = -1;
 		goto close_and_ret;
 	}
-	if ((inbuf_end == 2 || incopy == 0) && outcopy == 0) {
+	if ((inbuf_end != 0 || incopy == 0) && outcopy == 0) {
 		pthread_mutex_lock (&transfer_done);
 		goto once_again;
 	}
@@ -869,6 +1039,12 @@ ret:
 			buflist_add (&outbuf_free, outbuf_copying);
 		outbuf_copying = buflist_pop (&outbuf_used);
 	} while (outbuf_copying != NULL);
+	while (indata.head != NULL)
+		datalist_sub (&indata, NULL, NULL, indata.head->len);
+	while (outdata.head != NULL)
+		datalist_sub (&outdata, NULL, NULL, outdata.head->len);
+	while (delaydata.head != NULL)
+		datalist_sub (&delaydata, NULL, NULL, delaydata.head->len);
 unlock_ret:
 	pthread_mutex_lock (&transfer_lock);
 	if (transfer_flag == 0) {

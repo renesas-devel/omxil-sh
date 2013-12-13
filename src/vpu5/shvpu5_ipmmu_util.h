@@ -1,5 +1,5 @@
 /**
-   src/vpu5/shvpu5_avcdec.h
+   src/vpu5/shvpu5_ipmmu_util.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
@@ -24,17 +24,19 @@
    02110-1301 USA
 
 */
-#ifndef __SIMPLE_AVCDEC_H_
-#define __SIMPLE_AVCDEC_H_
-#include "mcvdec.h"
-#include "queue.h"
-#include <OMX_Types.h>
-#include <OMX_Core.h>
-#include <OMX_Component.h>
 
-void
-free_remaining_streams(queue_t *pSIQueue);
+#define PMB_SIZE 128
 
-int
-decode_finalize(void *context);
-#endif /* __SIMPLE_AVCDEC_H_ */
+struct shvpu_ipmmui_t {
+	unsigned long ipmmui_vaddr;
+	unsigned long ipmmui_mask;
+	void *private_data;
+}; 
+
+struct ipmmu_pmb_ops {
+	int (*init) (struct shvpu_ipmmui_t *ipmmui_data, unsigned long phys_base,
+		int stride, int tile_logw, int tile_logh);
+	void (*deinit) (struct shvpu_ipmmui_t *ipmmui_data);
+};
+
+extern struct ipmmu_pmb_ops *pmb_ops;

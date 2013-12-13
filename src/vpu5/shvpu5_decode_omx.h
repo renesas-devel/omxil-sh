@@ -1,5 +1,5 @@
 /**
-   src/vpu5/shvpu5_avcdec_omx.h
+   src/vpu5/shvpu5_decode_omx.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
@@ -40,8 +40,11 @@
 #include "uiomux/uiomux.h"
 #include "mcvdec.h"
 #include "avcdec.h"
-#include "shvpu5_driver.h"
 #include "shvpu5_common_uio.h"
+#include "shvpu5_driver.h"
+#include "shvpu5_decode.h"
+#include "shvpu5_common_ipmmu.h"
+#include "shvpu5_common_meram.h"
 
 /* Specific include files */
 #include <vpu5/OMX_VPU5Ext.h>
@@ -55,11 +58,7 @@
 
 #define AVC_PROFILE_COUNT 3
 
-typedef	struct {
-	OMX_BUFFERHEADERTYPE*	pBuffer[2];
-	OMX_U32			offset;
-	size_t			size;
-} nal_t;
+#define BMI_ENTRIES_SIZE 300
 
 typedef	struct {
 	long			id;
@@ -67,14 +66,7 @@ typedef	struct {
 	OMX_PTR			pMarkData;
 	OMX_TICKS		nTimeStamp;
 	OMX_U32			nFlags;
-} buffer_metainfo_t;
-
-typedef	struct {
-	nal_t*			pNal[16];
-	int			n_nals;
-	size_t			size;
-	OMX_BOOL		hasSlice;
-} pic_t;
+} buffer_avcdec_metainfo_t;
 
 typedef struct {
 	unsigned int	ce_firmware_size;	/* (1) size  of CE firmware */
@@ -84,7 +76,17 @@ typedef struct {
 typedef struct {
 	unsigned long fmem_start;
 	unsigned long fmem_len;
+	pthread_mutex_t filled;
 } shvpu_fmem_data;
+
+typedef struct {
+	void			*codec_params;
+	long			wbuf_size;
+	char 			*ce_firmware_name;
+	char 			*vlc_firmware_name;
+	struct codec_init_ops	*ops;
+	MCVDEC_API_T *		*api_tbl;
+} shvpu_codec_params_t;
 
 typedef struct {
 	shvpu_driver_t		*pDriver;
@@ -92,7 +94,7 @@ typedef struct {
 	/** @param mode for VPU5HG video decoder */
 	long 			codecMode;
 	long 			outMode;
-	AVCDEC_PARAMS_T		avcdec_params;
+	shvpu_codec_params_t	vpu_codec_params;
 	MCVDEC_WORK_INFO_T	wbuf_dec;
 	MCVDEC_FIRMWARE_INFO_T	fw;
 	MCVDEC_CMN_PROPERTY_T	cprop;
@@ -101,9 +103,10 @@ typedef struct {
 	MCVDEC_MV_INFO_T	mv_info;
 	int			frameCount;
 	int			bufferingCount;
+	int			releaseBufCount;
 	/** @param queue for stream info data */
 	queue_t*		pSIQueue;
-	queue_t*		pBMIQueue;
+	buffer_avcdec_metainfo_t	BMIEntries[BMI_ENTRIES_SIZE];
 	OMX_BOOL		enoughHeaders;
 	OMX_BOOL		enoughPreprocess;
 	pthread_cond_t		cond_buffering;
@@ -111,15 +114,22 @@ typedef struct {
 	int 			has_eos;
 	shvpu_fmem_data		*fmem;
 	shvpu_firmware_size_t	fw_size;
+	MCVDEC_FMEM_INFO_T 	*fmem_info;
 	int 			fmem_size;
-} shvpu_codec_t;
+	/** @param private data used for codec specific processing */
+	struct input_parse_ops	*pops;
+	void			*codec_priv;
+} shvpu_decode_codec_t;
 
+typedef struct {
+	int 	native_buffer_enable;
+} android_native_t;
 /** Video Decoder component private structure.
   */
-DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
-#define shvpu_avcdec_PrivateType_FIELDS omx_base_filter_PrivateType_FIELDS \
+DERIVEDCLASS(shvpu_decode_PrivateType, omx_base_filter_PrivateType)
+#define shvpu_decode_PrivateType_FIELDS omx_base_filter_PrivateType_FIELDS \
 	/** @param avCodec pointer to the VPU5HG video decoder */	\
-	shvpu_codec_t *avCodec;						\
+	shvpu_decode_codec_t *avCodec;						\
 	/** @param avCodecContext pointer to VPU5HG decoder context  */ \
 	MCVDEC_CONTEXT_T *avCodecContext;				\
 	/** @param avPicInfo pointer to the VPU5HG current decoded picrure */ 	\
@@ -159,7 +169,7 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	/** @param extradata_size extradata size*/			\
 	OMX_U32 extradata_size;						\
 	/** @param hdr_data array to hold pointers to AVC header data*/ \
-	void *intrinsic[AVCDEC_INTRINSIC_ID_CNT]; \
+	void **intrinsic; \
 	/** @param pVideoProfile reference to supported profiles*/  \
 	OMX_VIDEO_PARAM_PROFILELEVELTYPE pVideoProfile[AVC_PROFILE_COUNT]; \
 	/** @param pVideoProfile reference to current profile*/  \
@@ -172,83 +182,96 @@ DERIVEDCLASS(shvpu_avcdec_PrivateType, omx_base_filter_PrivateType)
 	void *                  uio_start;				\
 	/** @param uio_size size of the uio memory range*/		\
 	unsigned long           uio_size;				\
-	unsigned long           uio_start_phys;
-ENDCLASS(shvpu_avcdec_PrivateType)
+	unsigned long           uio_start_phys;				\
+	shvpu_meram_t		meram_data;				\
+	shvpu_ipmmui_t		*ipmmui_data;				\
+	decode_features_t	features;				\
+	android_native_t	android_native;
+ENDCLASS(shvpu_decode_PrivateType)
 
 /* Component private entry points declaration */
-OMX_ERRORTYPE shvpu_avcdec_Constructor(OMX_COMPONENTTYPE *openmaxStandComp,OMX_STRING cComponentName);
-OMX_ERRORTYPE shvpu_avcdec_Destructor(OMX_COMPONENTTYPE *openmaxStandComp);
-OMX_ERRORTYPE shvpu_avcdec_Init(OMX_COMPONENTTYPE *openmaxStandComp);
-OMX_ERRORTYPE shvpu_avcdec_Deinit(OMX_COMPONENTTYPE *openmaxStandComp);
-OMX_ERRORTYPE shvpu_avcdec_MessageHandler(OMX_COMPONENTTYPE*,internalRequestMessageType*);
+OMX_ERRORTYPE shvpu_decode_Constructor(OMX_COMPONENTTYPE *openmaxStandComp,OMX_STRING cComponentName);
+OMX_ERRORTYPE shvpu_decode_Destructor(OMX_COMPONENTTYPE *openmaxStandComp);
+OMX_ERRORTYPE shvpu_decode_Init(OMX_COMPONENTTYPE *openmaxStandComp);
+OMX_ERRORTYPE shvpu_decode_Deinit(OMX_COMPONENTTYPE *openmaxStandComp);
+OMX_ERRORTYPE shvpu_decode_MessageHandler(OMX_COMPONENTTYPE*,internalRequestMessageType*);
 
-void shvpu_avcdec_DecodePicture(
+void shvpu_decode_DecodePicture(
 	OMX_COMPONENTTYPE *pComponent,
 	OMX_BUFFERHEADERTYPE* outputbuffer);
 
-OMX_ERRORTYPE shvpu_avcdec_GetParameter(
+OMX_ERRORTYPE shvpu_decode_GetParameter(
 	OMX_HANDLETYPE hComponent,
 	OMX_INDEXTYPE nParamIndex,
 	OMX_PTR ComponentParameterStructure);
 
-OMX_ERRORTYPE shvpu_avcdec_SetParameter(
+OMX_ERRORTYPE shvpu_decode_SetParameter(
 	OMX_HANDLETYPE hComponent,
 	OMX_INDEXTYPE nParamIndex,
 	OMX_PTR ComponentParameterStructure);
 
-OMX_ERRORTYPE shvpu_avcdec_ComponentRoleEnum(
+OMX_ERRORTYPE shvpu_decode_GetConfig(
+	OMX_HANDLETYPE hComponent,
+	OMX_INDEXTYPE nIndex,
+	OMX_PTR pComponentConfigStructure);
+
+OMX_ERRORTYPE shvpu_decode_ComponentRoleEnum(
 	OMX_HANDLETYPE hComponent,
 	OMX_U8 *cRole,
 	OMX_U32 nIndex);
 
 OMX_ERRORTYPE
-shvpu_avcdec_GetExtensionIndex(OMX_HANDLETYPE hComponent,
+shvpu_decode_GetExtensionIndex(OMX_HANDLETYPE hComponent,
 				OMX_STRING cParameterName,
 				OMX_INDEXTYPE *pIndexType);
 
-OMX_ERRORTYPE shvpu_avcdec_SetConfig(
+OMX_ERRORTYPE shvpu_decode_SetConfig(
 	OMX_HANDLETYPE hComponent,
 	OMX_INDEXTYPE nIndex,
 	OMX_PTR pComponentConfigStructure);
 
 
 OMX_ERRORTYPE
-shvpu_avcdec_port_AllocateOutBuffer(
+shvpu_decode_port_AllocateOutBuffer(
   omx_base_PortType *pPort,
   OMX_BUFFERHEADERTYPE** pBuffer,
   OMX_U32 nPortIndex,
   OMX_PTR pAppPrivate,
   OMX_U32 nSizeBytes);
 
+OMX_ERRORTYPE shvpu_decode_port_UseBuffer(
+  omx_base_PortType *openmaxStandPort,
+  OMX_BUFFERHEADERTYPE** ppBufferHdr,
+  OMX_U32 nPortIndex,
+  OMX_PTR pAppPrivate,
+  OMX_U32 nSizeBytes,
+  OMX_U8* pBuffer);
+
 OMX_ERRORTYPE
-shvpu_avcdec_port_FreeOutBuffer(
+shvpu_decode_port_FreeBuffer(
   omx_base_PortType *pPort,
   OMX_U32 nPortIndex,
   OMX_BUFFERHEADERTYPE* pBuffer);
 
 OMX_ERRORTYPE
-shvpu_avcdec_SendCommand(
+shvpu_decode_SendCommand(
   OMX_HANDLETYPE hComponent,
   OMX_COMMANDTYPE Cmd,
   OMX_U32 nParam,
   OMX_PTR pCmdData);
 
+OMX_ERRORTYPE
+shvpu_decode_FillThisBuffer(
+  OMX_HANDLETYPE hComponent,
+  OMX_BUFFERHEADERTYPE* pBuffer);
+
 /*The following functions are not directly OMX related, but
  *take structures defined in this file as arguments.
  *They are placed here temporarily, but should be refactored
- *into shvpu5_avcdec.h when time permits*/
-void
-skipFirstPadding(OMX_BUFFERHEADERTYPE *pInBuffer);
-
-nal_t *
-parseBuffer(OMX_COMPONENTTYPE * pComponent,
-	    nal_t *pPrevNal,
-	    OMX_BOOL * pIsInBufferNeeded);
+ *into shvpu5_decode.h when time permits*/
 long
-decode_init(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);
+decode_init(shvpu_decode_PrivateType *shvpu_decode_Private);
 
 void
-decode_deinit(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);
-
-void free_remaining_pictures(shvpu_avcdec_PrivateType *shvpu_avcdec_Private);
+decode_deinit(shvpu_decode_PrivateType *shvpu_decode_Private);
 #endif

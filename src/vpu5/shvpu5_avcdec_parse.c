@@ -29,140 +29,278 @@
 #include <OMX_Types.h>
 #include <OMX_Core.h>
 #include "mcvdec.h"
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_decode_omx.h"
 #include "shvpu5_common_queue.h"
+#include "shvpu5_parse_api.h"
 #include "shvpu5_common_log.h"
 
-#ifndef HAVE_ANDROID_OS
-typedef unsigned int	uintptr_t;
-#endif
+typedef	struct {
+	OMX_BUFFERHEADERTYPE 	*pOMXBuffer[2];
+	void			*buffer[2];
+	size_t			size;
+	size_t			splitBufferLen;
+	OMX_BOOL		hasPicData;
+} nal_t;
 
-static inline unsigned char *
+struct avcparse_meta {
+	OMX_BUFFERHEADERTYPE *pPrevBuffer;
+	queue_t		      NalQueue;
+	OMX_BOOL	      prevPictureNal;
+};
+
+static buffer_avcdec_metainfo_t
+save_omx_buffer_metainfo(OMX_BUFFERHEADERTYPE *pBuffer)
+{
+	buffer_avcdec_metainfo_t buffer_meta;
+
+	buffer_meta.hMarkTargetComponent = pBuffer->hMarkTargetComponent;
+	pBuffer->hMarkTargetComponent = NULL;
+	logd("%s: hMarkTargetComponent = %p\n",
+	     __FUNCTION__, buffer_meta.hMarkTargetComponent);
+	buffer_meta.pMarkData = pBuffer->pMarkData;
+	pBuffer->pMarkData = NULL;
+	logd("%s: pMarkData = %p\n", __FUNCTION__, buffer_meta.pMarkData);
+	buffer_meta.nTimeStamp = pBuffer->nTimeStamp;
+	pBuffer->nTimeStamp = 0;
+	logd("%s: nTimeStamp = %d\n", __FUNCTION__, buffer_meta.nTimeStamp);
+	buffer_meta.nFlags = pBuffer->nFlags &
+		(OMX_BUFFERFLAG_STARTTIME | OMX_BUFFERFLAG_DECODEONLY);
+	pBuffer->nFlags = 0;
+	logd("%s: nFlags = %08x\n", __FUNCTION__, buffer_meta.nFlags);
+
+	return buffer_meta;
+}
+
+static unsigned char *
 extract_avcnal(unsigned char *buf0, size_t len0, unsigned char *buf1, size_t len1)
 {
-	unsigned char start_code[3], *head;
-	size_t start_code_size;
-	unsigned long start_code_mask;
+	int i, j;
+	unsigned char *buf = buf0;
+	int len;
 
-	start_code[0] = 0x00;
-	start_code[1] = 0x00;
-	start_code[2] = 0x01;
-	start_code_size = 3;
-	start_code_mask = 0U;
+	len = len0;
 
-	/* search start-code */
-	head = mcvdec_search_startcode(buf0, len0, buf1, len1,
-				       start_code,
-				       start_code_size,
-				       start_code_mask);
+	for (i = 0; i < 2; i++) {
+		for (j = 0; j < len - 2; j++) {
+			if (buf[j] == 0 && buf[j+1] == 0 && buf[j+2] == 1)
+				return &buf[j];
+		}
+		if (i == 0 && buf1) { // cross buffer checking
+			if (buf[j] == 0 && buf[j+1] == 0 && buf1[0] == 1)
+				return &buf[j];
+			else if (buf[j+1] == 0 && buf1[0] == 0 && buf1[1] == 1)
+				return &buf[j+1];
+		}
+		buf = buf1;
+		len = len1;
+	}
 
-	return head;
+	return NULL;
 }
 
 static inline OMX_BOOL
-isSubsequentPic(nal_t *pNal[], int former, OMX_BOOL *pHasSlice)
+isSubsequentPic(nal_t *pNal, OMX_BOOL prevPictureNal)
 {
-	int type[2], first_mb[2], i, has_eos;
+	int type, *first_mb, has_eos;
 	size_t len;
 	OMX_U8 *pbuf;
 
 	/* type */
-	for (i = 0; i < 2; i++) {
-		if (pNal[former] == NULL) {
-			type[i] = 9; /* AUD */
-			continue;
-		}
-		len =
-			pNal[former]->pBuffer[0]->nOffset +
-			pNal[former]->pBuffer[0]->nFilledLen -
-			pNal[former]->offset;
-		switch (len) {
-		case 0:
-		case 1:
-		case 2:
-		case 3:
-			pbuf = pNal[former]->pBuffer[1]->pBuffer;
-			type[i] = pbuf[3 - len] & 0x1fU;
-			first_mb[i] = pbuf[4 - len] & 0x80U;
-			break;
-		case 4:
-			pbuf =
-				pNal[former]->pBuffer[0]->pBuffer +
-				pNal[former]->offset;
-			type[i] = pbuf[3] & 0x1fU;
-			if (pNal[former]->pBuffer[1]) {
-				pbuf = pNal[former]->pBuffer[1]->pBuffer;
-				first_mb[i] = pbuf[0] & 0x80U;
-			}
-			break;
-		default:
-			pbuf =
-				pNal[former]->pBuffer[0]->pBuffer +
-				pNal[former]->offset;
-			type[i] = pbuf[3] & 0x1fU;
-			first_mb[i] = pbuf[4] & 0x80U;
-			break;
-		}
-		former ^= 1;
+	len =
+		pNal->size - pNal->splitBufferLen;
+	switch (len) {
+	case 0:
+	case 1:
+	case 2:
+	case 3:
+		pbuf = pNal->buffer[1];
+		type = pbuf[3 - len] & 0x1fU;
+		first_mb = &pbuf[4 - len];
+		break;
+	case 4:
+		pbuf = pNal->buffer[0];
+		type = pbuf[3] & 0x1fU;
+		pbuf = pNal->buffer[1];
+		first_mb = &pbuf[0];
+		break;
+	default:
+		pbuf = pNal->buffer[0];
+		type = pbuf[3] & 0x1fU;
+		first_mb = &pbuf[4];
+		break;
 	}
 
-	*pHasSlice = 0;
-	for (i = 0; i < 2; i++) {
-		switch (type[i]) {
-		case 2:
-			logd("%d:DP-A\n", i);
+	switch (type) {
+	case 2:
+		logd("DP-A\n");
+		break;
+	case 3:
+		logd("DP-B\n");
 			break;
-		case 3:
-			logd("%d:DP-B\n", i);
-			break;
-		case 4:
-			logd("%d:DP-C\n", i);
-			break;
-		case 1:
-			logd("%d:non IDR(%02x)\n", i, first_mb[i]);
-			if (*pHasSlice && (first_mb[i] == 0x80U))
-				return OMX_TRUE;
-			*pHasSlice = 1;
-			break;
-		case 5:
-			logd("%d:IDR(%02x)\n", i, first_mb[i]);
-			if (*pHasSlice && (first_mb[i] == 0x80U))
-				return OMX_TRUE;
-			*pHasSlice = 1;
-			break;
-		case 6:
-			logd("%d:SEI\n", i);
-			if (*pHasSlice)
-				return OMX_TRUE;
-			break;
-		case 8:
-			logd("%d:PPS\n", i);
-			break;
-		case 9:
-			logd("AUD\n");
+	case 4:
+		logd("DP-C\n");
+		break;
+	case 1:
+		logd("non IDR(%02x)\n", *first_mb & 0x80U);
+		pNal->hasPicData = OMX_TRUE;
+		if (prevPictureNal && ((*first_mb & 0x80U) == 0x80U))
 			return OMX_TRUE;
-		case 7:
-			logd("%d:SPS\n", i);
-			if (*pHasSlice)
-				return OMX_TRUE;
-			break;
-		case 10:
-			logd("%d:EoSeq\n", i);
-			break;
-		case 11:
-			logd("%d:EoStr\n", i);
-			has_eos = 1;
+		break;
+	case 5:
+		logd("IDR(%02x)\n", *first_mb & 0x80U);
+		pNal->hasPicData = OMX_TRUE;
+		if (prevPictureNal && ((*first_mb & 0x80U) == 0x80U))
 			return OMX_TRUE;
-		default:
-			loge("UNKNOWN(%2d)\n", type[i]);
-			break;
-		}
+		break;
+	case 6:
+		logd("SEI\n");
+		if (prevPictureNal)
+			return OMX_TRUE;
+		break;
+	case 8:
+		logd("PPS\n");
+		if (prevPictureNal)
+			return OMX_TRUE;
+		break;
+	case 9:
+		logd("AUD\n");
+		if (prevPictureNal)
+			return OMX_TRUE;
+		break;
+	case 7:
+		logd("SPS\n");
+		if (prevPictureNal)
+			return OMX_TRUE;
+		break;
+	case 10:
+		logd("EoSeq\n");
+		break;
+	case 11:
+		logd("EoStr\n");
+		has_eos = 1;
+		if (prevPictureNal)
+			return OMX_TRUE;
+		break;
+	case 12:
+		logd("Filler data\n");
+		if (prevPictureNal)
+			return OMX_TRUE;
+		break;
+	default:
+		loge("UNKNOWN(%2d)\n", type);
+		break;
 	}
 
 	return OMX_FALSE;
 }
 
-void
+static size_t
+trim_trailing_zero(unsigned char *addr, size_t size)
+{
+	while ((size > 0) &&
+	       (addr[size - 1] == 0x00U))
+		size--;
+
+	return size;
+}
+
+static int
+copyNalData(pic_t *pPic, queue_t *pNalQueue) {
+
+	phys_input_buf_t *pBuf;
+	nal_t **pNal, **pNalHead;
+	buffer_avcdec_metainfo_t buffer_meta;
+	int i,j;
+
+	if (pNalQueue->nelem <= 0)
+		return 0;
+
+	pBuf = calloc(1, sizeof(*pBuf));
+	if (pBuf == NULL)
+		return -1;
+
+	pNal = pNalHead = calloc(pNalQueue->nelem, sizeof(nal_t *));
+	if (pNalHead == NULL) {
+		free (pBuf);
+		return -1;
+	}
+
+	pPic->hasSlice = 1;
+
+	i = 0;
+	while (pNalQueue->nelem > 0) {
+		(*pNal) = dequeue(pNalQueue);
+		if ((*pNal) == NULL) {
+			DEBUG(DEB_LEV_ERR,
+			      "Had NULL input nal!!\n");
+			break;
+		}
+
+		int len = (*pNal)->size - (*pNal)->splitBufferLen;
+		(*pNal)->pOMXBuffer[0]->nFilledLen -= len;
+		(*pNal)->pOMXBuffer[0]->nOffset += len;
+		len = (*pNal)->splitBufferLen;
+		int shrink = -1;
+		if ((*pNal)->splitBufferLen) {
+			shrink = trim_trailing_zero((*pNal)->buffer[1],
+					   (*pNal)->splitBufferLen);
+			(*pNal)->size -= ((*pNal)->splitBufferLen - shrink);
+			(*pNal)->splitBufferLen = shrink;
+			(*pNal)->pOMXBuffer[1]->nFilledLen -= len;
+			(*pNal)->pOMXBuffer[1]->nOffset += len;
+		}
+		if (!shrink) {
+			(*pNal)->size = trim_trailing_zero((*pNal)->buffer[0],
+					   (*pNal)->size);
+		}
+
+		pBuf->size += (*pNal)->size;
+		pBuf->buf_sizes[i++] = (*pNal)->size;
+		pBuf->n_sbufs++;
+		if (!pPic->has_meta && ((*pNal)->hasPicData)) {
+			logd("store buffer metadata\n");
+			buffer_meta = save_omx_buffer_metainfo((*pNal)->pOMXBuffer[0]);
+			pPic->buffer_meta = buffer_meta;
+			pPic->has_meta = 1;
+		}
+		pNal++;
+	}
+
+	pBuf->size = (pBuf->size + 0x200 + 0x600 + 255) / 256;
+	if ((pBuf->size % 2) == 0)
+		pBuf->size++;
+	pBuf->size *= 0x200;
+	pBuf->base_addr = pmem_alloc(pBuf->size, 256, NULL);
+	pNal = pNalHead;
+	pBuf->buf_offsets[0] = pBuf->base_addr + 256;
+	for (i = 0; i < pBuf->n_sbufs; i++) {
+		int size = (*pNal)->size;
+		size_t offDst = 0;
+		int len = size - (*pNal)->splitBufferLen;
+		for (j = 0; j < 2; j++) {
+			void *pData = (*pNal)->buffer[j];
+			memcpy(pBuf->buf_offsets[i] + offDst, pData, len);
+			size -= len;
+			offDst += len;
+			if (size <= 0)
+				break;
+			len = (*pNal)->splitBufferLen;
+		}
+		if (i < (pBuf->n_sbufs-1)) {
+			pBuf->buf_offsets[i + 1] =
+				pBuf->buf_offsets[i] + (*pNal)->size;
+		}
+		free(*pNal);
+		pNal++;
+	}
+	free(pNalHead);
+	pPic->pBufs[pPic->n_bufs++] = pBuf;
+	pPic->size += pBuf->size;
+	pPic->n_sbufs += pBuf->n_sbufs;
+	return 0;
+}
+
+static void
 skipFirstPadding(OMX_BUFFERHEADERTYPE *pInBuffer)
 {
 	void *pHead, *pStart;
@@ -191,153 +329,142 @@ isInsideBuffer(void *pHead, void *pBuffer, size_t nSize)
 	return OMX_FALSE;
 }
 
-static inline int
-registerPic(queue_t *pPicQueue, tsem_t *pPicSem,
-	    queue_t *pNalQueue, tsem_t *pNalSem, OMX_BOOL hasSlice)
-{
-	pic_t *pPic;
+static OMX_BOOL
+parseAVCBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
+	    OMX_BUFFERHEADERTYPE *pBuffer,
+	    OMX_BOOL		 eos,
+	    pic_t		 *pActivePic,
+	    OMX_BOOL 		 *pIsInBufferNeeded) {
 
-	pPic = calloc(1, sizeof(pic_t));
-	if (pPic == NULL)
-		return -1;
+	struct avcparse_meta *avcparse = shvpu_decode_Private->avCodec->codec_priv;
+	unsigned char *pHead, *pStart;
+	unsigned char *pStartSub;
+	size_t nRemainSize, nSizeSub;
+	nal_t *pNal;
+	OMX_BOOL splitBuffer;
+	OMX_BOOL lastBuffer = OMX_FALSE;
+	queue_t *NalQueue = &avcparse->NalQueue;
 
-	pPic->n_nals = pPic->size = 0;
-	pPic->hasSlice = hasSlice;
-	while (pNalSem->semval > 0) {
-		tsem_down(pNalSem);
-		if (pNalQueue->nelem > 0) {
-			pPic->pNal[pPic->n_nals] =
-				dequeue(pNalQueue);
-			if (pPic->pNal[pPic->n_nals] == NULL) {
-				DEBUG(DEB_LEV_ERR,
-				      "Had NULL input nal!!\n");
+	copyNalData(pActivePic, NalQueue);
+
+	if (avcparse->pPrevBuffer) {
+		pStart = avcparse->pPrevBuffer->pBuffer +
+			avcparse->pPrevBuffer->nOffset;
+		nRemainSize = avcparse->pPrevBuffer->nFilledLen;
+		pStartSub = pBuffer->pBuffer + pBuffer->nOffset;
+		nSizeSub = pBuffer->nFilledLen;
+	} else {
+		skipFirstPadding(pBuffer);
+		pStart = pBuffer->pBuffer + pBuffer->nOffset;
+		nRemainSize = pBuffer->nFilledLen;
+		pStartSub = NULL;
+		nSizeSub = 0;
+	}
+
+
+	while (nRemainSize > 3) {
+		pHead = extract_avcnal((unsigned char *)pStart + 3,
+					nRemainSize - 3,
+					pStartSub, nSizeSub);
+
+		if (!pHead) {
+			if (eos) {
+				pHead = pStart + nRemainSize;
+				lastBuffer = OMX_TRUE;
+			} else {
 				break;
 			}
-			pPic->size += pPic->pNal[pPic->n_nals]->size;
-			pPic->n_nals++;
 		}
-	}
-	queue(pPicQueue, pPic);
-	tsem_up(pPicSem);
-	logd("a picture with %d nals queued. %d=%d\n",
-	     pPic->n_nals, pPicSem->semval, pPicQueue->nelem);
 
-	return 0;
-}
-
-nal_t *
-parseBuffer(OMX_COMPONENTTYPE * pComponent,
-	    nal_t *pPrevNal,
-	    OMX_BOOL * pIsInBufferNeeded)
-{
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *) pComponent->pComponentPrivate;
-	tsem_t *pNalSem = shvpu_avcdec_Private->pNalSem;
-	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
-	queue_t *pNalQueue = shvpu_avcdec_Private->pNalQueue;
-	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
-	nal_t *pNal[2] = { NULL, NULL };
-	void *pHead, *pStart, *pStartSub;
-	size_t nRemainSize, nSizeSub;
-	OMX_BOOL splitBuffer, hasSlice;
-	int which, cur = 0;
-
-	/* error check */
-	if (!pPrevNal) {
-		loge("NULL pPrevNAL!!!\n");
-		return NULL;
-	}
-
-	pNal[cur] = pPrevNal;
-	cur ^= 1;
-	splitBuffer = (pNal[cur ^ 1]->pBuffer[1]) ? OMX_TRUE : OMX_FALSE;
-
-	while (pNal[cur ^ 1]->size >= 3) {
-		/* look for a NAL head */
-		pStart = pNal[cur ^ 1]->pBuffer[0]->pBuffer +
-			pNal[cur ^ 1]->offset;
-		nRemainSize = pNal[cur ^ 1]->size;
-		if (splitBuffer) {
-			pStartSub = pNal[cur ^ 1]->pBuffer[1]->pBuffer +
-				pNal[cur ^ 1]->pBuffer[1]->nOffset;
-			nSizeSub = pNal[cur ^ 1]->pBuffer[1]->nFilledLen;
+		pNal = calloc(1, sizeof(nal_t));
+		if (avcparse->pPrevBuffer) {
+			pNal->pOMXBuffer[0] = avcparse->pPrevBuffer;
+			pNal->pOMXBuffer[1] = pBuffer;
 		} else {
+			pNal->pOMXBuffer[0] = pBuffer;
+		}
+
+		pNal->buffer[0] = pStart;
+		splitBuffer = !((pHead >= pStart) &&
+				(pHead < pStart + nRemainSize)) && !lastBuffer;
+
+		if (splitBuffer) {
+			pNal->size = nRemainSize + pHead - pStartSub;
+			nRemainSize = nSizeSub - (pHead - pStartSub);
+			pNal->buffer[1] = pStartSub;
+			pNal->splitBufferLen = (pHead - pStartSub);
+			avcparse->pPrevBuffer = pBuffer;
 			pStartSub = NULL;
 			nSizeSub = 0;
-		}
-		pHead = extract_avcnal((unsigned char *)pStart + 3, nRemainSize - 3,
-				       pStartSub, nSizeSub);
-		if (pHead == NULL) {
-			if (pStartSub) {
-				logd("it must be the final\n");
-				shvpu_avcdec_Private->bIsEOSReached = OMX_TRUE;
-				goto register_nal;
-			}
-
-			*pIsInBufferNeeded = OMX_TRUE;
-			break;
-		}
-
-		/* create a NAL entry */
-		pNal[cur] = calloc(1, sizeof(nal_t));
-		which = isInsideBuffer(pHead, pStartSub, nSizeSub) ? 1 : 0;
-		pNal[cur]->pBuffer[0] = pNal[cur ^ 1]->pBuffer[which];
-		pNal[cur]->offset = (OMX_U32)pHead -
-			(OMX_U32)pNal[cur ^ 1]->pBuffer[which]->pBuffer;
-
-		/* in the meanwhile, it assumes that the nal size
-		   may be equal to remain size of the buffer */
-		pNal[cur]->size = pNal[cur]->pBuffer[0]->nOffset +
-			pNal[cur]->pBuffer[0]->nFilledLen -
-			pNal[cur]->offset;
-
-		/* fix up size of the previous nal */
-		if (splitBuffer) {
-			pNal[cur ^ 1]->size +=
-				(OMX_U32)pHead - (OMX_U32)pStartSub;
-			splitBuffer = OMX_FALSE;
 		} else {
-			pNal[cur ^ 1]->size =
-				(OMX_U32)pHead - (OMX_U32)pStart;
+			pNal->size = pHead - pStart;
+			nRemainSize -= pNal->size;
 		}
 
-	register_nal:
-		/* queue the previous nal */
-		queue(pNalQueue, pNal[cur ^ 1]);
-		tsem_up(pNalSem);
+		pStart = pHead;
 
-		/* check picture boundary and
-		   associate queued nals with a picture */
-		if (isSubsequentPic(pNal, cur ^ 1, &hasSlice)) {
-			registerPic(pPicQueue, pPicSem,
-				    pNalQueue, pNalSem, hasSlice);
-			return pNal[cur];
+		if (isSubsequentPic(pNal, avcparse->prevPictureNal)) {
+			avcparse->prevPictureNal = pNal->hasPicData;
+			copyNalData(pActivePic, NalQueue);
+			queue(NalQueue, pNal);
+			avcparse->pPrevBuffer = NULL;
+			return OMX_TRUE;
 		}
-
-		cur ^= 1;
+		queue(NalQueue, pNal);
+		avcparse->prevPictureNal = pNal->hasPicData;
+		if (lastBuffer) {
+			copyNalData(pActivePic, NalQueue);
+			memset(avcparse, 0, sizeof(*avcparse));
+			return OMX_FALSE;
+		}
 	}
 
-	return pNal[cur ^ 1];
+	avcparse->pPrevBuffer = pBuffer;
+	*pIsInBufferNeeded = OMX_TRUE;
+	return OMX_FALSE;
 }
 
-void free_remaining_pictures(shvpu_avcdec_PrivateType *shvpu_avcdec_Private) {
-	tsem_t *pNalSem = shvpu_avcdec_Private->pNalSem;
-	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
-	queue_t *pNalQueue = shvpu_avcdec_Private->pNalQueue;
-	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
-	pic_t *pPic;
+void
+flushAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
+	struct avcparse_meta *avcparse =
+			shvpu_decode_Private->avCodec->codec_priv;
+	queue_t *pNalQueue = &avcparse->NalQueue;
 	nal_t *nal;
 
-	tsem_reset(pPicSem);
-	tsem_reset(pNalSem);
-
-	while (pPicQueue->nelem > 0) {
-		pPic = shvpu_dequeue(pPicQueue);
-		free(pPic);
-	}
-
 	while (pNalQueue->nelem > 0) {
-		nal = shvpu_dequeue(pNalQueue);
+		nal = dequeue(pNalQueue);
 		free(nal);
 	}
+	memset(avcparse, 0, sizeof(struct avcparse_meta));
+	queue_init(&avcparse->NalQueue);
+}
+
+void
+deinitAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
+	struct avcparse_meta *avcparse =
+			shvpu_decode_Private->avCodec->codec_priv;
+	free (avcparse);
+}
+
+static const unsigned char nal_data_eos[16] = {
+	0x00, 0x00, 0x01, 0x0B,
+};
+static struct input_parse_ops avc_parse_ops = {
+	.parseBuffer = parseAVCBuffer,
+	.parserFlush = flushAvcParser,
+	.parserDeinit = deinitAvcParser,
+	.EOSCode = nal_data_eos,
+	.EOSCodeLen = sizeof(nal_data_eos),
+};
+
+int
+initAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
+	struct avcparse_meta *avcparse;
+	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
+	avcparse = pCodec->codec_priv =
+		calloc(1, sizeof(struct avcparse_meta));
+	memset(avcparse, 0, sizeof(struct avcparse_meta));
+	queue_init(&avcparse->NalQueue);
+	pCodec->pops = &avc_parse_ops;
+	return 0;
 }

@@ -32,7 +32,12 @@
 #include <unistd.h>
 #include <string.h>
 #include "mciph.h"
+#if defined(VPU_VERSION_5)
 #include "mciph_hg.h"
+#elif defined(VPU5HA_SERIES)
+#include "mciph_ip0_cmn.h"
+#include "mciph_ip0_enc.h"
+#endif
 #include "mcvenc.h"
 #include "avcenc.h"
 #include "shvpu5_avcenc.h"
@@ -87,17 +92,18 @@ free_fmem(int width, int height, MCVENC_FMEM_INFO_T *fmem)
 }
 
 
-shvpu_codec_t *
+shvpu_avcenc_codec_t *
 encode_new()
 {
         extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
-	shvpu_codec_t *pCodec;
+	shvpu_avcenc_codec_t *pCodec;
 
 	/* allocate */
-	pCodec = (shvpu_codec_t *)calloc(1, sizeof(shvpu_codec_t));
+	pCodec = (shvpu_avcenc_codec_t *)
+			calloc(1, sizeof(shvpu_avcenc_codec_t));
 	if (!pCodec)
 		return NULL;
-	memset((void *)pCodec, 0, sizeof(shvpu_codec_t));
+	memset((void *)pCodec, 0, sizeof(shvpu_avcenc_codec_t));
 
 	/* initialize const MCVENC_CMN_PROPERTY_T parameters */
 	pCodec->cmnProp.stream_type = MCVENC_H264;
@@ -111,16 +117,20 @@ encode_new()
 	pCodec->cmnProp.max_GOP_length = 30;
 	pCodec->cmnProp.B_pic_mode = 0;
 	pCodec->cmnProp.num_ref_frames = 1;
+#if defined(VPU5HA_SERIES)
+	pCodec->cmnProp.hrc_mode = MCVENC_OFF;
+	pCodec->cmnProp.num_views = 1;
+	pCodec->cmnProp.max_rate_delay = 5;
+#endif
 
 	/* initialize the (non-zero) default AVCENC_OPTION_T parameters */
 	pCodec->avcOpt.start_code_mode = AVCENC_ON;
-	pCodec->avcOpt.hrc_mode = AVCENC_OFF;
 	/* MEMO: cbp_size and cbp_remain never set. */
 	pCodec->avcOpt.sps_profile_idc = AVCENC_BASELINE;
-	pCodec->avcOpt.sps_constraint_set0_flag = AVCENC_ON;
-	pCodec->avcOpt.sps_constraint_set1_flag = AVCENC_ON;
-	pCodec->avcOpt.sps_constraint_set2_flag = AVCENC_ON;
-	pCodec->avcOpt.sps_constraint_set3_flag = AVCENC_OFF;
+	pCodec->sps_constraint_flags[0] = AVCENC_ON;
+	pCodec->sps_constraint_flags[1] = AVCENC_ON;
+	pCodec->sps_constraint_flags[2] = AVCENC_ON;
+	pCodec->sps_constraint_flags[3] = AVCENC_OFF;
 	pCodec->avcOpt.sps_level_idc = 10;
 	pCodec->avcOpt.sps_pic_order_cnt_type =	AVCENC_POC_TYPE_2;
 	pCodec->avcOpt.sps_gaps_in_frame_num_value_allowed_flag = AVCENC_OFF;
@@ -129,18 +139,30 @@ encode_new()
 	pCodec->avcOpt.pps_transform_8x8_mode_flag = AVCENC_OFF;
 	pCodec->avcOpt.slh_slice_type_mode = AVCENC_SLICE_TYPE_A;
 	pCodec->avcOpt.slh_disable_deblocking_filter_idc = AVCENC_DBF_MODE_0;
+#if defined(VPU5HA_SERIES)
+	pCodec->avcOpt.pps_num = 1;
+#endif
 
 	return pCodec;
 }
 
 long
-encode_init(shvpu_codec_t *pCodec)
+encode_init(shvpu_avcenc_codec_t *pCodec)
 {
 	MCVENC_CONTEXT_T *pContext;
 	long ret;
 	extern const MCVENC_API_T avcenc_api_tbl;
 	MCVENC_CMN_PROPERTY_T *pCmnProp = &pCodec->cmnProp;
         AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
+	shvpu_work_memory_t *pCmnWorkMem = &pCodec->cmnWorkMem;
+	int num_views;
+#if defined(VPU_VERSION_5)
+	num_views = 1;
+#elif defined(VPU5HA_SERIES)
+	num_views = pCmnProp->num_views;
+
+#endif
+	size_t fwsize;
 
 	ret = shvpu_driver_init(&pCodec->pDriver);
 	if (ret != 0)
@@ -148,25 +170,27 @@ encode_init(shvpu_codec_t *pCodec)
 
 	/*** initialize encoder ***/
 	extern unsigned long uio_virt_to_phys(void *, long, unsigned long);
-	static MCVENC_WORK_INFO_T wbuf_enc = {
-		.work_area_size = 0x5800,  /* 20 + 2KiB */
-	};
-	static MCVENC_FIRMWARE_INFO_T fw;
-	size_t fwsize;
-	wbuf_enc.work_area_addr = malloc_aligned(wbuf_enc.work_area_size, 4);
-	logd("work_area_addr = %p\n", wbuf_enc.work_area_addr);
-	fw.ce_firmware_addr =
+#if defined(VPU_VERSION_5)
+	pCmnWorkMem->wbuf_enc.work_area_size = 0x5800,  /* 20 + 2KiB */
+#elif defined(VPU5HA_SERIES)
+	pCmnWorkMem->wbuf_enc.work_area_size = 12000 + (1024 * num_views) +
+		(1024 * pCmnProp->max_rate_delay * num_views) + (10 * 1024);
+#endif
+	pCmnWorkMem->wbuf_enc.work_area_addr =
+		malloc_aligned(pCmnWorkMem->wbuf_enc.work_area_size, 4);
+	logd("work_area_addr = %p\n", pCmnWorkMem->wbuf_enc.work_area_addr);
+	pCmnWorkMem->fw.ce_firmware_addr =
 		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/p264e_h.bin",
-				     &fwsize);
-	logd("ce_firmware_addr = %lx\n", fw.ce_firmware_addr);
-	fw.vlc_firmware_addr =
+				     &pCmnWorkMem->ce_fw_size);
+	logd("ce_firmware_addr = %lx\n", pCmnWorkMem->fw.ce_firmware_addr);
+	pCmnWorkMem->fw.vlc_firmware_addr =
 		shvpu5_load_firmware(VPU5HG_FIRMWARE_PATH "/s264e.bin",
-				     &fwsize);
-	logd("vlc_firmware_addr = %lx\n", fw.vlc_firmware_addr);
+				     &pCmnWorkMem->vlc_fw_size);
+	logd("vlc_firmware_addr = %lx\n", pCmnWorkMem->fw.vlc_firmware_addr);
 	logd("----- invoke mcvenc_init_encoder() -----\n");
 	ret = mcvenc_init_encoder((MCVENC_API_T *)&avcenc_api_tbl,
-				  pCmnProp, &wbuf_enc,
-				  &fw, pCodec->pDriver->pDrvInfo,
+				  pCmnProp, &pCmnWorkMem->wbuf_enc,
+				  &pCmnWorkMem->fw, pCodec->pDriver->pDrvInfo,
 				  &pContext);
 	logd("----- resume from mcvenc_init_encoder() -----\n");
 	if (ret != MCIPH_NML_END)
@@ -179,61 +203,71 @@ encode_init(shvpu_codec_t *pCodec)
 	/*** initialize work area ***/
 	void *vaddr;
 	unsigned long paddr;
-	static MCVENC_IMD_INFO_T imd_info;
-	static MCVENC_LDEC_INFO_T ldec_info;
-	static MCVENC_IR_INFO_T ir_info;
-	static MCVENC_MV_INFO_T mv_info;
-	size_t a, b, mb_width, mb_height, mv_info_size;
+	size_t a, b, mb_width, mb_height;
 	int i;
 
 	a = 4 * pCmnProp->bitrate / 8;
 	b = pCmnProp->x_pic_size * pCmnProp->y_pic_size * 4;
-	imd_info.imd_buff_size = (a > b) ? a : b;
-	imd_info.imd_buff_size =
-		((imd_info.imd_buff_size + 2047) / 2048) * 2048;
-	vaddr = pmem_alloc(imd_info.imd_buff_size,
-			   32, &imd_info.imd_buff_addr);
-	logd("imd_info.imd_buff_addr = %lx\n",
-	       imd_info.imd_buff_addr);
+	pCmnWorkMem->imd_info.imd_buff_size = (a > b) ? a : b;
+	pCmnWorkMem->imd_info.imd_buff_size =
+		((pCmnWorkMem->imd_info.imd_buff_size + 2047) / 2048) * 2048 * num_views;
+	vaddr = pmem_alloc(pCmnWorkMem->imd_info.imd_buff_size,
+			   32, &pCmnWorkMem->imd_info.imd_buff_addr);
+	logd("pCmnWorkMem->imd_info.imd_buff_addr = %lx\n",
+	       pCmnWorkMem->imd_info.imd_buff_addr);
 	if (!vaddr)
 		return -1;
-	ldec_info.ldec_num = 3;
-	for (i=0; i<ldec_info.ldec_num; i++) {
+	pCmnWorkMem->ldec_info.ldec_num = 3;
+	for (i=0; i<pCmnWorkMem->ldec_info.ldec_num; i++) {
 		ret = alloc_fmem(pCmnProp->x_pic_size,
 				 pCmnProp->y_pic_size,
-				 &ldec_info.fmem[i][0]);
+				 &pCmnWorkMem->ldec_info.fmem[i][0]);
 		if (ret < 0)
 			return -1;
-		ldec_info.fmem[i][1].Ypic_addr = 0U;
-		ldec_info.fmem[i][1].Cpic_addr = 0U;
+		pCmnWorkMem->ldec_info.fmem[i][1].Ypic_addr = 0U;
+		pCmnWorkMem->ldec_info.fmem[i][1].Cpic_addr = 0U;
 	}
-
-	ir_info.ir_info_size = 4800;
-	ir_info.ir_info_addr = (unsigned long)
-		pmem_alloc(ir_info.ir_info_size, 32, &paddr);
-	logd("ir_info.ir_info_addr = %lx\n", ir_info.ir_info_addr);
-	if (!ir_info.ir_info_addr)
+#if defined(VPU_VERSION_5)
+	pCmnWorkMem->ir_info.ir_info_size = 4800;
+#elif defined(VPU5HA_SERIES)
+	pCmnWorkMem->ir_info.ir_info_size = 6656;
+#endif
+	pCmnWorkMem->ir_info.ir_info_addr = (unsigned long)
+		pmem_alloc(pCmnWorkMem->ir_info.ir_info_size, 32, &paddr);
+	logd("pCmnWorkMem->ir_info.ir_info_addr = %lx\n", pCmnWorkMem->ir_info.ir_info_addr);
+	if (!pCmnWorkMem->ir_info.ir_info_addr)
 		return -1;
 	mb_width = (pCmnProp->x_pic_size + 15) / 16;
 	mb_height = (pCmnProp->y_pic_size + 15) / 16;
-	mv_info_size = ((16 * mb_width *
+
+#if defined(VPU_VERSION_5)
+	pCmnWorkMem->mv_info_size = ((16 * mb_width *
 			 ((mb_height + 1) / 2) + 255) / 256) * 256;
-	vaddr = pmem_alloc(mv_info_size, 32, &mv_info.mv_info_addr[0]);
-	logd("mv_info.mv_info_addr[0] = %lx\n", mv_info.mv_info_addr[0]);
+#elif defined(VPU5HA_SERIES)
+	pCmnWorkMem->mv_info_size = ((16 * mb_width *
+			 ((mb_height + 1) / 2) + 511) / 512) * 512 + 512;
+#endif
+	vaddr = pmem_alloc(pCmnWorkMem->mv_info_size, 32,
+		&pCmnWorkMem->mv_info.mv_info_addr[0]);
+	logd("pCmnWorkMem->mv_info.mv_info_addr[0] = %lx\n",
+		pCmnWorkMem->mv_info.mv_info_addr[0]);
 	if (!vaddr)
 		return -1;
-	vaddr = pmem_alloc(mv_info_size, 32, &mv_info.mv_info_addr[1]);
-	logd("mv_info.mv_info_addr[1] = %lx\n", mv_info.mv_info_addr[1]);
+	vaddr = pmem_alloc(pCmnWorkMem->mv_info_size, 32,
+		&pCmnWorkMem->mv_info.mv_info_addr[1]);
+	logd("pCmnWorkMem->mv_info.mv_info_addr[1] = %lx\n",
+		pCmnWorkMem->mv_info.mv_info_addr[1]);
 	if (!vaddr)
 		return -1;
-	mv_info.mv_info_addr[2] = 0;
-	mv_info.mv_info_addr[3] = 0;
+	pCmnWorkMem->mv_info.mv_info_addr[2] = 0;
+	pCmnWorkMem->mv_info.mv_info_addr[3] = 0;
 	if (!vaddr)
 		return -1;
 
 	logd("----- invoke mcvenc_set_vpu5_work_area() -----\n");
-	ret = mcvenc_set_vpu5_work_area(pContext, &imd_info,
-					&ldec_info, &ir_info, &mv_info);
+	ret = mcvenc_set_vpu5_work_area(pContext, &pCmnWorkMem->imd_info,
+					&pCmnWorkMem->ldec_info, &pCmnWorkMem->ir_info,
+					&pCmnWorkMem->mv_info);
 	logd("----- resume from mcvenc_set_vpu5_work_area() -----\n");
 	if (ret != MCIPH_NML_END)
 		return ret;
@@ -247,6 +281,20 @@ encode_init(shvpu_codec_t *pCodec)
 
 	/*** set avc specific option ***/
 	if (pCodec->avcOptSet) {
+#if defined(VPU_VERSION_5)
+		pAvcOpt->sps_constraint_set0_flag =
+			pCodec->sps_constraint_flags[0];
+		pAvcOpt->sps_constraint_set1_flag =
+			pCodec->sps_constraint_flags[1];
+		pAvcOpt->sps_constraint_set2_flag =
+			pCodec->sps_constraint_flags[2];
+		pAvcOpt->sps_constraint_set3_flag =
+			pCodec->sps_constraint_flags[3];
+#elif defined(VPU5HA_SERIES)
+		memcpy(&pAvcOpt->sps_constraint_set_flag,
+			&pCodec->sps_constraint_flags,
+			sizeof(pCodec->sps_constraint_flags));
+#endif
 		logd("----- invoke avcdec_set_option() -----\n");
 		ret = avcenc_set_option(pContext, pAvcOpt,
 					pCodec->avcOptSet);
@@ -267,7 +315,7 @@ init_failed:
 }
 
 int
-encode_set_profile(shvpu_codec_t *pCodec, int profile_id)
+encode_set_profile(shvpu_avcenc_codec_t *pCodec, int profile_id)
 {
         AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
 
@@ -275,25 +323,25 @@ encode_set_profile(shvpu_codec_t *pCodec, int profile_id)
 	case 66:
 		pAvcOpt->sps_profile_idc = AVCENC_BASELINE;
 		pAvcOpt->sps_pic_order_cnt_type = AVCENC_POC_TYPE_2;
-		pAvcOpt->sps_constraint_set0_flag = AVCENC_ON;
-		pAvcOpt->sps_constraint_set1_flag = AVCENC_ON;
-		pAvcOpt->sps_constraint_set2_flag = AVCENC_ON;
+		pCodec->sps_constraint_flags[0] = AVCENC_ON;
+		pCodec->sps_constraint_flags[1] = AVCENC_ON;
+		pCodec->sps_constraint_flags[2] = AVCENC_ON;
 		break;
 	case 77:
 		pAvcOpt->sps_profile_idc = AVCENC_MAIN;
 		pAvcOpt->sps_pic_order_cnt_type = AVCENC_POC_TYPE_0;
 		pAvcOpt->pps_cabac_mode = AVCENC_CABAC_INIT_IDC_0;
-		pAvcOpt->sps_constraint_set0_flag = AVCENC_OFF;
-		pAvcOpt->sps_constraint_set1_flag = AVCENC_ON;
-		pAvcOpt->sps_constraint_set2_flag = AVCENC_OFF;
+		pCodec->sps_constraint_flags[0] = AVCENC_OFF;
+		pCodec->sps_constraint_flags[1] = AVCENC_ON;
+		pCodec->sps_constraint_flags[2] = AVCENC_OFF;
 		break;
 	case 100:
 		pAvcOpt->sps_profile_idc = AVCENC_HIGH;
 		pAvcOpt->sps_pic_order_cnt_type = AVCENC_POC_TYPE_0;
 		pAvcOpt->pps_cabac_mode = AVCENC_CABAC_INIT_IDC_0;
-		pAvcOpt->sps_constraint_set0_flag = AVCENC_OFF;
-		pAvcOpt->sps_constraint_set1_flag = AVCENC_OFF;
-		pAvcOpt->sps_constraint_set2_flag = AVCENC_OFF;
+		pCodec->sps_constraint_flags[0] = AVCENC_OFF;
+		pCodec->sps_constraint_flags[1] = AVCENC_OFF;
+		pCodec->sps_constraint_flags[2] = AVCENC_OFF;
 		pAvcOpt->pps_transform_8x8_mode_flag = AVCENC_ON;
 		break;
 	default:
@@ -306,14 +354,14 @@ encode_set_profile(shvpu_codec_t *pCodec, int profile_id)
 }
 
 int
-encode_set_level(shvpu_codec_t *pCodec, int level_id, int is1b)
+encode_set_level(shvpu_avcenc_codec_t *pCodec, int level_id, int is1b)
 {
         AVCENC_OPTION_T	*pAvcOpt = &pCodec->avcOpt;
 
-	pAvcOpt->sps_constraint_set3_flag = AVCENC_OFF;
+	pCodec->sps_constraint_flags[3] = AVCENC_OFF;
 	pAvcOpt->sps_level_idc = level_id;
 	if (is1b && (pAvcOpt->sps_profile_idc != AVCENC_HIGH))
-		pAvcOpt->sps_constraint_set3_flag = AVCENC_ON;
+		pCodec->sps_constraint_flags[3] = AVCENC_ON;
 
 	pCodec->avcOptSet |= AVCENC_OPT_SPS;
 
@@ -321,7 +369,7 @@ encode_set_level(shvpu_codec_t *pCodec, int level_id, int is1b)
 }
 
 int
-encode_set_options(shvpu_codec_t *pCodec, int num_ref_frames,
+encode_set_options(shvpu_avcenc_codec_t *pCodec, int num_ref_frames,
 		   int max_GOP_length, int num_b_frames,
 		   int isCABAC, int cabac_init_idc)
 {
@@ -386,7 +434,7 @@ encode_set_options(shvpu_codec_t *pCodec, int num_ref_frames,
 }
 
 int
-encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode)
+encode_set_bitrate(shvpu_avcenc_codec_t *pCodec, int bitrate, char mode)
 {
 	switch (mode) {
 	case 'v':
@@ -414,7 +462,7 @@ encode_set_bitrate(shvpu_codec_t *pCodec, int bitrate, char mode)
 }
 
 int
-encode_set_propaties(shvpu_codec_t *pCodec, int width, int height,
+encode_set_propaties(shvpu_avcenc_codec_t *pCodec, int width, int height,
 		     unsigned int framerate, int bitrate, char ratecontrol)
 {
 	int fr;
@@ -460,7 +508,11 @@ encode_header(void *context, unsigned char *pBuffer, size_t nBufferLen)
 	if (nBufferLen < (size_t) head.buff_size)
 		return -1;
 	head.buff_addr = pBuffer;
+#if defined(VPU_VERSION_5)
 	ret2 = avcenc_put_PPS(context, &head);
+#elif defined(VPU5HA_SERIES)
+	ret2 = avcenc_put_PPS(context, 0, &head);
+#endif
 	logd("avcenc_put_PPS = %d\n", ret2);
 	if (ret2 < 0)
 		return ret2;
@@ -483,7 +535,11 @@ encode_setqmatrix(MCVENC_CONTEXT_T *pContext)
 	};
 	int ret;
 
+#if defined(VPU_VERSION_5)
 	ret = avcenc_set_Q_matrix(pContext, &qmat);
+#elif defined(VPU5HA_SERIES)
+	ret = avcenc_set_Q_matrix(pContext, AVCENC_QMAT_SPS_IDX, &qmat);
+#endif
 	if (ret < 0)
 		loge("avcenc_set_Q_matrix() = %d\n", ret);
 
@@ -493,18 +549,24 @@ encode_setqmatrix(MCVENC_CONTEXT_T *pContext)
 int
 encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	    unsigned char *pBuffer, int nWidth, int nHeight,
-	    void **ppConsumed)
+	    void **ppConsumed, int metabuffers)
 {
-	shvpu_codec_t *pCodec = (shvpu_codec_t *)pContext->user_info;
+	shvpu_avcenc_codec_t *pCodec =
+		(shvpu_avcenc_codec_t *) pContext->user_info;
 	MCVENC_CAPT_INFO_T capt_info;
 	MCVENC_FRM_STAT_T frm_stat;
 	int memWidth, memHeight, ret;
 	size_t yPicSize;
 
 	/* register a buffer */
-	capt_info.fmem[0].Ypic_addr =
-		uio_virt_to_phys(pContext, MCIPH_ENC,
-				 (unsigned long)pBuffer);
+	if (metabuffers) {
+		shvpu_metabuffer_t *metabuf = (shvpu_metabuffer_t *)pBuffer;
+		capt_info.fmem[0].Ypic_addr = metabuf->paddr;
+	} else {
+		capt_info.fmem[0].Ypic_addr =
+			uio_virt_to_phys(pContext, MCIPH_ENC,
+					 (unsigned long)pBuffer);
+	}
 	if (capt_info.fmem[0].Ypic_addr == 0)
 		return -1;
 	memWidth = ((nWidth + 15) / 16) * 16;
@@ -518,8 +580,7 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 	uiomux_lock_vpu();
 	ret = mcvenc_encode_picture(pContext, frameId, MCVENC_OFF,
 				    &capt_info, &frm_stat);
-	if (pCodec->cmnProp.B_pic_mode != 0)
-		uiomux_unlock_vpu();
+	uiomux_unlock_vpu();
 	logd("----- resume from mcvenc_encode_picture() = %d "
 	       "-----\n", ret);
 	switch (ret) {
@@ -530,9 +591,14 @@ encode_main(MCVENC_CONTEXT_T *pContext, int frameId,
 		logd("[SKIP]");
 	case MCVENC_STORE_PIC:
 	case MCVENC_NML_END:
-		if (frm_stat.ce_used_capt_frm_id >= 0)
-			*ppConsumed = uio_phys_to_virt(frm_stat.capt[0].
+		if (frm_stat.ce_used_capt_frm_id >= 0)	{
+			if (metabuffers)
+				*ppConsumed = (void *) frm_stat.capt[0].
+                                                       Ypic_addr;
+			else
+				*ppConsumed = uio_phys_to_virt(frm_stat.capt[0].
 						       Ypic_addr);
+		}
 		break;
 	}
 	
@@ -585,7 +651,35 @@ encode_finalize(void *context)
 }
 
 void
-encode_deinit(shvpu_codec_t *pCodec)
+encode_deinit(shvpu_avcenc_codec_t *pCodec)
 {
+	int i;
+	/* free all alloced work memory */
+	MCVENC_CMN_PROPERTY_T *pCmnProp = &pCodec->cmnProp;
+	shvpu_work_memory_t *pCmnWorkMem = &pCodec->cmnWorkMem;
+
+	free(pCmnWorkMem->wbuf_enc.work_area_addr);
+
+	phys_pmem_free(pCmnWorkMem->fw.ce_firmware_addr,
+			pCmnWorkMem->ce_fw_size);
+	phys_pmem_free(pCmnWorkMem->fw.vlc_firmware_addr,
+			pCmnWorkMem->vlc_fw_size);
+
+	phys_pmem_free(pCmnWorkMem->imd_info.imd_buff_addr,
+		pCmnWorkMem->imd_info.imd_buff_size);
+
+	for (i=0; i<pCmnWorkMem->ldec_info.ldec_num; i++) {
+		free_fmem(pCmnProp->x_pic_size, pCmnProp->y_pic_size,
+			&pCmnWorkMem->ldec_info.fmem[i][0]);
+	}
+
+	pmem_free((void *)pCmnWorkMem->ir_info.ir_info_addr,
+			pCmnWorkMem->ir_info.ir_info_size);
+
+	phys_pmem_free(pCmnWorkMem->mv_info.mv_info_addr[0],
+			pCmnWorkMem->mv_info_size);
+	phys_pmem_free(pCmnWorkMem->mv_info.mv_info_addr[1],
+			pCmnWorkMem->mv_info_size);
+
 	return;
 }

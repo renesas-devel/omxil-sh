@@ -31,6 +31,7 @@ struct spu_dsp {
 
 	u32 pbankc; /* bankc initial value */
 	u32 xbankc; /* bankc initial value */
+	int cache_exists;
 };
 
 int spudsp_init(void);

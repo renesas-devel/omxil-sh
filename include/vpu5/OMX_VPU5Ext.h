@@ -24,16 +24,14 @@
    02110-1301 USA
 
 */
+#ifndef OMX_VPU5EXT_H
+#define OMX_VPU5EXT_H
 #include <OMX_Index.h>
 #include <OMX_Types.h>
 
 #define OMX_VPU5_CommandMaxOut "OMX.RE.VPU5MaxOutputSetting"
 #define OMX_VPU5_CommandMaxInst "OMX.RE.VPU5MaxInstance"
-typedef enum OMX_REVPU5INDEXTYPE {
-	OMX_IndexParamVPUMaxOutputSetting = OMX_IndexVendorStartUnused + 0x200,
-	OMX_IndexParamVPUMaxInstance,
-	OMX_IndexParamQueryIPMMUEnable
-} OMX_REVPU5INDEXTYPE;
+#define OMX_VPU5_SoftwareRender "OMX.RE.SoftwareRender"
 
 typedef enum OMX_REVPU5LEVEL {
 	OMX_VPU5AVCLevel1,
@@ -48,8 +46,24 @@ typedef enum OMX_REVPU5LEVEL {
 	OMX_VPU5AVCLevel31,
 	OMX_VPU5AVCLevel32,
 	OMX_VPU5AVCLevel4,
-	OMX_VPU5AVCLevel41
+	OMX_VPU5AVCLevel41,
+	OMX_VPU5AVCLevel42,
 } OMX_REVPU5LEVEL;
+
+typedef enum {
+	OMX_VPU5MpegLevel0,
+	OMX_VPU5MpegLevel1,
+	OMX_VPU5MpegLevel2,
+	OMX_VPU5MpegLevel3,
+	OMX_VPU5MpegLevel3B, /* adv. simple profile only */
+	OMX_VPU5MpegLevel4, /* adv. simple profile only */
+	OMX_VPU5MpegLevel4A,  /* simple profile only */
+	OMX_VPU5MpegLevel5,
+	OMX_VPU5MpegLevel6,
+	OMX_VPU5MpegLevel_Baseline,  /* H263 only */
+	OMX_VPU5MpegNLevel
+} OMX_REVPU5MPEGLEVEL;
+
 
 typedef struct OMX_PARAM_REVPU5MAXPARAM {
 	OMX_U32 nSize;
@@ -57,6 +71,7 @@ typedef struct OMX_PARAM_REVPU5MAXPARAM {
 	OMX_U32 nWidth;
 	OMX_U32 nHeight;
 	OMX_U32 eVPU5AVCLevel;
+	OMX_U32 eVPU5MpegLevel;
 } OMX_PARAM_REVPU5MAXPARAM;
 
 typedef struct OMX_PARAM_REVPU5MAXINSTANCE {
@@ -70,3 +85,4 @@ typedef struct OMX_PARAM_REVPU5IPMMUSTATUS {
 	OMX_VERSIONTYPE nVersion;
 	OMX_BOOL bIpmmuEnable;
 } OMX_PARAM_REVPU5IPMMUSTATUS;
+#endif

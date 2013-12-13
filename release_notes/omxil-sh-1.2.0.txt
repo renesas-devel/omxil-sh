@@ -1,0 +1,48 @@
+omxil-sh v1.2.0
+===============
+
+omxil-sh: A collection of OpenMAX IL components for SH-Mobile,
+using the Bellagio OpenMAX IL project framework.
+
+Copyright (C) 2009 Renesas Technology Corp.
+Copyright (C) 2010-2013 Igel Co., Ltd.
+
+
+New in this release
+-------------------
+
+VPU: Add multi-decode support. Up to 4 simultaneous decode streams
+VPU AVC decode: Fix error with PPS NAL units appearing in the stream
+VPU decode: Fix error where output buffers were overritten while being held
+	    by client in AllocateBuffer mode.
+
+Damian Hobson-Garcia (5):
+      Make uiomux_register_memory() avaiable under all configurations
+      Don't use empty structs when T/L conversion and/or MERAM are disabled
+      Only define libshmeram dependent shvpu_meram_t when needed
+      vpu5: Properly enforce maximum number of VPU instances
+      vpu5: Adjust default maximum number of simultaneos decodes
+
+Katsuya Matsubara (4):
+      vpu5: Prevent register re-initialization while decoder is running
+      vpu5: deinit: Fix using one counter for two loops
+      vpu5: decode: adjust the number of fmem buffers for the output 'zero-copy' optimization
+      vpu5: decode: introduce a lock to prevent overwriting exported output buffers
+
+Kazunori Kobayashi (1):
+      vpu5: avc parse: split a PPS nal from other pictures
+
+ src/vpu5/Android.mk             |    2 +-
+ src/vpu5/Makefile.am            |    2 +-
+ src/vpu5/shvpu5_avcdec_parse.c  |    2 +
+ src/vpu5/shvpu5_common_driver.c |   10 +++++++++
+ src/vpu5/shvpu5_common_ipmmu.h  |    1 +
+ src/vpu5/shvpu5_common_meram.h  |    3 +-
+ src/vpu5/shvpu5_common_sync.c   |   33 ++++++++++++++++++++++++++++-
+ src/vpu5/shvpu5_common_uio.c    |   19 +++++++++--------
+ src/vpu5/shvpu5_decode.c        |   12 +---------
+ src/vpu5/shvpu5_decode_input.c  |    5 ++-
+ src/vpu5/shvpu5_decode_omx.c    |   43 ++++++++++++++++++++++++++++++++++++--
+ src/vpu5/shvpu5_decode_omx.h    |    6 +++++
+ src/vpu5/shvpu5_decode_output.c |   16 ++++++++++++++
+ 13 files changed, 125 insertions(+), 29 deletions(-)

@@ -30,7 +30,14 @@
 #include "shvpu5_avcenc_omx.h"
 #include "shvpu5_avcenc.h"
 #include "shvpu5_common_log.h"
+#include "shvpu5_common_ext.h"
 #include <OMX_Video.h>
+#ifdef ANDROID_CUSTOM
+#include "shvpu5_common_android_helper.h"
+#endif
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <sys/syscall.h>
 
 /** Maximum Number of Video Component Instance*/
 #define MAX_COMPONENT_VIDEOENC 1
@@ -177,7 +184,7 @@ shvpu_avcenc_Constructor(OMX_COMPONENTTYPE * pComponent,
 	pComponent->SetParameter = shvpu_avcenc_SetParameter;
 	pComponent->GetParameter = shvpu_avcenc_GetParameter;
 	pComponent->ComponentRoleEnum = shvpu_avcenc_ComponentRoleEnum;
-	//pComponent->GetExtensionIndex = shvpu_avcenc_GetExtensionIndex;
+	pComponent->GetExtensionIndex = shvpu_avcenc_GetExtensionIndex;
 
 	/* set up default encodeing parameters */
 	shvpu_avcenc_Private->avCodec = encode_new();
@@ -223,7 +230,7 @@ OMX_ERRORTYPE
 shvpu_avcenc_vpuLibInit(shvpu_avcenc_PrivateType * shvpu_avcenc_Private)
 {
 	omx_base_video_PortType *inPort;
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	int ret, i;
 	void *vaddr;
 
@@ -276,11 +283,26 @@ void
 shvpu_avcenc_vpuLibDeInit(shvpu_avcenc_PrivateType *
 			  shvpu_avcenc_Private)
 {
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	int i;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+
+	/*make sure that we end the encoder if encoding was
+          forcefully terminated */
+	if (!shvpu_avcenc_Private->bIsEOSReached)
+		encode_finalize(pCodec->pContext);
+
+	for (i=0; i<SHVPU_AVCENC_OUTBUF_NUM; i++) {
+		pmem_free(pCodec->streamBuffer[i].bufferInfo.buff_addr,
+			pCodec->streamBuffer[i].bufferInfo.buff_size);
+	}
 
 	encode_deinit(pCodec);
+
 	shvpu_driver_deinit(pCodec->pDriver);
 	pCodec->pDriver = NULL;
+
+	free(shvpu_avcenc_Private->avCodec);
+	shvpu_avcenc_Private->avCodec = NULL;
 
 	DEBUG(DEB_LEV_SIMPLE_SEQ, "VPU library/codec de-initialized\n");
 }
@@ -377,7 +399,7 @@ shvpu_avcenc_Deinit(OMX_COMPONENTTYPE * pComponent)
 }
 
 static OMX_ERRORTYPE
-shvpu_avcenc_checkParameters(shvpu_codec_t *pCodec) {
+shvpu_avcenc_checkParameters(shvpu_avcenc_codec_t *pCodec) {
 	if (pCodec->cmnProp.B_pic_mode) {
 		if (pCodec->avcOpt.sps_profile_idc == AVCENC_BASELINE)
 			return OMX_ErrorUnsupportedSetting;
@@ -541,7 +563,7 @@ shvpu_avcenc_SetProfileLevel(shvpu_avcenc_PrivateType *
 		{ OMX_VIDEO_AVCLevel41, 41 },
 		{ 0, 0 },
 	};
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	int i, ret;
 
 	/* profile */
@@ -576,13 +598,23 @@ shvpu_avcenc_SetAvcTypeParameters(shvpu_avcenc_PrivateType *
 				  shvpu_avcenc_Private,
 				  OMX_VIDEO_PARAM_AVCTYPE *pAvcType)
 {
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	OMX_ERRORTYPE err;
 	int ret;
+	int num_b_frames;
+
+	if (pAvcType->nPFrames == 0) {
+		if (pAvcType->nBFrames == 0)
+			num_b_frames = 0;
+		else
+			return OMX_ErrorUnsupportedSetting;
+	} else {
+		num_b_frames = pAvcType->nBFrames / pAvcType->nPFrames;
+	}
 
 	ret = encode_set_options(pCodec, pAvcType->nRefFrames,
 				 pAvcType->nPFrames + pAvcType->nBFrames,
-				 pAvcType->nBFrames / pAvcType->nPFrames,
+				 num_b_frames,
 				 pAvcType->bEntropyCodingCABAC == OMX_TRUE,
 				 pAvcType->nCabacInitIdc);
 	if (ret)
@@ -604,7 +636,7 @@ shvpu_avcenc_SetAvcTypeParameters(shvpu_avcenc_PrivateType *
 }
 
 static OMX_ERRORTYPE
-shvpu_avcenc_SetBitrateParameters(shvpu_codec_t *pCodec,
+shvpu_avcenc_SetBitrateParameters(shvpu_avcenc_codec_t *pCodec,
 				  OMX_VIDEO_PARAM_BITRATETYPE *pBRType)
 {
 	const struct {
@@ -802,12 +834,33 @@ shvpu_avcenc_SetParameter(OMX_HANDLETYPE hComponent,
 			pProfType->eProfile, pProfType->eLevel);
 		break;
 	}
-	default:		/*Call the base component function */
+	default:
+		switch ((OMX_REVPU5INDEXTYPE)nParamIndex) {
+#ifdef ANDROID_CUSTOM
+		case OMX_IndexAndroidMetaDataBuffers:
+		{
+			shvpu_avcenc_SetMetaDataInBuffers(
+				shvpu_avcenc_Private,
+				ComponentParameterStructure);
+			break;
+		}
+#endif
+		default: /*Call the base component function */
 		eError = omx_base_component_SetParameter(
 			hComponent, nParamIndex,
 			ComponentParameterStructure);
+		}
 	}
 	return eError;
+}
+
+OMX_ERRORTYPE
+shvpu_avcenc_GetExtensionIndex(OMX_HANDLETYPE hComponent,
+				OMX_STRING cParameterName,
+				OMX_INDEXTYPE *pIndexType) {
+	if (!cParameterName || !pIndexType)
+		return OMX_ErrorBadParameter;
+	return lookup_ExtensionIndex(cParameterName, pIndexType);
 }
 
 OMX_ERRORTYPE
@@ -1297,7 +1350,7 @@ getInBuffer(shvpu_avcenc_PrivateType *shvpu_avcenc_Private,
 }
 
 static inline OMX_BOOL
-updateFilledLen(queue_t *pProcessInBufQueue, void *pConsumed)
+updateFilledLen(queue_t *pProcessInBufQueue, void *pConsumed, int metabuffers)
 {
 	OMX_BUFFERHEADERTYPE *pBuffer;
 	OMX_BOOL ret = OMX_FALSE;
@@ -1306,13 +1359,21 @@ updateFilledLen(queue_t *pProcessInBufQueue, void *pConsumed)
 	nProcBuffers = pProcessInBufQueue->nelem;
 	while (nProcBuffers-- > 0) {
 		pBuffer = dequeue(pProcessInBufQueue);
-		if (pConsumed == (pBuffer->pBuffer + pBuffer->nOffset)) {
-			pBuffer->nFilledLen = 0;
-			ret = OMX_TRUE;
+		if (metabuffers) {
+			shvpu_metabuffer_t *metabuf = pBuffer->pBuffer;
+			if (metabuf->paddr == (unsigned long) pConsumed)
+				break;
+		} else if (pConsumed == (pBuffer->pBuffer + pBuffer->nOffset)) {
+			break;
 		}
 		queue(pProcessInBufQueue, pBuffer);
 	}
 
+	if (nProcBuffers >= 0) {
+		pBuffer->nFilledLen = 0;
+		queue(pProcessInBufQueue, pBuffer);
+		ret = OMX_TRUE;
+	}
 	return ret;
 }
 
@@ -1383,7 +1444,7 @@ generateHeader(OMX_COMPONENTTYPE * pComponent,
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
 		pComponent->pComponentPrivate;
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	int nFilledLen;
 
 	/* put the stream header if this is the first output */
@@ -1406,9 +1467,9 @@ static inline void
 saveBufferMetadata(queue_t *pBMIQueue, int id,
 		   OMX_BUFFERHEADERTYPE *pInBuffer)
 {
-	buffer_metainfo_t *pBMI;
+	buffer_avcenc_metainfo_t *pBMI;
 
-	pBMI = calloc(1, sizeof(buffer_metainfo_t));
+	pBMI = calloc(1, sizeof(buffer_avcenc_metainfo_t));
 	if (pBMI == NULL) {
 		loge("calloc for buffer_metainfo failed.\n");
 		return;
@@ -1431,13 +1492,13 @@ static inline void
 applyBufferMetadata(queue_t *pBMIQueue, int id,
 		    OMX_BUFFERHEADERTYPE *pOutBuffer)
 {
-	buffer_metainfo_t *pBMI;
+	buffer_avcenc_metainfo_t *pBMI;
 
-	while ((pBMI = (buffer_metainfo_t *)shvpu_peek(pBMIQueue)) != NULL) {
+	while ((pBMI = (buffer_avcenc_metainfo_t *)shvpu_peek(pBMIQueue)) != NULL) {
 		if (pBMI->id > id)
 			break;
 
-		pBMI = (buffer_metainfo_t *)shvpu_dequeue(pBMIQueue);
+		pBMI = (buffer_avcenc_metainfo_t *)shvpu_dequeue(pBMIQueue);
 		if (pBMI->id == id) {
 			pOutBuffer->nTimeStamp = pBMI->nTimeStamp;
 			pOutBuffer->nFlags = pBMI->nFlags;
@@ -1458,7 +1519,7 @@ fillOutBuffer(OMX_COMPONENTTYPE * pComponent,
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private =
 		pComponent->pComponentPrivate;
-	shvpu_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
+	shvpu_avcenc_codec_t *pCodec = shvpu_avcenc_Private->avCodec;
 	shvpu_avcenc_outbuf_t *pStreamBuffer;
 	size_t nAvailLen, nFilledLen;
 	OMX_U8 *pBuffer;
@@ -1617,11 +1678,12 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 {
 	shvpu_avcenc_PrivateType *shvpu_avcenc_Private;
 	omx_base_video_PortType *inPort;
-	shvpu_codec_t *pCodec;
+	shvpu_avcenc_codec_t *pCodec;
 	void *pConsumed;
 	OMX_ERRORTYPE err = OMX_ErrorNone;
 	unsigned long width, height;
 	int ret;
+	int metabuffers;
 
 	shvpu_avcenc_Private = pComponent->pComponentPrivate;
 	inPort = (omx_base_video_PortType *)
@@ -1629,6 +1691,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 	width = inPort->sPortParam.format.video.nFrameWidth;
 	height = inPort->sPortParam.format.video.nFrameHeight;
 	pCodec = shvpu_avcenc_Private->avCodec;
+	metabuffers = pCodec->modeSettings.meta_input_buffers;
 
 	if ((pInBuffer->nFilledLen == 0) &&
 	    (pInBuffer->nFlags & OMX_BUFFERFLAG_EOS)) {
@@ -1638,15 +1701,16 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 		return;
 	}
 
-	if (pInBuffer->nFilledLen < (width * height * 3 / 2)) {
+	if (!metabuffers && pInBuffer->nFilledLen < (width * height * 3 / 2)) {
 		loge("data too small (%d < %d)\n",
 		     pInBuffer->nFilledLen, (width * height * 3 / 2));
 		err = OMX_ErrorStreamCorrupt;
+	/* } else if (metabuffers && size check for metabuffers ) */
 	} else {
 		pConsumed = NULL;
 		ret = encode_main(pCodec->pContext, pCodec->pDriver->frameId,
 				  pInBuffer->pBuffer, width, height,
-				  &pConsumed);
+				  &pConsumed, metabuffers);
 
 		switch (ret) {
 		case 0: /* encoded the picture */
@@ -1655,7 +1719,7 @@ encodePicture(OMX_COMPONENTTYPE * pComponent,
 		case 2: /* skip the picture */
 			if (pConsumed)
 				updateFilledLen(pProcessInBufQueue,
-						pConsumed);
+						pConsumed, metabuffers);
 			pCodec->pDriver->frameId += 1;
 			err = OMX_ErrorNone;
 			break;

@@ -38,9 +38,6 @@
 #include <string.h>
 #include <bellagio/omx_base_filter.h>
 #include "shvpu5_avcenc.h"
-#define _GNU_SOURCE
-#include <unistd.h>
-#include <sys/syscall.h>
 
 #define VIDEO_ENC_BASE_NAME "OMX.re.video_encoder"
 #define VIDEO_ENC_H264_NAME "OMX.re.video_encoder.avc"
@@ -54,7 +51,7 @@ typedef	struct {
 	OMX_PTR			pMarkData;
 	OMX_TICKS		nTimeStamp;
 	OMX_U32			nFlags;
-} buffer_metainfo_t;
+} buffer_avcenc_metainfo_t;
 
 /** Video Encoder component private structure.
   */
@@ -62,7 +59,7 @@ DERIVEDCLASS(shvpu_avcenc_PrivateType, omx_base_filter_PrivateType)
 #define shvpu_avcenc_PrivateType_FIELDS				\
 	omx_base_filter_PrivateType_FIELDS			\
 	/** @param avCodec pointer to the VPU5HG video decoder */	\
-	shvpu_codec_t *avCodec;						\
+	shvpu_avcenc_codec_t *avCodec;						\
 	/** @param avcodecReady boolean flag that 		\
 	    is true when the video coded has been initialized */\
 	OMX_BOOL avcodecReady;					\
@@ -115,4 +112,8 @@ shvpu_avcenc_FreeBuffer(omx_base_PortType *pPort,
 OMX_ERRORTYPE
 shvpu_avcenc_ComponentRoleEnum(OMX_HANDLETYPE hComponent,
 			       OMX_U8 * cRole, OMX_U32 nIndex);
+OMX_ERRORTYPE
+shvpu_avcenc_GetExtensionIndex(OMX_HANDLETYPE hComponent,
+				OMX_STRING cParameterName,
+				OMX_INDEXTYPE *pIndexType);
 #endif

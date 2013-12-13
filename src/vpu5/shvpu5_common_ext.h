@@ -1,5 +1,5 @@
 /**
-   src/vpu5/shvpu5_avcdec_notify.c
+   src/vpu5/shvpu5_common_ext.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
@@ -24,38 +24,25 @@
    02110-1301 USA
 
 */
+#include "vpu5/OMX_VPU5Ext.h"
+#include "OMX_Types.h"
+#include "OMX_Core.h"
+typedef enum OMX_REVPU5INDEXTYPE {
+	OMX_IndexParamVPUMaxOutputSetting = OMX_IndexVendorStartUnused + 0x200,
+	OMX_IndexParamVPUMaxInstance,
+	OMX_IndexParamQueryIPMMUEnable,
+	OMX_IndexParamSoftwareRenderMode,
+#ifdef ANDROID_CUSTOM
+	OMX_IndexAndroidNativeEnable,
+	OMX_IndexAndroidMetaDataBuffers,
+	OMX_IndexAndroidUseNativeBuffer,
+	OMX_IndexAndroidGetNativeBufferUsage,
+#endif
+} OMX_REVPU5INDEXTYPE;
 
-#include <stdio.h>
-#include "mcvdec.h"
-#include "shvpu5_avcdec.h"
-#include "shvpu5_avcdec_omx.h"
-#include "shvpu5_common_log.h"
+struct extension_index_entry {
+	OMX_REVPU5INDEXTYPE	index;
+	OMX_STRING	     	name;
+};
 
-long
-notify_buffering(MCVDEC_CONTEXT_T *context, long status)
-{
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *)context->user_info;
-	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
-
-	logd("%s(%ld) invoked.\n", __FUNCTION__, status);
-	pthread_mutex_lock(&pCodec->mutex_buffering);
-	pCodec->enoughPreprocess = OMX_TRUE;
-	pthread_cond_broadcast(&pCodec->cond_buffering);
-	pthread_mutex_unlock(&pCodec->mutex_buffering);
-	if (pCodec->enoughHeaders) {
-		if (shvpu_avcdec_Private->enable_sync)
-			pCodec->codecMode = MCVDEC_MODE_SYNC;
-		else
-			pCodec->codecMode = MCVDEC_MODE_MAIN;
-	}
-	return MCVDEC_NML_END;
-}
-
-long
-notify_userdata(MCVDEC_CONTEXT_T *context,
-		MCVDEC_USERDATA_T *userdata, long userdata_layer)
-{
-	logd("%s() invoked.\n", __FUNCTION__);
-	return MCVDEC_NML_END;
-}
+OMX_ERRORTYPE lookup_ExtensionIndex(OMX_STRING cName, OMX_INDEXTYPE *pRes);

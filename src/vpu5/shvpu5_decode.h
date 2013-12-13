@@ -1,5 +1,5 @@
 /**
-   src/vpu5/shvpu5_driver.h
+   src/vpu5/shvpu5_decode.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
@@ -24,40 +24,44 @@
    02110-1301 USA
 
 */
-#ifndef __SHVPU5_DRIVER_H_
-#define __SHVPU5_DRIVER_H_
-#include <pthread.h>
-#include <bellagio/tsemaphore.h>
-#include "mciph.h"
-#include "uiomux/uiomux.h"
-#if defined(VPU5HA_SERIES)
-#include "mciph_ip0_cmn.h"
-#endif
+#ifndef __SIMPLE_AVCDEC_H_
+#define __SIMPLE_AVCDEC_H_
+#include "mcvdec.h"
+#include "queue.h"
+#include <OMX_Types.h>
+#include <OMX_Core.h>
+#include <OMX_Component.h>
 
-typedef struct {
-	MCIPH_DRV_INFO_T*	pDrvInfo;
-	MCIPH_API_T		apiTbl;
-	/** @param mode for VPU5HG video decoder */
-	MCIPH_WORK_INFO_T	wbufVpu5;
-	MCIPH_VPU5_INIT_T	vpu5Init;
-#if defined(VPU5HA_SERIES)
-	MCIPH_IP0_INIT_T	ip0Init;
-#endif
-	UIOMux*			uiomux;
-	pthread_t		intrHandler;
-	int			frameId;
-	int			lastOutput;
-	unsigned char		isEndInput;
-	tsem_t			uioSem;
-	int			isExit;
-} shvpu_driver_t;
+void
+free_remaining_streams(queue_t *pSIQueue);
 
 int
-shvpu_driver_deinit(shvpu_driver_t *pHandle);
+decode_finalize(void *context);
 
-long
-shvpu_driver_init(shvpu_driver_t **ppDriver);
+typedef struct {
+	OMX_BOOL use_buffer_mode;
+	OMX_BOOL dmac_mode;
+	OMX_BOOL tl_conv_mode;
+	OMX_U32  tl_conv_vbm;
+	OMX_U32  tl_conv_tbm;
+} decode_features_t;
 
-unsigned long
-shvpu5_load_firmware(char *filename, size_t *size);
-#endif /* __SHVPU5_DRIVER_H_ */
+/* ROUND_2POW rounds up to the next muliple of y,
+   which must be a power of 2 */
+#define ROUND_2POW(x,y) ((x + (y - 1) ) & ~(y - 1))
+#ifdef OUTPUT_BUFFER_ALIGN
+#define ALIGN_STRIDE(x) (ROUND_2POW(x,OUTPUT_BUFFER_ALIGN))
+#else
+#define ALIGN_STRIDE(x) (x)
+#endif
+
+#define ROUND_NEXT_POW2(out, in) \
+	{ \
+		out = (in - 1); \
+		out |= (out >> 1); \
+		out |= (out >> 2); \
+		out |= (out >> 4); \
+		out |= (out >> 8); \
+		out++; \
+	}
+#endif /* __SIMPLE_AVCDEC_H_ */

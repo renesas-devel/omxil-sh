@@ -20,8 +20,28 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT(omxil-sh, 0.6.0, [conrad@metadecks.org])
+AC_INIT(omxil-sh, 1.2.0, [dhobsong@igel.co.jp])
 AM_INIT_AUTOMAKE
+
+################################################################################
+# Set the shared versioning info, according to section 7.3 of the libtool info #
+# pages. CURRENT:REVISION:AGE must be updated immediately before each release: #
+#                                                                              #
+#   * If the library source code has changed at all since the last             #
+#     update, then increment REVISION (`C:R:A' becomes `C:r+1:A').             #
+#                                                                              #
+#   * If any interfaces have been added, removed, or changed since the         #
+#     last update, increment CURRENT, and set REVISION to 0.                   #
+#                                                                              #
+#   * If any interfaces have been added since the last public release,         #
+#     then increment AGE.                                                      #
+#                                                                              #
+#   * If any interfaces have been removed or changed since the last public     #
+#     release then set AGE to 0.                                               #
+#                                                                              #
+################################################################################
+SHARED_VERSION_INFO="1:1:0"
+
 AC_CONFIG_SRCDIR([src/vpu/library_entry_point.c])
 AC_CONFIG_HEADER([config.h])
 
@@ -165,6 +185,7 @@ AM_CONDITIONAL(HAVE_HMP3D, [test "x$HAVE_HMP3D" = "xyes"])
 # Check for shcodecs
 HAVE_SHCODECS="no"
 VPU_SUPPORT="no"
+VPU_OPTIONS=""
 
 ac_enable_vpu=yes
 AC_ARG_WITH([vpumw-path],
@@ -219,7 +240,8 @@ if test "x${ac_enable_vpu}" = xyes ; then
      mciph_get_version(); mciph_hg_get_version();],
     [HAVE_VP5DECAVC="yes"
      AC_MSG_RESULT(yes)],
-    [AC_MSG_RESULT(no)])
+    [HAVE_VP5DECAVC="yes"
+    AC_MSG_RESULT(no)])
 
     CFLAGS="$ac_save_CFLAGS"
     LIBS="$ac_save_LIBS"
@@ -241,21 +263,203 @@ if test "x${ac_enable_vpu}" = xyes ; then
   AM_CONDITIONAL(HAVE_SHCODECS, [test "x$HAVE_SHCODECS" = "xyes"])
 fi
 
-AC_ARG_ENABLE(ipmmu,
-     [  --enable-ipmmu         disable building of IPMMU support ],
-     [
-	if test "x$enableval" = "xno"; then
-		ac_enable_ipmmu=no
-	else
-		ac_enable_ipmmu=yes
-	fi
-     ], [ ac_enable_ipmmu=no] )
-AM_CONDITIONAL(USE_IPMMU,
-      [test "$ac_enable_ipmmu" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"])
+dnl MPEG4 decoding
+AC_ARG_ENABLE(vpu5_mpeg4_decode,
+	[AC_HELP_STRING(
+		[--enable-vpu5_mpeg_decode],
+		[with MPEG4 decoding support])],
+	[enable_mpeg_dec=$enableval],
+	[enable_mpeg_dec=no])
 
-if test "$ac_enable_ipmmu" = "yes" -a "x$HAVE_VP5DECAVC" = "xyes"; then
-	VPU_SUPPORT="${VPU_SUPPORT} + IPMMU"
+AM_CONDITIONAL(WITH_MPEG4_DECODE, [test "x$enable_mpeg_dec" = "xyes"])
+
+dnl VPU Version
+AC_ARG_WITH(vpu5_version,
+	[AC_HELP_STRING(
+		[--with-vpu5_version=[ver]],
+		[set VPU version.  [ver]=VPU5HG(default)/VPU5HA/VPU5HD])])
+
+AS_CASE([$with_vpu5_version],
+	[VPU5HA],
+		[VPU_VERSION="VPU_VERSION_5HA"
+		 VPU_SERIES="VPU5HA_SERIES"
+		 VPU_CMN_LIBS="-lvpu5hadrvcmn -lvpu5drv"
+		 VPU_DEC_LIBS="-lvpu5hadecavc -lvpu5hadeccmn  \
+			       -lvpu5hadrvavcdec -lvpu5hadrvcmndec"],
+	[VPU5HD],
+		[VPU_VERSION="VPU_VERSION_5HD"
+		 VPU_SERIES="VPU5HA_SERIES"
+		 VPU_CMN_LIBS="-lmciphvpu5hdcmna -lmciphvpu5ha"
+		 VPU_DEC_LIBS="-lavcdecvpu5hda -lmciphvpu5hdavcdeca \
+			       -lmciphvpu5hdcmndeca -lmcvdecvpu5hda"],
+	[VCP1],
+		[VPU_VERSION="VPU_VERSION_VCP1"
+		 VPU_SERIES="VPU5HA_SERIES"
+		 VPU_CMN_LIBS="-lmcvdecvcp1a_lx30 -lmciphvcp1a_lx30"
+		 VPU_DEC_LIBS="-lavcdecvcp1a_lx30 -lmciphvcp1cmndeca_lx30 \
+			       -lmciphvcp1avcdeca_lx30 -lmciphvcp1cmna_lx30"],
+dnl  	default
+		[with_vpu5_version=VPU5HG
+		VPU_VERSION="VPU_VERSION_5"
+		VPU_SERIES="VPU5_SERIES"
+		VPU_CMN_LIBS="-lvpu5drvcmn -lvpu5drvhg"
+		VPU_DEC_LIBS="-lvpu5decavc -lvpu5deccmn"
+		VPU_ENC_LIBS="-lvpu5encavc -lvpu5enccmn"]);
+
+AC_SUBST(VPU_VERSION)
+AC_SUBST(VPU_SERIES)
+AC_SUBST(VPU_CMN_LIBS)
+AC_SUBST(VPU_DEC_LIBS)
+AC_SUBST(VPU_ENC_LIBS)
+
+dnl Disable encoder/decoder components
+AC_ARG_ENABLE(vpu5_decoder,
+	[AC_HELP_STRING(
+		[--disable-vpu5_decoder],
+		[disable VPU5 decoder])])
+
+AM_CONDITIONAL([DECODER_COMPONENT],
+      [test "x$enable_vpu5_decoder" != "xno"])
+
+AS_IF([test "x$enable_vpu5_decoder" != "xno"],
+		[VPU_OPTIONS="${VPU_OPTIONS}Decoder "])
+
+AC_ARG_ENABLE(vpu5_encoder,
+	[AC_HELP_STRING(
+		[--disable-vpu5_encoder],
+		[disable VPU5 encoder])])
+
+AM_CONDITIONAL([ENCODER_COMPONENT],
+      [test "x$enable_vpu5_encoder" != "xno"])
+
+AS_IF([test "x$enable_vpu5_encoder" != "xno"],
+		[VPU_OPTIONS="${VPU_OPTIONS}Encoder "])
+
+dnl Set buffer mode
+AC_ARG_ENABLE(vpu5_mode,
+	[AC_HELP_STRING(
+		[--enable-vpu5_mode=[MODE]],
+		[set VPU5 buffer mode [MODE]=usebuffer/allocatebuffer(default)])])
+
+AM_CONDITIONAL([USE_BUFFER_MODE],
+      [test "x$enable_vpu5_mode" = "xusebuffer"])
+
+AS_IF([test "x$enable_vpu5_mode" = "xusebuffer"],
+		[VPU_OPTIONS="${VPU_OPTIONS}UseBuffer "],
+		[VPU_OPTIONS="${VPU_OPTIONS}AllocateBuffer "])
+
+dnl disable 2DDMAC
+AC_ARG_ENABLE(vpu5_tddmac,
+	[AC_HELP_STRING(
+		[--disable-vpu5_tddmac],
+		[disable VPU5 TDDMAC mode (only enabled in usebuffer mode)])])
+
+AS_IF([test "x$enable_vpu5_tddmac" != "xno" -a "x$enable_vpu5_mode" = "xusebuffer"],
+	[PKG_CHECK_MODULES([TDDMAC], [tddmac],
+		[VPU_OPTIONS="${VPU_OPTIONS}2DDMAC "],[enable_vpu5_tddmac=no])],
+	[enable_vpu5_tddmac=no])
+
+AM_CONDITIONAL(USE_TDDMAC, [test "x$enable_vpu5_tddmac" != "xno"])
+
+dnl Enable ICB cache setting
+AC_ARG_ENABLE(vpc,
+	[AC_HELP_STRING(
+		[--enable-vpc],
+		[Enable VPU Cache])])
+
+AM_CONDITIONAL(USE_VPC, [test "x$enable_vpc" = "xyes"])
+
+dnl Enable ICB cache setting
+AC_ARG_ENABLE(icbcache,
+	[AC_HELP_STRING(
+		[--enable-icbcache],
+		[Enable ICB Cache flushing])])
+
+AM_CONDITIONAL(ICBCACHE_FLUSH, [test "x$enable_icbcache" = "xyes"])
+
+dnl Disable TL_CONV setting
+AC_ARG_ENABLE(tl_conv,
+	[AC_HELP_STRING(
+		[--enable-tl_conv=[uio/kernel/no]],
+		[set T/L conversion support [default=uio if supported]])])
+
+AS_CASE([x$enable_tl_conv],
+	[x],
+		[enable_tl_conv=no],
+	[xinternal],
+		[VPU_OPTIONS="${VPU_OPTIONS}T/L Conv(internal) "],
+	[xuio],
+		[PKG_CHECK_MODULES([MERAM], [meram])
+		VPU_OPTIONS="${VPU_OPTIONS}T/L Conv(uio) "],
+	[xyes],
+		[PKG_CHECK_MODULES([MERAM], [meram])
+		VPU_OPTIONS="${VPU_OPTIONS}T/L Conv(uio) "],
+	[xkernel],
+		[VPU_OPTIONS="${VPU_OPTIONS}T/L Conv(kernel) "]);
+
+AM_CONDITIONAL(USE_TL_CONV,
+      [test "x$enable_tl_conv" != "xno" -a "x$HAVE_VP5DECAVC" = "xyes"])
+
+AM_CONDITIONAL(USE_UIO_TL,
+      [test "x$HAVE_VP5DECAVC" = "xyes" -a \( "$enable_tl_conv" = "yes" -o "$enable_tl_conv" = "uio" \)])
+
+AM_CONDITIONAL(USE_KERNEL_TL,
+      [test "x$HAVE_VP5DECAVC" = "xyes" -a "$enable_tl_conv" = "kernel"])
+
+AC_ARG_ENABLE(tl_conv_internal,
+	[AC_HELP_STRING(
+		[--enable-tl_conv_internal],
+		[set internal T/L conversion support])])
+
+AM_CONDITIONAL(USE_TL_CONV_INT,
+      [test "x$HAVE_VP5DECAVC" = "xyes" -a "x$enable_tl_conv_internal" = "xyes"])
+
+AC_ARG_WITH(tl_conv_width_log2,
+	[AC_HELP_STRING(
+		[--with-tl_conv_width_log2],
+		[set T/L tile width log base 2 pixels (default 5=32 pix)])],
+	[TL_CONV_WIDTH=$withval],
+	[TL_CONV_WIDTH=no])
+AC_SUBST(TL_CONV_WIDTH)
+AM_CONDITIONAL(SET_TL_WIDTH, test $TL_CONV_WIDTH != no)
+
+AC_ARG_WITH(tl_conv_height_log2,
+	[AC_HELP_STRING(
+		[--with-tl_conv_height_log2],
+		[set T/L tile height log base 2 pixels (default 5=32 pix)])],
+	[TL_CONV_HEIGHT=$withval],
+	[TL_CONV_HEIGHT=no])
+AC_SUBST(TL_CONV_HEIGHT)
+AM_CONDITIONAL(SET_TL_HEIGHT, test $TL_CONV_HEIGHT != no)
+
+dnl Disable MERAM setting
+AC_ARG_ENABLE(meram,
+	[AC_HELP_STRING(
+		[--disable-meram], [disable building of MERAM support ])])
+
+if test "x$enable_meram" != "xno" -a "x$HAVE_VP5DECAVC" = "xyes"; then
+	PKG_CHECK_MODULES([MERAM], [meram],
+		[VPU_OPTIONS="${VPU_OPTIONS}MERAM "], [enable_meram=no])
 fi
+
+AS_IF([test "x$enable_vpu5_tddmac" != "xno" -a "x$enable_meram" = "xno"],
+	[AC_MSG_ERROR([TDDMAC functionality requires MERAM])])
+
+AM_CONDITIONAL(USE_MERAM,
+      [test "x$enable_meram" != "xno" -a "x$HAVE_VP5DECAVC" = "xyes"])
+
+dnl Set VPU memroy allocation type
+AC_ARG_WITH(vpu5_memtype,
+	[AC_HELP_STRING(
+		[--with-vpu5_memtype=[uio/ipmmu]],
+		[set the VPU memory allocation type mechanism. [default=uio]])])
+
+AS_CASE([$with_vpu5_memtype],
+	[ipmmui],[VPU_OPTIONS="${VPU_OPTIONS}memory:IPMMU"],
+	[VPU_OPTIONS="${VPU_OPTIONS}memory:UIO"])
+
+AM_CONDITIONAL(USE_IPMMU_MEMORY, [test "$with_vpu5_memtype" = "xipmmu"])
+
 AC_ARG_WITH(spumw-path,
 	[AC_HELP_STRING(
 		[--with-spumw-path=PATH],
@@ -290,7 +494,9 @@ e)	SPU_SUPPORT="yes (SPU2AACENC)";;
 d)	SPU_SUPPORT="yes (SPU2AACDEC)";;
 *)	SPU_SUPPORT="no";;
 esac
-test "$SPU_SUPPORT_MSG" && PKG_CHECK_MODULES([UIOMUX], [uiomux])
+if test "$SPU_SUPPORT_MSG"; then
+	PKG_CHECK_MODULES([UIOMUX], [uiomux])
+fi
 AM_CONDITIONAL(HAVE_SHSPU2AACDEC, [test "$ac_enable_spu2aacdec" = yes])
 AM_CONDITIONAL(HAVE_SHSPU2AACENC, [test "$ac_enable_spu2aacenc" = yes])
 AM_CONDITIONAL(HAVE_SHSPU2, [test "$ac_enable_spu2aacdec" = yes -o "$ac_enable_spu2aacenc" = yes])
@@ -315,8 +521,9 @@ AC_MSG_RESULT([
 
     AAC support: ................. $HAACD_SUPPORT
     MP3 support: ................. $HMP3D_SUPPORT
-    VPU support: ................. $VPU_SUPPORT
     SPU support: ................. $SPU_SUPPORT
+    VPU support: ................. $VPU_SUPPORT
+    VPU options: $with_vpu5_version $VPU_OPTIONS
 
 ------------------------------------------------------------------------
 ])

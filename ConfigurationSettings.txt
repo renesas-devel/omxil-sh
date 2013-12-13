@@ -1,0 +1,88 @@
+Configuration settings for VPU/SPU
+----------------------------------
+
+The more recent versions of the VPU supported by this package require
+middleware libraries in order to access the Video Processing Unit hardware.
+This library acts as a bridge between the VPU middleware and the OpenMax
+Interface Layer.  To obtain the middlware licencse, binaries and include files
+contact a representative from Renesas Electronics.
+
+Once you have obtained the required libraries, and include files, they should
+be placed in a directory with the following heirarchy
+
+$MiddlwareTop$
+  ├── include
+  │   └── <include files>
+  └── lib
+      ├── <shared library files>
+      └── firmware
+            └── <firmare bin files>
+
+With the correct middleware installed for the correct library, configuration
+can be configured using the ./configure script in Linux or by editing your
+BoardConfig.mk under your devices/<manufacturer>/<product> directory in Android.
+
+
+Useful settings
+---------------
+This is not an exhaustive list.  Check ./configure --help or look inside the
+Android.mk file
+
+
+./configure Setting	Android setting		Notes
+-------------------	---------------		-----
+
+--with-vpumw-path	VPU_MIDDLEWARE_PATH 	Path to $MiddlewareTop$
+
+--enable-vpu5_decoder	VPU_DECODER_COMPONENT 	Enable Decoder functionality
+
+--enable-vpu5_encoder	VPU_ENCODER_COMPONENT 	Enable Encoder functionality
+
+--enable-vpu5_mode	VPU_DECODE_USE_BUFFER	Use the UseBufer OMXIL API to
+						allocate buffers (default uses
+						AllocateBuffer API)
+
+--with-vpu5_version	PRODUCT_VPU_VERSION	set VPU version.
+						Possible values: linux(Android)
+							VPU5HG(VPU_VERSION_5)
+							VPU5HA(VPU_VERSION_5HA)
+							VPU5HD(VPU_VERSION_5HD)
+
+--with-vpu5_memtype	VPU_MEMORY_TYPE		Set the memory allocation source
+						Possible values:
+							uio (recommended)
+							ipmmu
+
+--enable-vpu5_tddmac	VPU_DECODE_USE_2DDMAC	Use 2DDMAC (TDDMAC) for copying
+						output data from the VPU to the
+						output buffers in UseBuffer mode
+
+--enable-vpc		VPU_DECODE_USE_VPC	Enable VPU Cache
+
+--enable-icbcache	VPU_DECODE_USE_ICBCACHE	Enable ICB Cache flushing
+
+--enable-tl_conv	VPU_DECODE_TL_CONV	Enable Tiled/Linear conversion for
+						decoded data
+						Possible values:
+						   uio: Setup via UIO device
+						   kernel: Setup via kernel driver
+						   no: No T/L conversion
+
+--enable-tl_conv_internal VPU_INTERNAL_TL	Use the T/L conversion functionality
+						built into the VPU (only available on
+						certain VPU versions)
+
+--enable-meram		VPU_DECODE_WITH_MERAM	Use the MERAM write-back cache
+						functionality to write decoded video
+						frames to memory
+
+--enable-spu2aacdec     BUILD_SPU		enable SPU2 AAC decoder support
+
+--enable-spu2aacenc     	(TBD)		enable SPU2 AAC encoder support
+
+--enable-vpu5_mpeg_decode VPU_MPEG4_DECODER	enable MPEG4 decoding. Only available on
+						certain platforms.  Requires additional
+						middleware libraries.
+
+
+

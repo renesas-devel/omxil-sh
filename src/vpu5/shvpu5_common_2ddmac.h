@@ -1,12 +1,11 @@
 /**
-   src/vpu5/shvpu5_driver.h
+   src/vpu55/shvpu5_common_2ddmac.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
    on the Renesas's VPU5HG middleware library.
 
-   Copyright (C) 2010 IGEL Co., Ltd
-   Copyright (C) 2010 Renesas Solutions Corp.
+   Copyright (C) 2011 Renesas Solutions Corp.
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public License
@@ -22,42 +21,17 @@
    License along with this library; if not, write to the Free Software
    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
    02110-1301 USA
-
 */
-#ifndef __SHVPU5_DRIVER_H_
-#define __SHVPU5_DRIVER_H_
-#include <pthread.h>
-#include <bellagio/tsemaphore.h>
-#include "mciph.h"
-#include "uiomux/uiomux.h"
-#if defined(VPU5HA_SERIES)
-#include "mciph_ip0_cmn.h"
+
+
+#ifdef DMAC_MODE
+int DMAC_init();
+void DMAC_deinit();
+int DMAC_setup_buffers(int w, int h, int do_tl_conv);
+int DMAC_copy_buffer(unsigned long to, unsigned long from);
+#else
+#define DMAC_init() (0)
+#define DMAC_deinit()
+#define DMAC_setup_buffers(w, h, c) (0)
+#define DMAC_copy_buffer(to, from) (0)
 #endif
-
-typedef struct {
-	MCIPH_DRV_INFO_T*	pDrvInfo;
-	MCIPH_API_T		apiTbl;
-	/** @param mode for VPU5HG video decoder */
-	MCIPH_WORK_INFO_T	wbufVpu5;
-	MCIPH_VPU5_INIT_T	vpu5Init;
-#if defined(VPU5HA_SERIES)
-	MCIPH_IP0_INIT_T	ip0Init;
-#endif
-	UIOMux*			uiomux;
-	pthread_t		intrHandler;
-	int			frameId;
-	int			lastOutput;
-	unsigned char		isEndInput;
-	tsem_t			uioSem;
-	int			isExit;
-} shvpu_driver_t;
-
-int
-shvpu_driver_deinit(shvpu_driver_t *pHandle);
-
-long
-shvpu_driver_init(shvpu_driver_t **ppDriver);
-
-unsigned long
-shvpu5_load_firmware(char *filename, size_t *size);
-#endif /* __SHVPU5_DRIVER_H_ */

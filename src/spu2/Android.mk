@@ -14,6 +14,7 @@
 
 LOCAL_PATH := $(call my-dir)
 
+ifeq ($(BUILD_SPU),true)
 include $(CLEAR_VARS)
 LOCAL_PRELINK_MODULE := false
 
@@ -23,7 +24,7 @@ LOCAL_SHARED_LIBRARIES := liblog  \
 			libuiomux
 
 LOCAL_C_INCLUDES := $(LOCAL_PATH) \
-		hardware/renesas/shmobile/prebuilt/include \
+		hardware/renesas/shmobile/prebuilt/spu/include \
 		$(TARGET_OUT_HEADERS)/libomxil-bellagio \
 		external/libuiomux/include
 
@@ -38,7 +39,7 @@ LOCAL_SRC_FILES := \
 
 # LOCAL_WHOLE_STATIC_LIBRARIES := 
 
-LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/lib \
+LOCAL_LDFLAGS = -Lhardware/renesas/shmobile/prebuilt/spu/lib \
 	-lshspuaacdec
 
 LOCAL_MODULE_TAGS := optional
@@ -46,3 +47,4 @@ LOCAL_MODULE := libshspu2aac
 LOCAL_CFLAGS:= -DLOG_TAG=\"shspudec\" -DLIBSPUHELPERAACDEC
 
 include $(BUILD_SHARED_LIBRARY)
+endif

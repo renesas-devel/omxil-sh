@@ -1,0 +1,81 @@
+omxil-sh v1.1.0
+===============
+
+omxil-sh: A collection of OpenMAX IL components for SH-Mobile,
+using the Bellagio OpenMAX IL project framework.
+
+Copyright (C) 2009 Renesas Technology Corp.
+Copyright (C) 2010-2012 Igel Co., Ltd.
+
+
+New in this release
+-------------------
+
+VPU: Add MPEG4 decoder support.
+
+Generalize the parser and middleware interfaces to make it easier to
+add support for other decoders.
+
+Damian Hobson-Garcia (26):
+      vpu5: rename shvpu_avcdec_Private to shvpu_decode_Private
+      vpu5: Separate out the middleware initialization code based on codec to be used.
+      vpu5: WIP: parameterize out the parsing interface
+      vpu5: remove commented out functions
+      vpu5: Proper shutdown code for h264 parser and omx component
+      vpu5: avcdec parser:  Need to update buffer offset in non splitbuffer case
+      vpu5: avcdec parse: Move trailing zero removal code to avcdec parser
+      vpu5: avc parse: use the nFilledLen value in computation
+      vpu5: input: Paramerize the EOS code sent to the middleware
+      vpu: parse: start collecting all parse related definitions in one header
+      vpu5: parse: remove "nal" references in generic structures
+      vpu5: avcparse: Use nOffset when calculating pBuffer offsets
+      vpu: avcparse: we dont need prevBufferOffset after all
+      vpu5: Rename remaining codec independent files
+      vpu5: update more variable names and files not related to AVC decode
+      vpu5: Add avcdec deinitialization code
+      vpu5: Process the last frame in a stream
+      vpu5: Parameterize out api_tbl setting in decode_init
+      vpu5: Adding MPEG4 support
+      vpu5: Retry decode when NO_STRM error reported
+      vpu5: mpeg4 parse: Allow for any sized input picture to be processed
+      vpu5: mpeg4 parse: Add ability to disable MPEG decoding
+      vpu5: mpeg4 parse: Allow maximum decode parameters to be set from parameters
+      vpu5: Set default maximum resolutions based on available VPU memory
+      vpu5: Add MPEG4 parsing options for Linux compile
+      vpu5: mpeg decoder: correct mv work area size calculation
+
+ configure.ac                              |   10 +
+ include/vpu5/OMX_VPU5Ext.h                |   16 +
+ src/vpu5/Android.mk                       |   30 +-
+ src/vpu5/Makefile.am                      |   20 +-
+ src/vpu5/library_entry_point.c            |    8 +-
+ src/vpu5/shvpu5_avcdec.h                  |   67 -
+ src/vpu5/shvpu5_avcdec_decode.c           |  347 ++---
+ src/vpu5/shvpu5_avcdec_input.c            |  283 ----
+ src/vpu5/shvpu5_avcdec_meram.c            |  159 --
+ src/vpu5/shvpu5_avcdec_meram.h            |   59 -
+ src/vpu5/shvpu5_avcdec_notify.c           |   61 -
+ src/vpu5/shvpu5_avcdec_omx.c              | 2332 ----------------------------
+ src/vpu5/shvpu5_avcdec_omx.h              |  293 ----
+ src/vpu5/shvpu5_avcdec_output.c           |  160 --
+ src/vpu5/shvpu5_avcdec_parse.c            |  560 +++----
+ src/vpu5/shvpu5_common_2ddmac.c           |    4 +-
+ src/vpu5/shvpu5_common_android_helper.cpp |   20 +-
+ src/vpu5/shvpu5_common_android_helper.h   |   14 +-
+ src/vpu5/shvpu5_common_driver.c           |    7 +
+ src/vpu5/shvpu5_common_meram.c            |  159 ++
+ src/vpu5/shvpu5_common_meram.h            |   59 +
+ src/vpu5/shvpu5_common_sync.c             |   46 +-
+ src/vpu5/shvpu5_decode.c                  |  300 ++++
+ src/vpu5/shvpu5_decode.h                  |   67 +
+ src/vpu5/shvpu5_decode_api.h              |   56 +
+ src/vpu5/shvpu5_decode_input.c            |  258 ++++
+ src/vpu5/shvpu5_decode_notify.c           |   61 +
+ src/vpu5/shvpu5_decode_omx.c              | 2359 +++++++++++++++++++++++++++++
+ src/vpu5/shvpu5_decode_omx.h              |  270 ++++
+ src/vpu5/shvpu5_decode_output.c           |  160 ++
+ src/vpu5/shvpu5_kernel_tiling.c           |    2 +-
+ src/vpu5/shvpu5_m4vdec_decode.c           |  205 +++
+ src/vpu5/shvpu5_m4vdec_parse.c            |  334 ++++
+ src/vpu5/shvpu5_parse_api.h               |   67 +
+ 34 files changed, 4868 insertions(+), 3985 deletions(-)

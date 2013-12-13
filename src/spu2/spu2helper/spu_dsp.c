@@ -21,6 +21,25 @@ static struct spu_dsp spu_dsp[SPU_DSP_MAX];
 #define DSP_write(b, c)  uio_write32(&spu_dsp[0].uio.mmio, c, b)
 #define DSP_read(b)      uio_read32(&spu_dsp[0].uio.mmio, b)
 
+/* cache */
+#define CCTL		(0x000FE004)
+#define P0BASE		(0x000FE010)
+#define X0BASE		(0x000FE014)
+#define Y0BASE		(0x000FE018)
+#define P1BASE		(0x000FE01C)
+#define X1BASE		(0x000FE020)
+#define Y1BASE		(0x000FE024)
+#define SPUMSTS		(0x000FE028)
+
+#define ASID_DSP	(0x000FFEC0)
+#define ASID_CPU	(0x000FFEC4)
+#define ASID_DMA_CH0	(0x000FFEC8)
+#define ASID_DMA_CH1	(0x000FFECC)
+#define ASID_DMA_CH2	(0x000FFED0)
+#define GADDR_CTRL_P	(0x000FFED4)
+#define GADDR_CTRL_X	(0x000FFED8)
+#define GADDR_CTRL_Y	(0x000FFEDC)
+
 /* dsp-common */
 #define PBANKC0		(0x000FFC00)
 #define PBANKC1		(0x000FFC04)
@@ -196,6 +215,43 @@ static int dsp_reset(struct spu_dsp *dsp, u32 psetting, u32 xsetting)
 	return 0;
 }
 
+static void setup_cache(struct spu_dsp *dsp)
+{
+	u32 paddr, xaddr, yaddr;
+
+	if (dsp->cache_exists == 0)
+		return;
+	paddr = dsp->uio.mem.addr + dsp->uio.mem.size - 256 * 1024;
+	xaddr = paddr - 256 * 1024;
+	yaddr = xaddr - 256 * 1024;
+	if (0 == dsp->id) {
+		uio_write32(&dsp->uio.mmio, paddr, P0BASE);
+		uio_write32(&dsp->uio.mmio, xaddr, X0BASE);
+		uio_write32(&dsp->uio.mmio, yaddr, Y0BASE);
+	} else {
+		uio_write32(&dsp->uio.mmio, paddr, P1BASE);
+		uio_write32(&dsp->uio.mmio, xaddr, X1BASE);
+		uio_write32(&dsp->uio.mmio, yaddr, Y1BASE);
+	}
+	uio_write32(&dsp->uio.mmio, 0x0, dsp->offset + ASID_DSP);
+	uio_write32(&dsp->uio.mmio, 0x0, dsp->offset + ASID_CPU);
+	uio_write32(&dsp->uio.mmio, 0x0, dsp->offset + ASID_DMA_CH0);
+	uio_write32(&dsp->uio.mmio, 0x0, dsp->offset + ASID_DMA_CH1);
+	uio_write32(&dsp->uio.mmio, 0x0, dsp->offset + ASID_DMA_CH2);
+	uio_write32(&dsp->uio.mmio, 0xF, dsp->offset + GADDR_CTRL_P);
+	uio_write32(&dsp->uio.mmio, 0xF, dsp->offset + GADDR_CTRL_X);
+	uio_write32(&dsp->uio.mmio, 0xF, dsp->offset + GADDR_CTRL_Y);
+	/* wait for idle state */
+	while((uio_read32(&dsp->uio.mmio, SPUMSTS) & 0x1) == 0);
+	/* clear operation */
+	if (0 == dsp->id)
+		uio_write32(&dsp->uio.mmio, 0x10000007, CCTL);
+	else
+		uio_write32(&dsp->uio.mmio, 0x10000700, CCTL);
+	/* stop clear operation */
+	uio_write32(&dsp->uio.mmio, 0x10000000, CCTL);
+}
+
 static int dsp_init(struct spu_dsp *dsp, struct dsp_def *def)
 {
 	u32 pused;
@@ -214,6 +270,8 @@ static int dsp_init(struct spu_dsp *dsp, struct dsp_def *def)
 		perr("dsp reset failed\n");
 		return -1;
 	}
+
+	setup_cache(dsp);
 
 	/*=====================================
 	 *
@@ -276,10 +334,18 @@ static int linux_io_init(void)
 
 		memset(buf, 0, sizeof(buf));
 		sprintf(buf, "SPU2DSP%lu", dsp->id);
+		if (uio_init(&dsp->uio, buf) == 0)
+			continue;
+		sprintf(buf, "SPU2A%lu", dsp->id);
 		if (0 > uio_init(&dsp->uio, buf)) {
 			perr("%s init error\n", buf);
 			goto linux_io_init_err;
 		}
+		if (dsp->uio.mem.size <= 256 * 1024 * 4) {
+			perr("%s memory size is too small\n", buf);
+			goto linux_io_init_err;
+		}
+		dsp->cache_exists = 1;
 	}
 
 	return 0;
@@ -335,6 +401,7 @@ int spudsp_init(void)
 	for (i=0; i<SPU_DSP_MAX; i++) {
 		dsp = spudsp_get(i);
 		dsp->id = i;
+		dsp->cache_exists = 0;
 	}
 
 	/*
@@ -410,6 +477,8 @@ u32 spudsp_get_workarea_size(struct spu_dsp *dsp)
 	if (!dsp)
 		return 0;
 
+	if (dsp->cache_exists)
+		return dsp->uio.mem.size - 256 * 1024 * 4;
 	return dsp->uio.mem.size;
 }
 

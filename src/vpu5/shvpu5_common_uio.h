@@ -189,6 +189,13 @@ uio_virt_to_phys(void *context, long mode, unsigned long addr);
 void *
 uio_phys_to_virt(unsigned long paddr);
 
+/** get the base address of the VPU registers
+  *
+  * @return physical base address of VPU registers
+  */
+unsigned long
+uio_register_base(void);
+
 /** Lock access to VPU
   *
   */
@@ -200,5 +207,20 @@ uiomux_lock_vpu();
   */
 void
 uiomux_unlock_vpu();
+
+/** Register a buffer with UIOMux
+  *
+  */
+void
+uiomux_register_memory(void *vaddr, unsigned long paddr, int size);
+
+/** Unregister a buffer with UIOMux
+  */
+void
+uiomux_unregister_memory(void *vaddr);
+
+#ifdef ICBCACHE_FLUSH
+void icbcache_flush(void);
+#endif
 
 #endif /* __UIO_H_ */

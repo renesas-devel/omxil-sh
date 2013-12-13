@@ -1,12 +1,11 @@
 /**
-   src/vpu5/shvpu5_common_udfio.c
+   src/vpu5/ipmmuihelper.h
 
    This component implements H.264 / MPEG-4 AVC video codec.
    The H.264 / MPEG-4 AVC video encoder/decoder is implemented
    on the Renesas's VPU5HG middleware library.
 
-   Copyright (C) 2010 IGEL Co., Ltd
-   Copyright (C) 2010 Renesas Solutions Corp.
+   Copyright (C) 2011 Renesas Solutions Corp.
 
    This library is free software; you can redistribute it and/or
    modify it under the terms of the GNU Lesser General Public License
@@ -24,38 +23,21 @@
    02110-1301 USA
 
 */
-#include "shvpu5_common_uio.h"
-long
-mciph_uf_mem_read(unsigned long src_addr,
-		  unsigned long dst_addr, long count)
-{
-	return vpu5_mem_read(src_addr, dst_addr, count);
-}
 
-long
-mciph_uf_mem_write(unsigned long src_addr,
-		   unsigned long dst_addr, long count)
-{
-	return vpu5_mem_write(src_addr, dst_addr, count);
-}
-long
-mciph_uf_reg_table_read(unsigned long src_addr,
-			unsigned long reg_table, long size)
-{
-	return vpu5_mmio_read(src_addr, reg_table, size);
-}
-long
-mciph_uf_reg_table_write(unsigned long dst_addr,
-			 unsigned long reg_table, long size)
-{
-	return vpu5_mmio_write(dst_addr, reg_table, size);
-}
-void
-mciph_uf_set_imask(long mask_enable, long now_interrupt)
-{
-	vpu5_set_imask(mask_enable, now_interrupt);
-}
+#include <stdio.h>
+#include <errno.h>
+#include <stdlib.h>
 
-int vpc_start_frame() {
-	return vpc_clear();
-}
+
+#ifdef DMAC_MODE
+int ipmmui_buffer_init();
+int ipmmui_buffer_map_vaddr(void *vaddr, unsigned int size,
+		unsigned long *paddr);
+int ipmmui_buffer_unmap_vaddr(void *vaddr);
+void ipmmui_buffer_deinit();
+#else
+#define ipmmui_buffer_init() (0)
+#define ipmmui_buffer_map_vaddr(x, y, z) (0)
+#define ipmmui_buffer_unmap_vaddr(x) (0)
+#define ipmmui_buffer_deinit()
+#endif //DMAC_MODE

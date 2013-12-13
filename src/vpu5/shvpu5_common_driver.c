@@ -31,14 +31,32 @@
 #include <unistd.h>
 #include <string.h>
 #include "mciph.h"
-#include "mciph_hg.h"
 #include "shvpu5_driver.h"
 #include "shvpu5_common_uio.h"
 #include "shvpu5_common_log.h"
+#if defined(VPU_VERSION_5)
+#include "mciph_hg.h"
+#elif defined(VPU5HA_SERIES)
+#include "mciph_ip0_cmn.h"
+#ifdef DECODER_COMPONENT
+#include "mciph_ip0_dec.h"
+#include "mciph_ip0_avcdec.h"
+#ifdef MPEG4_DECODER
+#include "mciph_ip0_m4vdec.h"
+#endif
+#endif
+#ifdef ENCODER_COMPONENT
+#include "mciph_ip0_enc.h"
+#include "mciph_ip0_avcenc.h"
+#endif
+#endif
 
 static shvpu_driver_t *pDriver;
 static pthread_mutex_t initMutex = PTHREAD_MUTEX_INITIALIZER;
 static int nCodecInstances;
+
+#define VP5_IRQ_ENB 0x10
+#define VP5_IRQ_STA 0x14
 
 static inline void *
 malloc_aligned(size_t size, int align)
@@ -49,8 +67,11 @@ malloc_aligned(size_t size, int align)
 static void *
 handle_shvpu5_interrupt(void *arg)
 {
-	MCIPH_DRV_INFO_T *pDrvInfo = arg;
 
+	MCIPH_DRV_INFO_T *pDrvInfo = arg;
+#ifdef ICBCACHE_FLUSH
+	icbcache_flush(); /* noop on encode (enable bit not set) */
+#endif
 	logd("----- invoke mciph_vpu5_int_handler() -----\n");
 	mciph_vpu5_int_handler(pDrvInfo);
 	logd("----- resume from mciph_vpu5_int_handler() -----\n");
@@ -85,12 +106,19 @@ long
 shvpu_driver_init(shvpu_driver_t **ppDriver)
 {
 	long ret = 0;
+	unsigned long reg_base;
+	int zero = 0;
 
 	pthread_mutex_lock(&initMutex);
 
 	/* pass the pointer if the driver was already initialized */
 	if (nCodecInstances > 0)
 		goto init_already;
+
+	/*** workaround clear VP5_IRQ_ENB and VPU5_IRQ_STA ***/
+	reg_base = uio_register_base();
+	vpu5_mmio_write(reg_base + VP5_IRQ_ENB, (unsigned long) &zero, 1);
+	vpu5_mmio_write(reg_base + VP5_IRQ_STA, (unsigned long) &zero, 1);
 
 	pDriver = (shvpu_driver_t *)calloc(1, sizeof(shvpu_driver_t));
 	if (pDriver == NULL) {
@@ -100,7 +128,11 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 	memset((void *)pDriver, 0, sizeof(shvpu_driver_t));
 
 	/*** initialize vpu ***/
+#if defined(VPU5HA_SERIES)
+	pDriver->wbufVpu5.work_size = MCIPH_IP0_WORKAREA_SIZE;
+#elif defined(VPU_VERSION_5)
 	pDriver->wbufVpu5.work_size = MCIPH_HG_WORKAREA_SIZE;
+#endif
 	pDriver->wbufVpu5.work_area_addr =
 		malloc_aligned(pDriver->wbufVpu5.work_size, 4);
 	logd("work_area_addr = %p\n", pDriver->wbufVpu5.work_area_addr);
@@ -110,18 +142,46 @@ shvpu_driver_init(shvpu_driver_t **ppDriver)
 		goto init_failed;
 	}
 
-	pDriver->vpu5Init.vpu_base_address		= 0xfe900000;
+	pDriver->vpu5Init.vpu_base_address		= uio_register_base();
 	pDriver->vpu5Init.vpu_image_endian		= MCIPH_LIT;
 	pDriver->vpu5Init.vpu_stream_endian		= MCIPH_LIT;
 	pDriver->vpu5Init.vpu_firmware_endian		= MCIPH_LIT;
 	pDriver->vpu5Init.vpu_interrupt_enable		= MCIPH_ON;
 	pDriver->vpu5Init.vpu_clock_supply_control	= MCIPH_CLK_CTRL;
+#ifdef VPU_INTERNAL_TL
+	pDriver->vpu5Init.vpu_constrained_mode		= MCIPH_VPU_TL;
+#else
 	pDriver->vpu5Init.vpu_constrained_mode		= MCIPH_OFF;
+#endif
 	pDriver->vpu5Init.vpu_address_mode		= MCIPH_ADDR_32BIT;
-	pDriver->vpu5Init.vpu_reset_mode			= MCIPH_RESET_SOFT;
+	pDriver->vpu5Init.vpu_reset_mode		= MCIPH_RESET_SOFT;
+#if defined(VPU5HA_SERIES)
+	pDriver->vpu5Init.vpu_version			= MCIPH_NA;
+	pDriver->vpu5Init.vpu_ext_init			= &(pDriver->ip0Init);
+
+#ifdef DECODER_COMPONENT
+#ifdef MPEG4_DECODER
+	pDriver->ip0Init.dec_tbl[0] = &mciph_ip0_m4vdec_api_tbl;
+	pDriver->ip0Init.dec_tbl[1] = &mciph_ip0_m4vdec_api_tbl;
+#endif
+	pDriver->ip0Init.dec_tbl[2] = &mciph_ip0_avcdec_api_tbl;
+	pDriver->apiTbl.dec_api_tbl 	= &mciph_ip0_dec_api_tbl;
+#endif
+#ifdef ENCODER_COMPONENT
+	pDriver->ip0Init.enc_tbl[2] = &mciph_ip0_avcenc_api_tbl;
+	pDriver->apiTbl.enc_api_tbl 	= &mciph_ip0_enc_api_tbl;
+#endif
+
+	pDriver->apiTbl.cmn_api_tbl 	= &mciph_ip0_cmn_api_tbl;
+#if defined(VPU_VERSION_5HD)
+	pDriver->ip0Init.drv_extensions = 0x3;
+#endif
+#elif defined(VPU_VERSION_5)
+	memcpy(&(pDriver->apiTbl), &mciph_hg_api_tbl, sizeof(mciph_hg_api_tbl));
+#endif
 	logd("----- invoke mciph_vpu5Init() -----\n");
 	ret = mciph_vpu5_init(&(pDriver->wbufVpu5),
-			      (MCIPH_API_T *)&mciph_hg_api_tbl,
+			      &(pDriver->apiTbl),
 			      &(pDriver->vpu5Init),
 			      &(pDriver->pDrvInfo));
 	logd("----- resume from mciph_vpu5_init() -----\n");
@@ -181,6 +241,7 @@ shvpu5_load_firmware(char *filename, size_t *size)
 		len -= ret;
 		p += ret;
 	} while (len > 0);
+	close(fd);
 	return paddr;
 fail_read:
 	pmem_free(vaddr, lseek(fd, 0, SEEK_END));

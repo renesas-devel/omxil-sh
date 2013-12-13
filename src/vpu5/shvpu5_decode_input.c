@@ -28,9 +28,10 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include "mcvdec.h"
-#include "shvpu5_avcdec.h"
-#include "shvpu5_avcdec_omx.h"
+#include "shvpu5_decode.h"
+#include "shvpu5_decode_omx.h"
 #include "shvpu5_common_queue.h"
+#include "shvpu5_parse_api.h"
 #include "shvpu5_common_log.h"
 
 #define MAX_NALS        8192
@@ -39,8 +40,8 @@ typedef struct {
 	long	id;
 	int	n;
 	MCVDEC_STRM_INFO_T *pStrmInfo;
-	void*	uioBuf;
-	size_t	uioBufSize;
+	phys_input_buf_t *pBufs[16];
+	int	n_bufs;
 } si_element_t;
 
 long
@@ -49,9 +50,9 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 			 MCVDEC_ERROR_INFO_T *error_info,
 			 long imd_size)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *)context->user_info;
-	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		(shvpu_decode_PrivateType *)context->user_info;
+	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
 	queue_t *pSIQueue = pCodec->pSIQueue;
 	si_element_t *si;
 	int i;
@@ -70,37 +71,32 @@ mcvdec_uf_release_stream(MCVDEC_CONTEXT_T *context,
 	}
 
 	if (si) {
-		pmem_free(si->uioBuf, si->uioBufSize);
+		for (i=0; i < si->n_bufs; i++) {
+			pmem_free(si->pBufs[i]->base_addr, si->pBufs[i]->size);
+			free(si->pBufs[i]);
+		}
+
 		free(si->pStrmInfo);
 		free(si);
 	}
 
+	pCodec->releaseBufCount++;
 	return MCVDEC_NML_END;
 }
 
-static size_t
-trim_trailing_zero(unsigned char *addr, size_t size)
-{
-	while ((size > 0) &&
-	       (addr[size - 1] == 0x00U))
-		size--;
-
-	return size;
-}
-
 static int
-setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
+setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue,
+		const unsigned char *eos_code, size_t eos_code_len)
 {
-	const unsigned char nal_data_eos[16] = {
-		0x00, 0x00, 0x01, 0x0B,
-	};
 	MCVDEC_STRM_INFO_T *si_eos;
 	size_t uioBufSize;
+	phys_input_buf_t *pInputBuf;
 	OMX_U8 *uioBuf, *pBuf; 
 	si_element_t *si;
 
 	logd("%s invoked.\n", __FUNCTION__);
-	uioBufSize = (4 + 0x200 + 0x600 + 255) / 256;
+	pInputBuf = calloc(1, sizeof(phys_input_buf_t));
+	uioBufSize = (eos_code_len + 0x200 + 0x600 + 255) / 256;
 	if ((uioBufSize % 2) == 0)
 		uioBufSize++;
 	uioBufSize *= 256;
@@ -112,7 +108,7 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
 	}
 	pBuf += 0x200;
 
-	memcpy(pBuf, nal_data_eos, 4);
+	memcpy(pBuf, eos_code, eos_code_len);
 	si_eos = calloc (1, sizeof(MCVDEC_STRM_INFO_T));
 	si_eos->strm_buff_addr = pBuf;
 	si_eos->strm_buff_size = 4;
@@ -121,13 +117,19 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
         input_strm->strm_cnt = 1;
 	input_strm->strm_id = frame;
 
+	pInputBuf->base_addr = uioBuf;
+	pInputBuf->size = uioBufSize;
+	pInputBuf->n_sbufs = 1;
+	pInputBuf->buf_sizes[0] = si_eos->strm_buff_size;
+	pInputBuf->buf_offsets[0] = si_eos->strm_buff_addr;
+
 	si = calloc(1, sizeof(si_element_t));
 	if (si) {
 		si->id = input_strm->strm_id;
 		si->n = input_strm->strm_cnt;
 		si->pStrmInfo = input_strm->strm_info;
-		si->uioBuf = uioBuf;
-		si->uioBufSize = uioBufSize;
+		si->pBufs[0] = pInputBuf;
+		si->n_bufs = 1;
 		shvpu_queue(pSIQueue, si);
 	} else {
 		loge("memory alloc for si_element_t failed\n");
@@ -136,67 +138,38 @@ setup_eos(MCVDEC_INPUT_STRM_T *input_strm, int frame, queue_t *pSIQueue)
 	return MCVDEC_NML_END;
 }
 
-static buffer_metainfo_t *
-save_omx_buffer_metainfo(OMX_BUFFERHEADERTYPE *pBuffer)
-{
-	buffer_metainfo_t *pBMI;
-
-	pBMI = calloc(1, sizeof(buffer_metainfo_t));
-	if (pBMI == NULL) {
-		loge("bmi alloc failed.\n");
-		return NULL;
-	}
-
-	pBMI->hMarkTargetComponent = pBuffer->hMarkTargetComponent;
-	pBuffer->hMarkTargetComponent = NULL;
-	logd("%s: hMarkTargetComponent = %p\n",
-	     __FUNCTION__, pBMI->hMarkTargetComponent);
-	pBMI->pMarkData = pBuffer->pMarkData;
-	pBuffer->pMarkData = NULL;
-	logd("%s: pMarkData = %p\n", __FUNCTION__, pBMI->pMarkData);
-	pBMI->nTimeStamp = pBuffer->nTimeStamp;
-	pBuffer->nTimeStamp = 0;
-	logd("%s: nTimeStamp = %d\n", __FUNCTION__, pBMI->nTimeStamp);
-	pBMI->nFlags = pBuffer->nFlags &
-		(OMX_BUFFERFLAG_STARTTIME | OMX_BUFFERFLAG_DECODEONLY);
-	pBuffer->nFlags = 0;
-	logd("%s: nFlags = %08x\n", __FUNCTION__, pBMI->nFlags);
-
-	return pBMI;
-}
-
 long
 mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 			 MCVDEC_INPUT_STRM_T *input_strm,
 			 void *pic_option)
 {
-	shvpu_avcdec_PrivateType *shvpu_avcdec_Private =
-		(shvpu_avcdec_PrivateType *)context->user_info;
-	int i, j;
+	shvpu_decode_PrivateType *shvpu_decode_Private =
+		(shvpu_decode_PrivateType *)context->user_info;
+	int i, j, cnt;
 	MCVDEC_STRM_INFO_T *pStrmInfo;
-	shvpu_codec_t *pCodec = shvpu_avcdec_Private->avCodec;
-	tsem_t *pPicSem = shvpu_avcdec_Private->pPicSem;
-	queue_t *pPicQueue = shvpu_avcdec_Private->pPicQueue;
+	shvpu_decode_codec_t *pCodec = shvpu_decode_Private->avCodec;
+	tsem_t *pPicSem = shvpu_decode_Private->pPicSem;
+	queue_t *pPicQueue = shvpu_decode_Private->pPicQueue;
 	queue_t *pSIQueue = pCodec->pSIQueue;
-	queue_t *pBMIQueue = pCodec->pBMIQueue;
 	int *pFrameCount = &pCodec->frameCount;
 	pic_t *pPic;
-	nal_t *nal;
-	buffer_metainfo_t *pBMI = NULL;
+	buffer_avcdec_metainfo_t buffer_meta;
 	size_t size, len, uioBufSize;
 	OMX_U32 offDst, offSrc;
 	OMX_U8 *pData, *uioBuf, *pBuf; 
 	si_element_t *si;
+	phys_input_buf_t *pPicBuf;
 
 	logd("%s invoked.\n", __FUNCTION__);
 
 	if (pPicSem->semval == 0) {
-		if (shvpu_avcdec_Private->bIsEOSReached) {
+		if (shvpu_decode_Private->bIsEOSReached) {
 			logd("%s: EOS!\n", __FUNCTION__);
 			if (pCodec->has_eos == 0) {
 				pCodec->has_eos = 1;
 				return setup_eos(input_strm, *pFrameCount,
-					pSIQueue);
+					pSIQueue, pCodec->pops->EOSCode,
+					pCodec->pops->EOSCodeLen);
 			} else {
 				return MCVDEC_INPUT_END;
 			}
@@ -216,102 +189,50 @@ mcvdec_uf_request_stream(MCVDEC_CONTEXT_T * context,
 		return MCVDEC_INPUT_SKIP_BY_USER;
 	}
 
-	pStrmInfo = calloc(pPic->n_nals, sizeof(MCVDEC_STRM_INFO_T));
+	pStrmInfo = calloc(pPic->n_sbufs, sizeof(MCVDEC_STRM_INFO_T));
 	if (pStrmInfo == NULL) {
 		loge("%s: No memory for stream info data\n",
 		     __FUNCTION__);
 		return MCVDEC_INPUT_SKIP_BY_USER;
 	}
-
-	/* copy data into uio memory buffer */
-	uioBufSize = (pPic->size + 0x200 + 0x600 + 255) / 256;
-	if ((uioBufSize % 2) == 0)
-		uioBufSize++;
-	uioBufSize *= 256;
-	uioBuf = pBuf = pmem_alloc(uioBufSize, 32, NULL);
-	if (uioBuf == NULL) {
-		loge("%s: No memory for uio buffer\n",
-		     __FUNCTION__);
-		return MCVDEC_INPUT_SKIP_BY_USER;
-	}
-	pBuf += 0x200;
-	for (i = 0; i < pPic->n_nals; i++) {
-		nal = pPic->pNal[i];
-		if (pBMI == NULL) {
-			logd("store buffer metadata\n");
-			pBMI = save_omx_buffer_metainfo(nal->pBuffer[0]);
-		}
-			
-		size = nal->size;
-		offSrc = nal->offset;
-		offDst = 0;
-		for (j = 0; j < 2; j++) {
-			pData = nal->pBuffer[j]->pBuffer + offSrc;
-			len = nal->pBuffer[j]->nFilledLen +
-			    nal->pBuffer[j]->nOffset - offSrc;
-			if (size < len)
-				len = size;
-			memcpy(pBuf + offDst, pData, len);
-			size -= len;
-			nal->pBuffer[j]->nFilledLen -= len;
-			nal->pBuffer[j]->nOffset += len;
-			offDst += len;
-			if (size <= 0)
-				break;
-			offSrc = 0;
-		}
-		pStrmInfo[i].strm_buff_size = nal->size;
-		pStrmInfo[i].strm_buff_addr = pBuf;
-		free(nal);
-		pBuf += offDst;
-		if (((OMX_U32)pBuf - (OMX_U32)uioBuf) >= uioBufSize) {
-			loge("uio buffer overflow %d >= %d\n",
-			     (OMX_U32)pBuf - (OMX_U32)uioBuf, uioBufSize);
-			break;
+	cnt = 0;
+	for (i = 0; i < pPic->n_bufs; i++) {
+		pPicBuf = pPic->pBufs[i];
+		for (j = 0; j < pPicBuf->n_sbufs; j++) {
+			pStrmInfo[cnt].strm_buff_size = pPicBuf->buf_sizes[j];
+			pStrmInfo[cnt].strm_buff_addr = pPicBuf->buf_offsets[j];
+			cnt++;
 		}
 	}
+	buffer_meta = pPic->buffer_meta;
 	if (pPic->hasSlice)
 		pCodec->bufferingCount += 1;
-	free(pPic);
 
 	input_strm->second_id = 0;
 	input_strm->strm_info = pStrmInfo;
-        input_strm->strm_cnt = pPic->n_nals;
+        input_strm->strm_cnt = pPic->n_sbufs;
 	input_strm->strm_id = *pFrameCount;
 	*pFrameCount += 1;
-
-	for (j=0; j<input_strm->strm_cnt; j++) {
-		unsigned char *addr;
-		addr = input_strm->strm_info[j].strm_buff_addr;
-		logd("BEFORE: strm_buff_size = %d\n",
-		     input_strm->strm_info[j].strm_buff_size);
-		input_strm->strm_info[j].strm_buff_size =
-			trim_trailing_zero(input_strm->strm_info[j].
-					   strm_buff_addr,
-					   input_strm->strm_info[j].
-					   strm_buff_size);
-		logd("AFTER : strm_buff_size = %d\n",
-		     input_strm->strm_info[j].strm_buff_size);
-	}
 
 	si = calloc(1, sizeof(si_element_t));
 	if (si) {
 		si->id = input_strm->strm_id;
 		si->n = input_strm->strm_cnt;
 		si->pStrmInfo = input_strm->strm_info;
-		si->uioBuf = uioBuf;
-		si->uioBufSize = uioBufSize;
+		si->n_bufs = pPic->n_bufs;
+		memcpy(si->pBufs, pPic->pBufs,
+			sizeof (phys_input_buf_t *) * si->n_bufs);
 		shvpu_queue(pSIQueue, si);
 	} else {
 		loge("memory alloc for si_element_t failed\n");
 	}
 
-	if (pBMI) {
-		pBMI->id = input_strm->strm_id;
-		shvpu_queue(pBMIQueue, pBMI);
-	}
+	free(pPic);
 
-	logd("%s: %d: %d nals input\n",
+	buffer_meta.id = input_strm->strm_id;
+	pCodec->BMIEntries[buffer_meta.id % BMI_ENTRIES_SIZE] = buffer_meta;
+
+	logd("%s: %d: %d sub buffers input\n",
 	     __FUNCTION__, input_strm->strm_id, input_strm->strm_cnt);
 
 	return MCVDEC_NML_END;
@@ -324,10 +245,14 @@ void
 free_remaining_streams(queue_t *pSIQueue)
 {
 	si_element_t *si;
-	int i;
-	for (i=shvpu_getquenelem(pSIQueue); i>0; i--) {
+	int i, j;
+
+	for (j=shvpu_getquenelem(pSIQueue); j>0; j--) {
 		si = shvpu_dequeue(pSIQueue);
-		pmem_free(si->uioBuf, si->uioBufSize);
+		for (i=0; i < si->n_bufs; i++) {
+			pmem_free(si->pBufs[i]->base_addr, si->pBufs[i]->size);
+			free(si->pBufs[i]);
+		}
 		free(si->pStrmInfo);
 		free(si);
 	}
