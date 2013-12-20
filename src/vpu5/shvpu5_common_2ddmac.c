@@ -112,7 +112,7 @@ int DMAC_setup_buffers(int w, int h, int do_tl_conv)
 	ydst.pitch = ALIGN_STRIDE(w);
 	ysrc.fmt = ydst.fmt = TDDMAC_Y;
 
-	csrc.w = cdst.w = w;
+	csrc.w = cdst.w = w/2;
 	csrc.h = cdst.h = h/2;
 	csrc.pitch = pitch;
 	cdst.pitch = ALIGN_STRIDE(w);
