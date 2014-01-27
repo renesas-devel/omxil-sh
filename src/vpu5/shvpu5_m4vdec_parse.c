@@ -226,7 +226,7 @@ parseMpegBuffer(shvpu_decode_PrivateType *shvpu_decode_Private,
 		init_picture_buffer(pActivePic, BUFFER_SIZE);
 
 	total_parsed = 0;
-	while (nRemainSize > 3) {
+	while (nRemainSize) {
 		start_code = find_start_code(pStart, nRemainSize, &m4vparse->state, &parsed);
 
 		nRemainSize -= parsed;
