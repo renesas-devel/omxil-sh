@@ -773,6 +773,16 @@ handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 			shvpu_decode_Private->isFirstBuffer = OMX_TRUE;
 		}
+		if (PORT_IS_BEING_FLUSHED(pOutPort)) {
+			int i;
+			shvpu_fmem_data *fmem_data =
+				shvpu_decode_Private->avCodec->fmem;
+			for (i = 0; i < shvpu_decode_Private->
+			     avCodec->fmem_size; i++) {
+				pthread_mutex_trylock(&fmem_data[i].filled);
+				pthread_mutex_unlock(&fmem_data[i].filled);
+			}
+		}
 
 		DEBUG(DEB_LEV_FULL_SEQ,
 		      "In %s 2 signalling flush all cond iE=%d,"
