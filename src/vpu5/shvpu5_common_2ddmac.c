@@ -87,6 +87,9 @@ int DMAC_setup_buffers(int w, int h, int do_tl_conv)
 		pitch |= pitch >> 4;
 		pitch ++;
 
+		if (pitch < 256)
+			pitch = 256;
+
 		close_meram(&DMAC_data.meram_data); //nop if not already opened
 		open_meram(&DMAC_data.meram_data);
 
