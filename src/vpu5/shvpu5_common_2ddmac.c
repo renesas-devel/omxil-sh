@@ -87,7 +87,12 @@ int DMAC_setup_buffers(int w, int h, int do_tl_conv)
 		pitch |= pitch >> 4;
 		pitch ++;
 
+		if (pitch < 256)
+			pitch = 256;
+
+		close_meram(&DMAC_data.meram_data); //nop if not already opened
 		open_meram(&DMAC_data.meram_data);
+
 		setup_icb(&DMAC_data.meram_data,
 			&DMAC_data.meram_data.decY_icb,
 			pitch, VALIGN(h), 128, 0xD, 0, DMAC_YICB);
@@ -110,7 +115,7 @@ int DMAC_setup_buffers(int w, int h, int do_tl_conv)
 	ydst.pitch = ALIGN_STRIDE(w);
 	ysrc.fmt = ydst.fmt = TDDMAC_Y;
 
-	csrc.w = cdst.w = w;
+	csrc.w = cdst.w = w/2;
 	csrc.h = cdst.h = h/2;
 	csrc.pitch = pitch;
 	cdst.pitch = ALIGN_STRIDE(w);

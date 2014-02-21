@@ -77,6 +77,8 @@ mcvdec_uf_get_frame_memory(MCVDEC_CONTEXT_T *context,
 			pitch >>=1;
 		}
 		pitch = (1 << (i + next_power));
+		if (pitch < 256)
+			pitch = 256;
 		if (!shvpu_decode_Private->ipmmui_data) {
 			shvpu_decode_Private->ipmmui_data = init_ipmmu(
 				shvpu_decode_Private->uio_start_phys, pitch,

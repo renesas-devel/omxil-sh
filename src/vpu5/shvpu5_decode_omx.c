@@ -360,6 +360,7 @@ OMX_ERRORTYPE shvpu_decode_Destructor(OMX_COMPONENTTYPE * pComponent)
           already been remover (i.e. premature decode cancel)*/
 
 	free(shvpu_decode_Private->pPicSem);
+	queue_deinit(shvpu_decode_Private->pPicQueue);
 	free(shvpu_decode_Private->pPicQueue);
 
 	omx_base_filter_Destructor(pComponent);
@@ -772,6 +773,16 @@ handle_buffer_flush(shvpu_decode_PrivateType *shvpu_decode_Private,
 
 			shvpu_decode_Private->isFirstBuffer = OMX_TRUE;
 		}
+		if (PORT_IS_BEING_FLUSHED(pOutPort)) {
+			int i;
+			shvpu_fmem_data *fmem_data =
+				shvpu_decode_Private->avCodec->fmem;
+			for (i = 0; i < shvpu_decode_Private->
+			     avCodec->fmem_size; i++) {
+				pthread_mutex_trylock(&fmem_data[i].filled);
+				pthread_mutex_unlock(&fmem_data[i].filled);
+			}
+		}
 
 		DEBUG(DEB_LEV_FULL_SEQ,
 		      "In %s 2 signalling flush all cond iE=%d,"
@@ -1171,6 +1182,8 @@ shvpu_decode_BufferMgmtFunction(void *param)
 				       &inBufExchanged);
 	}
 
+	queue_deinit(&processInBufQueue);
+
 	DEBUG(DEB_LEV_FUNCTION_NAME, "Out of %s of component %x\n", __func__,
 	      (int)pComponent);
 	return NULL;
@@ -1555,6 +1568,16 @@ shvpu_decode_DecodePicture(OMX_COMPONENTTYPE * pComponent,
 	}
 }
 
+static OMX_BOOL
+can_change_port_settings(OMX_STATETYPE state,
+			omx_base_video_PortType *port) {
+
+	return state == OMX_StateLoaded ||
+			state == OMX_StateWaitForResources ||
+			(state != OMX_StateInvalid &&
+			 port->sPortParam.bPopulated == OMX_FALSE);
+}
+
 OMX_ERRORTYPE
 shvpu_decode_SetParameter(OMX_HANDLETYPE hComponent,
 			  OMX_INDEXTYPE nParamIndex,
@@ -1839,9 +1862,13 @@ shvpu_decode_SetParameter(OMX_HANDLETYPE hComponent,
 		}
 		case OMX_IndexAndroidUseNativeBuffer:
 		{
-			if (shvpu_decode_Private->state != OMX_StateLoaded
-				&& shvpu_decode_Private->state !=
-				OMX_StateWaitForResources) {
+			omx_base_video_PortType *outPort;
+			outPort = (omx_base_video_PortType *)
+				shvpu_decode_Private->ports[
+					OMX_BASE_FILTER_OUTPUTPORT_INDEX];
+
+			if (!can_change_port_settings(
+				shvpu_decode_Private->state, outPort)) {
 				DEBUG(DEB_LEV_ERR,
 					"In %s Incorrect State=%x lineno=%d\n",
 					__func__, shvpu_decode_Private->state,
@@ -2174,8 +2201,10 @@ shvpu_decode_SendCommand(
         return err;
     }
   }
-  if ((Cmd == OMX_CommandStateSet) && (nParam == OMX_StateExecuting) &&
-      (shvpu_decode_Private->state == OMX_StateIdle) &&
+  if ((((Cmd == OMX_CommandStateSet) && (nParam == OMX_StateExecuting) &&
+      (shvpu_decode_Private->state == OMX_StateIdle) ) ||
+	((Cmd == OMX_CommandPortEnable) &&
+	(nParam == OMX_BASE_FILTER_OUTPUTPORT_INDEX))) &&
       (shvpu_decode_Private->features.dmac_mode)) {
 
     /* Input port holds the dimensions of the input data stream, while the

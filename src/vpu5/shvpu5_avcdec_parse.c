@@ -435,6 +435,7 @@ flushAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 		nal = dequeue(pNalQueue);
 		free(nal);
 	}
+	queue_deinit(&avcparse->NalQueue);
 	memset(avcparse, 0, sizeof(struct avcparse_meta));
 	queue_init(&avcparse->NalQueue);
 }
@@ -443,6 +444,7 @@ void
 deinitAvcParser(shvpu_decode_PrivateType *shvpu_decode_Private) {
 	struct avcparse_meta *avcparse =
 			shvpu_decode_Private->avCodec->codec_priv;
+	queue_deinit(&avcparse->NalQueue);
 	free (avcparse);
 }
 
